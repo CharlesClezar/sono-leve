@@ -2,20 +2,34 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "API: Debug",
+      "name": "Backend: Debug",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "backend: build",
       "program": "${workspaceFolder}/server/SonoLeve.Api/bin/Debug/net10.0/SonoLeve.Api.dll",
       "args": [],
       "cwd": "${workspaceFolder}/server/SonoLeve.Api",
       "stopAtEntry": false,
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "sourceFileMap": {
-        "/Views": "${workspaceFolder}/server/SonoLeve.Api"
       }
+    },
+    {
+      "name": "Frontend: Dev",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/client",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Sono Leve: Full Stack",
+      "configurations": ["Backend: Debug", "Frontend: Dev"],
+      "stopAll": true
     }
   ]
 }
