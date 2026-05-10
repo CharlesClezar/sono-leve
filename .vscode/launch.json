@@ -16,13 +16,10 @@
     },
     {
       "name": "Frontend: Dev",
-      "type": "node",
+      "type": "node-terminal",
       "request": "launch",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "${workspaceFolder}/client",
-      "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"]
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/client"
     }
   ],
   "compounds": [
