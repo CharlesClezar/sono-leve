@@ -28,7 +28,7 @@
       },
       "problemMatcher": {
         "owner": "nextjs",
-        "pattern": [{ "regexp": "^$" }],
+        "pattern": [{ "regexp": "^$", "file": 1, "message": 2 }],
         "background": {
           "activeOnStart": true,
           "beginsPattern": "next",
