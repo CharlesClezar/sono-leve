@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_prod:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORTA:-5000}:8080"
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Segredo: ${JWT_SEGREDO}
+      Jwt__ExpiracaoMinutos: ${JWT_EXPIRACAO_MINUTOS:-15}
+      Jwt__ExpiracaoRefreshDias: ${JWT_EXPIRACAO_REFRESH_DIAS:-7}
+      Cors__Origens: ${CORS_ORIGENS}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_prod:

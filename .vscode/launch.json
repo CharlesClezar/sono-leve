@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API: Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/server/SonoLeve.Api/bin/Debug/net10.0/SonoLeve.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/server/SonoLeve.Api",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/server/SonoLeve.Api"
+      }
+    }
+  ]
+}

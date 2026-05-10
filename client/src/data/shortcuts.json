@@ -1,0 +1,146 @@
+[
+  {
+    "id": "save",
+    "action": "Salvar",
+    "windows": "Ctrl+S",
+    "mac": "Command+S",
+    "scope": "Global",
+    "active": true
+  },
+  {
+    "id": "cancel",
+    "action": "Voltar / Cancelar",
+    "windows": "Esc",
+    "mac": "Esc",
+    "scope": "Global",
+    "active": true
+  },
+  {
+    "id": "clear_filters",
+    "action": "Limpar filtros",
+    "windows": "Esc",
+    "mac": "Esc",
+    "scope": "Listas",
+    "active": true
+  },
+  {
+    "id": "new_contextual",
+    "action": "Nova operação do módulo",
+    "windows": "F2",
+    "mac": "F2",
+    "scope": "Global",
+    "active": true
+  },
+  {
+    "id": "dashboard_new_sale",
+    "action": "Nova venda",
+    "windows": "F2",
+    "mac": "F2",
+    "scope": "Dashboard",
+    "active": true
+  },
+  {
+    "id": "dashboard_new_order",
+    "action": "Nova encomenda",
+    "windows": "F3",
+    "mac": "F3",
+    "scope": "Dashboard",
+    "active": true
+  },
+  {
+    "id": "dashboard_new_ficha",
+    "action": "Nova ficha",
+    "windows": "F4",
+    "mac": "F4",
+    "scope": "Dashboard",
+    "active": true
+  },
+  {
+    "id": "sales_from_order",
+    "action": "Venda de encomenda",
+    "windows": "F3",
+    "mac": "F3",
+    "scope": "Vendas",
+    "active": true
+  },
+  {
+    "id": "sales_from_ficha",
+    "action": "Venda de ficha",
+    "windows": "F4",
+    "mac": "F4",
+    "scope": "Vendas",
+    "active": true
+  },
+  {
+    "id": "nav_dashboard",
+    "action": "Ir para Dashboard",
+    "windows": "Ctrl+1",
+    "mac": "Command+1",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_sales",
+    "action": "Ir para Vendas",
+    "windows": "Ctrl+2",
+    "mac": "Command+2",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_orders",
+    "action": "Ir para Encomendas",
+    "windows": "Ctrl+3",
+    "mac": "Command+3",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_fichas",
+    "action": "Ir para Fichas",
+    "windows": "Ctrl+4",
+    "mac": "Command+4",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_products",
+    "action": "Ir para Produtos",
+    "windows": "Ctrl+5",
+    "mac": "Command+5",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_stock",
+    "action": "Ir para Estoque",
+    "windows": "Ctrl+6",
+    "mac": "Command+6",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_customers",
+    "action": "Ir para Clientes",
+    "windows": "Ctrl+7",
+    "mac": "Command+7",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_finance",
+    "action": "Ir para Financeiro",
+    "windows": "Ctrl+8",
+    "mac": "Command+8",
+    "scope": "Navegação",
+    "active": true
+  },
+  {
+    "id": "nav_settings",
+    "action": "Ir para Configurações",
+    "windows": "Ctrl+9",
+    "mac": "Command+9",
+    "scope": "Navegação",
+    "active": true
+  }
+]

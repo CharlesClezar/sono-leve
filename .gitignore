@@ -1,0 +1,14 @@
+client/node_modules/
+client/.next/
+client/tsconfig.tsbuildinfo
+
+server/bin/
+server/obj/
+server/**/bin/
+server/**/obj/
+
+.env
+.idea/
+server/obj/
+
+.DS_Store

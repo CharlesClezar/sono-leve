@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design system - Admin operacional azul #1FA3FF */
+@layer base {
+  :root {
+    --background: 204 45% 98%;
+    --foreground: 216 28% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 216 28% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 28% 14%;
+
+    --primary: 31 163 255;
+    --primary-hover: 10 143 235;
+    --primary-foreground: 255 255 255;
+    --primary-soft: 232 246 255;
+
+    --secondary: 204 36% 94%;
+    --secondary-foreground: 216 28% 18%;
+
+    --muted: 204 28% 96%;
+    --muted-foreground: 216 14% 48%;
+
+    --accent: 204 100% 95%;
+    --accent-foreground: 204 100% 34%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 85% 96%;
+
+    --success: 145 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 145 60% 94%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 45 95% 94%;
+
+    --info: 31 163 255;
+    --info-soft: 232 246 255;
+
+    --partial: 191 122 58;
+    --partial-foreground: 146 86 24;
+    --partial-soft: 255 239 213;
+
+    --border: 204 30% 88%;
+    --input: 204 30% 90%;
+    --ring: 31 163 255;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 31 163 255;
+    --sidebar-foreground: 255 255 255;
+    --sidebar-primary: 31 163 255;
+    --sidebar-primary-foreground: 255 255 255;
+    --sidebar-accent: 255 255 255;
+    --sidebar-accent-foreground: 255 255 255;
+    --sidebar-border: 255 255 255;
+    --sidebar-ring: 31 163 255;
+
+    /* Gradients & shadows */
+    --gradient-primary: linear-gradient(135deg, rgb(31 163 255), rgb(109 198 255));
+    --gradient-subtle: linear-gradient(180deg, hsl(204 45% 98%), hsl(204 36% 95%));
+    --shadow-sm: 0 1px 2px 0 hsl(216 28% 14% / 0.05);
+    --shadow-md: 0 4px 12px -2px hsl(216 28% 14% / 0.08);
+    --shadow-lg: 0 12px 32px -8px rgb(31 163 255 / 0.2);
+  }
+
+  .dark {
+    --background: 215 30% 10%;
+    --foreground: 210 25% 92%;
+    --card: 215 30% 13%;
+    --card-foreground: 210 25% 92%;
+    --popover: 215 30% 13%;
+    --popover-foreground: 210 25% 92%;
+    --primary: 31 163 255;
+    --primary-foreground: 13 29 42;
+    --primary-soft: 18 56 84;
+    --secondary: 215 25% 18%;
+    --secondary-foreground: 210 25% 92%;
+    --muted: 215 25% 16%;
+    --muted-foreground: 215 15% 60%;
+    --accent: 215 25% 20%;
+    --accent-foreground: 210 25% 92%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 25% 20%;
+    --input: 215 25% 20%;
+    --ring: 31 163 255;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .status-success { @apply bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]; }
+  .status-danger { @apply bg-[hsl(var(--destructive-soft))] text-[hsl(var(--destructive))]; }
+  .status-warning { @apply bg-[hsl(var(--warning-soft))] text-[hsl(var(--warning))]; }
+  .status-info { @apply bg-[rgb(var(--info-soft))] text-[rgb(var(--info))]; }
+  .status-partial { @apply bg-[rgb(var(--partial-soft))] text-[rgb(var(--partial-foreground))]; }
+  .status-neutral { @apply bg-muted text-muted-foreground; }
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
