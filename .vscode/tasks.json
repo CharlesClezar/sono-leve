@@ -12,6 +12,35 @@
         "/consoleloggerparameters:NoSummary"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "frontend: iniciar",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/client"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "label": "Frontend"
+      },
+      "problemMatcher": {
+        "owner": "nextjs",
+        "pattern": [{ "regexp": "^$" }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "next",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "full stack: preparar",
+      "dependsOn": ["backend: build", "frontend: iniciar"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }
