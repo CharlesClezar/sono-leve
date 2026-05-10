@@ -8,6 +8,7 @@ server/**/bin/
 server/**/obj/
 
 .env
+.env.local
 .idea/
 server/obj/
 
