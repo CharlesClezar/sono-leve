@@ -1,9 +1,11 @@
 using System.Text;
-using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using SonoLeve.Application.Interfaces;
+using SonoLeve.Application.Services;
 using SonoLeve.Infra.Data;
+using SonoLeve.Infra.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +17,7 @@ builder.Services.AddDbContext<SonoLeveDbContext>(opcoes =>
 
 // CORS
 var origensPermitidas = builder.Configuration["Cors:Origens"]?.Split(",")
-    ?? ["http://localhost:3000"];
+    ?? ["http://localhost:3010"];
 
 builder.Services.AddCors(opcoes =>
     opcoes.AddDefaultPolicy(politica =>
@@ -27,6 +29,8 @@ builder.Services.AddCors(opcoes =>
 // JWT
 var segredoJwt = builder.Configuration["Jwt:Segredo"]
     ?? throw new InvalidOperationException("Jwt:Segredo não configurado.");
+
+builder.Services.Configure<JwtOpcoes>(builder.Configuration.GetSection("Jwt"));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opcoes =>
@@ -43,12 +47,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// FluentValidation
-builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+// Repositories
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
+
+// Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IClienteService, ClienteService>();
 
 var app = builder.Build();
 
-// Aplicar migrations automaticamente na inicialização
+// Aplicar migrations automaticamente
 using (var escopo = app.Services.CreateScope())
 {
     var db = escopo.ServiceProvider.GetRequiredService<SonoLeveDbContext>();

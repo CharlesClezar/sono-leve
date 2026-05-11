@@ -20,26 +20,11 @@
       "options": {
         "cwd": "${workspaceFolder}/client"
       },
-      "isBackground": true,
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
         "label": "Frontend"
       },
-      "problemMatcher": {
-        "owner": "nextjs",
-        "pattern": [{ "regexp": "^$", "kind": "file", "file": 1, "message": 2 }],
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "next",
-          "endsPattern": "Local:"
-        }
-      }
-    },
-    {
-      "label": "full stack: preparar",
-      "dependsOn": ["backend: build", "frontend: iniciar"],
-      "dependsOrder": "parallel",
       "problemMatcher": []
     }
   ]
