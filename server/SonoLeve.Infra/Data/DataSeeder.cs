@@ -287,18 +287,13 @@ public static class DataSeeder
                     });
                 }
             }
-            await db.SaveChangesAsync();
-        }
-
-        // Backfill Pecas de encomendas com Pecas == 0
-        if (db.Encomendas.Any(e => e.Pecas == 0) && db.ItensEncomenda.Any())
-        {
+            // Atualiza Pecas de cada encomenda com a soma dos itens
             var itensPorEncomenda = db.ItensEncomenda
                 .GroupBy(i => i.EncomendaId)
                 .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantidade));
-            foreach (var enc in db.Encomendas.Where(e => e.Pecas == 0))
+            foreach (var enc in db.Encomendas.ToList())
             {
-                if (itensPorEncomenda.TryGetValue(enc.Id, out var p) && p > 0)
+                if (itensPorEncomenda.TryGetValue(enc.Id, out var p))
                     enc.Pecas = p;
             }
             await db.SaveChangesAsync();

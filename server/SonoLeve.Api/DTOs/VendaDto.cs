@@ -20,7 +20,7 @@ public record ItemVendaResponse(
 public record VendaRequest(
     Guid ClienteId,
     Guid? FormaPagamentoId,
-    DateTime Data,
+    DateTime? Data,
     int Pecas,
     decimal Total,
     string Status,

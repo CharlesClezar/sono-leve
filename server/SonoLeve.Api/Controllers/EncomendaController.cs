@@ -62,6 +62,8 @@ public class EncomendaController : ControllerBase
             existente.Total = request.Total;
             existente.Entrada = request.Entrada;
             existente.Status = ParseStatus(request.Status);
+            if (request.Items is not null)
+                existente.Pecas = request.Items.Sum(i => i.Quantidade);
             var itens = MapearItensRequest(request.Items);
             return Ok(Mapear(await _service.AtualizarAsync(existente, itens)));
         }
@@ -93,6 +95,7 @@ public class EncomendaController : ControllerBase
     {
         ClienteId = r.ClienteId, Previsao = r.Previsao, Total = r.Total,
         Entrada = r.Entrada, Status = ParseStatus(r.Status),
+        Pecas = r.Items?.Sum(i => i.Quantidade) ?? 0,
     };
 
     private static EncomendaResponse Mapear(Encomenda e) => new(

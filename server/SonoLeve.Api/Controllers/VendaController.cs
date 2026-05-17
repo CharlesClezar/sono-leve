@@ -59,7 +59,7 @@ public class VendaController : ControllerBase
             var existente = await _service.ObterPorIdAsync(id);
             existente.ClienteId = request.ClienteId;
             existente.FormaPagamentoId = request.FormaPagamentoId;
-            existente.Data = request.Data;
+            existente.Data = request.Data ?? existente.Data;
             existente.Pecas = request.Pecas;
             existente.Total = request.Total;
             existente.Status = Enum.Parse<StatusVenda>(request.Status, true);
@@ -94,7 +94,7 @@ public class VendaController : ControllerBase
     private static Venda MapearEntidade(VendaRequest r) => new()
     {
         ClienteId = r.ClienteId, FormaPagamentoId = r.FormaPagamentoId,
-        Data = r.Data, Pecas = r.Pecas, Total = r.Total,
+        Data = r.Data ?? DateTime.UtcNow, Pecas = r.Pecas, Total = r.Total,
         Status = Enum.Parse<StatusVenda>(r.Status, true),
         Origem = ParseOrigem(r.Origem),
     };
