@@ -110,7 +110,7 @@ export function useGlobalShortcuts() {
       if (pathname.startsWith("/vendas") && matchesShortcut(e, salesFromOrderShortcut, platform)) {
         e.preventDefault();
         toast.dismiss();
-        if (!dispatchCancelableShortcut("app:vendas:shortcut", { shortcut: "orders" })) {
+        if (!dispatchCancelableShortcut("app:vendas:shortcut", { shortcut: "encomendas" })) {
           router.push("/vendas?from=encomenda");
         }
         return;

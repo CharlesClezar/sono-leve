@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SonoLeve.Api.DTOs;
 using SonoLeve.Application.Interfaces;
@@ -9,7 +8,6 @@ namespace SonoLeve.Api.Controllers;
 
 [ApiController]
 [Route("api/clientes")]
-[Authorize]
 public class ClienteController : ControllerBase
 {
     private readonly IClienteService _clienteService;

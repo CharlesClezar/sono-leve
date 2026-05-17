@@ -17,33 +17,34 @@ import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { CircleCheck, Pencil, Play, Plus, Search, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 
-type OrderListStatus = "Novo" | "Em produção" | "Fabricado parcialmente" | "Pronta" | "Entregue" | "Cancelada";
-type OrderTab = "Histórico" | OrderListStatus;
-type OrderViewMode = "list" | "grouped";
-type OrderSortKey = "createdAt" | "dueDate" | "total" | "customer" | "status";
-type SortDirection = "asc" | "desc";
-type OrderTabFilters = {
-  query: string;
-  viewMode: OrderViewMode;
-  sortBy: OrderSortKey;
-  sortDirection: SortDirection;
+type StatusListaEncomenda = "Novo" | "Em produção" | "Fabricado parcialmente" | "Pronta" | "Entregue" | "Cancelada";
+type AbaEncomenda = "Histórico" | StatusListaEncomenda;
+type ModoVisualizacao = "list" | "grouped";
+type ChaveOrdenacao = "criadoEm" | "previsao" | "total" | "cliente" | "status";
+type DirecaoOrdenacao = "asc" | "desc";
+type FiltroAba = {
+  busca: string;
+  modoVisualizacao: ModoVisualizacao;
+  ordenarPor: ChaveOrdenacao;
+  direcaoOrdenacao: DirecaoOrdenacao;
 };
 
-const statusOrder: OrderListStatus[] = ["Novo", "Em produção", "Fabricado parcialmente", "Pronta", "Entregue", "Cancelada"];
-const tabs: OrderTab[] = ["Histórico", ...statusOrder];
-const defaultOrderTabFilters: OrderTabFilters = {
-  query: "",
-  viewMode: "list",
-  sortBy: "dueDate",
-  sortDirection: "asc",
+const ordemStatus: StatusListaEncomenda[] = ["Novo", "Em produção", "Fabricado parcialmente", "Pronta", "Entregue", "Cancelada"];
+const abas: AbaEncomenda[] = ["Histórico", ...ordemStatus];
+const filtrosPadraoAba: FiltroAba = {
+  busca: "",
+  modoVisualizacao: "list",
+  ordenarPor: "previsao",
+  direcaoOrdenacao: "asc",
 };
 
-const normalizeStatus = (status: string): OrderListStatus => (status === "Aberta" ? "Novo" : status as OrderListStatus);
+const normalizarStatus = (status: string): StatusListaEncomenda => (status === "Aberta" ? "Novo" : status as StatusListaEncomenda);
 
-const statusClass: Record<OrderListStatus, string> = {
+const classeStatus: Record<StatusListaEncomenda, string> = {
   Novo: "border-primary/20 bg-primary/10 text-primary",
   "Em produção": "border-amber-200 bg-amber-50 text-amber-600",
   "Fabricado parcialmente": "border-[rgb(var(--partial))/0.28] bg-[rgb(var(--partial-soft))] text-[rgb(var(--partial-foreground))]",
@@ -52,103 +53,100 @@ const statusClass: Record<OrderListStatus, string> = {
   Cancelada: "border-red-200 bg-red-50 text-red-600",
 };
 
-function statusLabel(status: OrderListStatus) {
+function rotuloStatus(status: StatusListaEncomenda) {
   return status === "Pronta" ? "Pronto" : status;
 }
 
-function piecesFor(total: number) {
-  return Math.max(1, Math.round(total / 198));
-}
 
-function isOverdue(dueDate: string, status: OrderListStatus) {
+function estaAtrasada(previsao: string, status: StatusListaEncomenda) {
   if (status === "Pronta" || status === "Entregue" || status === "Cancelada") return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(dueDate + "T00:00:00").getTime() < today.getTime();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return new Date(previsao.substring(0, 10) + "T00:00:00").getTime() < hoje.getTime();
 }
 
 export default function Encomendas() {
   const queryClient = useQueryClient();
-  const { data: orders } = useEncomendas();
-  const allOrders = orders;
-  const newShortcutLabel = useShortcutLabel("new_contextual");
-  const [tab, setTab] = useState<OrderTab>("Histórico");
-  const [filtersByTab, setFiltersByTab] = useState<Record<OrderTab, OrderTabFilters>>(
-    () => Object.fromEntries(tabs.map((item) => [item, defaultOrderTabFilters])) as Record<OrderTab, OrderTabFilters>,
+  const { data: encomendas = [], isLoading } = useEncomendas();
+  const todasEncomendas = encomendas;
+  const atalhoNova = useShortcutLabel("new_contextual");
+  const [aba, setAba] = useState<AbaEncomenda>("Histórico");
+  const [filtrosPorAba, setFiltrosPorAba] = useState<Record<AbaEncomenda, FiltroAba>>(
+    () => Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaEncomenda, FiltroAba>,
   );
-  const filters = filtersByTab[tab];
-  const updateTabFilters = (patch: Partial<OrderTabFilters>) => {
-    setFiltersByTab((current) => ({ ...current, [tab]: { ...current[tab], ...patch } }));
+  const filtros = filtrosPorAba[aba];
+  const atualizarFiltrosAba = (patch: Partial<FiltroAba>) => {
+    setFiltrosPorAba((atual) => ({ ...atual, [aba]: { ...atual[aba], ...patch } }));
   };
-  const selectTab = (nextTab: OrderTab) => setTab(nextTab);
-  const indexedTabs = useIndexedTabs({ tabs, onTabChange: selectTab });
-  const [statusById, setStatusById] = useState<Record<string, OrderListStatus>>(
-    () => Object.fromEntries(allOrders.map((order) => [order.id, normalizeStatus(order.status)]))
+  const selecionarAba = (novaAba: AbaEncomenda) => setAba(novaAba);
+  const indexedTabs = useIndexedTabs({ tabs: abas, onTabChange: selecionarAba });
+  const [statusPorId, setStatusPorId] = useState<Record<string, StatusListaEncomenda>>(
+    () => Object.fromEntries(todasEncomendas.map((encomenda) => [encomenda.id, normalizarStatus(encomenda.status)]))
   );
 
   useEffect(() => {
-    const orderFilter = new URLSearchParams(window.location.search).get("encomenda");
-    if (!orderFilter) return;
-    setTab("Histórico");
-    setFiltersByTab((current) => ({ ...current, Histórico: { ...current.Histórico, query: orderFilter } }));
+    const filtroEncomenda = new URLSearchParams(window.location.search).get("encomenda");
+    if (!filtroEncomenda) return;
+    setAba("Histórico");
+    setFiltrosPorAba((atual) => ({ ...atual, Histórico: { ...atual.Histórico, busca: filtroEncomenda } }));
   }, []);
 
-  const filtered = useMemo(() => {
-    const result = allOrders
-      .filter((o) => {
-        const currentStatus = statusById[o.id] ?? normalizeStatus(o.status);
-        if (tab !== "Histórico" && currentStatus !== tab) return false;
-        if (filters.query && !o.customer.toLowerCase().includes(filters.query.toLowerCase()) && !o.id.toLowerCase().includes(filters.query.toLowerCase()))
+  const encomendasFiltradas = useMemo(() => {
+    const resultado = todasEncomendas
+      .filter((e) => {
+        const statusAtual = statusPorId[e.id] ?? normalizarStatus(e.status);
+        if (aba !== "Histórico" && statusAtual !== aba) return false;
+        if (filtros.busca && !e.cliente.toLowerCase().includes(filtros.busca.toLowerCase()) && !e.id.toLowerCase().includes(filtros.busca.toLowerCase()))
           return false;
         return true;
       })
       .sort((a, b) => {
-        const aStatus = statusById[a.id] ?? normalizeStatus(a.status);
-        const bStatus = statusById[b.id] ?? normalizeStatus(b.status);
-        let value = 0;
+        const statusA = statusPorId[a.id] ?? normalizarStatus(a.status);
+        const statusB = statusPorId[b.id] ?? normalizarStatus(b.status);
+        let valor = 0;
 
-        if (filters.sortBy === "createdAt") value = a.createdAt.localeCompare(b.createdAt);
-        if (filters.sortBy === "dueDate") value = a.dueDate.localeCompare(b.dueDate);
-        if (filters.sortBy === "total") value = a.total - b.total;
-        if (filters.sortBy === "customer") value = a.customer.localeCompare(b.customer);
-        if (filters.sortBy === "status") value = statusOrder.indexOf(aStatus) - statusOrder.indexOf(bStatus);
+        if (filtros.ordenarPor === "criadoEm") valor = a.criadoEm.localeCompare(b.criadoEm);
+        if (filtros.ordenarPor === "previsao") valor = a.previsao.localeCompare(b.previsao);
+        if (filtros.ordenarPor === "total") valor = a.total - b.total;
+        if (filtros.ordenarPor === "cliente") valor = a.cliente.localeCompare(b.cliente);
+        if (filtros.ordenarPor === "status") valor = ordemStatus.indexOf(statusA) - ordemStatus.indexOf(statusB);
 
-        return filters.sortDirection === "asc" ? value : -value;
+        return filtros.direcaoOrdenacao === "asc" ? valor : -valor;
       });
 
-    return result;
-  }, [allOrders, filters.query, filters.sortBy, filters.sortDirection, statusById, tab]);
+    return resultado;
+  }, [todasEncomendas, filtros.busca, filtros.ordenarPor, filtros.direcaoOrdenacao, statusPorId, aba]);
 
-  const columns = useMemo<DataGridColumn<Order>[]>(
+  const colunas = useMemo<DataGridColumn<Order>[]>(
     () => [
-      { id: "id", label: "Código", accessor: (order) => order.id },
-      { id: "customer", label: "Cliente", accessor: (order) => order.customer },
-      { id: "createdAt", label: "Cadastro", accessor: (order) => order.createdAt, filterAccessor: (order) => formatDate(order.createdAt) },
-      { id: "dueDate", label: "Entrega", accessor: (order) => order.dueDate, filterAccessor: (order) => formatDate(order.dueDate) },
-      { id: "pieces", label: "Peças", accessor: (order) => piecesFor(order.total) },
-      { id: "total", label: "Total", accessor: (order) => order.total },
-      { id: "balance", label: "Saldo", accessor: (order) => order.total - order.entry },
-      { id: "status", label: "Status", accessor: (order) => statusById[order.id] ?? normalizeStatus(order.status) },
+      { id: "id", label: "Código", accessor: (e) => e.id },
+      { id: "cliente", label: "Cliente", accessor: (e) => e.cliente },
+      { id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm) },
+      { id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao) },
+      { id: "pecas", label: "Peças", accessor: (e) => e.pecas },
+      { id: "total", label: "Total", accessor: (e) => e.total },
+      { id: "balance", label: "Saldo", accessor: (e) => e.total - e.entrada },
+      { id: "status", label: "Status", accessor: (e) => statusPorId[e.id] ?? normalizarStatus(e.status) },
     ],
-    [statusById],
+    [statusPorId],
   );
-  const grid = useDataGrid(filtered, columns);
-  const pagination = usePagination(grid.rows);
+  const grid = useDataGrid(encomendasFiltradas, colunas);
+  const paginacao = usePagination(grid.rows);
 
-  const grouped = useMemo(
+  const agrupadas = useMemo(
     () =>
-      statusOrder
-        .map((groupStatus) => ({
-          status: groupStatus,
-          orders: pagination.items.filter((order) => (statusById[order.id] ?? normalizeStatus(order.status)) === groupStatus),
+      ordemStatus
+        .map((statusGrupo) => ({
+          status: statusGrupo,
+          encomendas: paginacao.items.filter((e) => (statusPorId[e.id] ?? normalizarStatus(e.status)) === statusGrupo),
         }))
-        .filter((group) => group.orders.length > 0),
-    [pagination.items, statusById]
+        .filter((grupo) => grupo.encomendas.length > 0),
+    [paginacao.items, statusPorId]
   );
 
-  const moveStatus = async (id: string, nextStatus: OrderListStatus) => {
-    setStatusById((prev) => ({ ...prev, [id]: nextStatus }));
-    await api.atualizarStatusEncomenda(id, nextStatus === "Novo" ? "Aberta" : nextStatus);
+  const moverStatus = async (id: string, novoStatus: StatusListaEncomenda) => {
+    setStatusPorId((anterior) => ({ ...anterior, [id]: novoStatus }));
+    await api.atualizarStatusEncomenda(id, novoStatus === "Novo" ? "Aberta" : novoStatus);
     await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
   };
 
@@ -156,7 +154,7 @@ export default function Encomendas() {
     <AppShell>
       <ClearFiltersShortcutDialog
         onConfirm={() => {
-          setFiltersByTab(Object.fromEntries(tabs.map((item) => [item, defaultOrderTabFilters])) as Record<OrderTab, OrderTabFilters>);
+          setFiltrosPorAba(Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaEncomenda, FiltroAba>);
           grid.clearFilters();
         }}
       />
@@ -166,16 +164,16 @@ export default function Encomendas() {
         infoTooltip="Acompanha pedidos sob encomenda desde a abertura até produção, entrega e faturamento."
         actions={
           <Button asChild>
-            <Link href="/encomendas/nova"><Plus className="mr-1.5 h-4 w-4" />{`Nova encomenda${newShortcutLabel}`}</Link>
+            <Link href="/encomendas/nova"><Plus className="mr-1.5 h-4 w-4" />{`Nova encomenda${atalhoNova}`}</Link>
           </Button>
         }
       />
-      <div className="space-y-4 p-6">
-        <div className="sticky top-20 z-20 -mx-6 space-y-4 border-b bg-background/95 px-6 pb-4 pt-4 backdrop-blur">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 space-y-4 border-b px-6 py-4">
           <IndexedTabsNav
-            tabs={tabs}
-            activeTab={tab}
-            onSelect={selectTab}
+            tabs={abas}
+            activeTab={aba}
+            onSelect={selecionarAba}
             getTabButtonProps={indexedTabs.getTabButtonProps}
             getShortcutLabel={indexedTabs.getShortcutLabel}
           />
@@ -184,12 +182,12 @@ export default function Encomendas() {
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por cliente ou código" className="pl-9" value={filters.query} onChange={(e) => updateTabFilters({ query: e.target.value })} />
+              <Input placeholder="Buscar por cliente ou código" className="pl-9" value={filtros.busca} onChange={(e) => atualizarFiltrosAba({ busca: e.target.value })} />
             </div>
             <AppSelect
               className="w-full lg:w-[190px]"
-              value={filters.viewMode}
-              onValueChange={(value) => updateTabFilters({ viewMode: value as OrderViewMode })}
+              value={filtros.modoVisualizacao}
+              onValueChange={(value) => atualizarFiltrosAba({ modoVisualizacao: value as ModoVisualizacao })}
               options={[
                 { value: "list", label: "Lista em colunas" },
                 { value: "grouped", label: "Agrupado por status" },
@@ -197,20 +195,20 @@ export default function Encomendas() {
             />
             <AppSelect
               className="w-full lg:w-[210px]"
-              value={filters.sortBy}
-              onValueChange={(value) => updateTabFilters({ sortBy: value as OrderSortKey })}
+              value={filtros.ordenarPor}
+              onValueChange={(value) => atualizarFiltrosAba({ ordenarPor: value as ChaveOrdenacao })}
               options={[
-                { value: "dueDate", label: "Ordenar por entrega" },
-                { value: "createdAt", label: "Ordenar por cadastro" },
+                { value: "previsao", label: "Ordenar por entrega" },
+                { value: "criadoEm", label: "Ordenar por cadastro" },
                 { value: "total", label: "Ordenar por valor" },
-                { value: "customer", label: "Ordenar por cliente" },
+                { value: "cliente", label: "Ordenar por cliente" },
                 { value: "status", label: "Ordenar por status" },
               ]}
             />
             <AppSelect
               className="w-full lg:w-[150px]"
-              value={filters.sortDirection}
-              onValueChange={(value) => updateTabFilters({ sortDirection: value as SortDirection })}
+              value={filtros.direcaoOrdenacao}
+              onValueChange={(value) => atualizarFiltrosAba({ direcaoOrdenacao: value as DirecaoOrdenacao })}
               options={[
                 { value: "asc", label: "Crescente" },
                 { value: "desc", label: "Decrescente" },
@@ -220,61 +218,61 @@ export default function Encomendas() {
           </Card>
         </div>
 
-        <div {...indexedTabs.getTabPanelProps(tab)} className="space-y-4">
+        <div {...indexedTabs.getTabPanelProps(aba)} className="flex-1 overflow-y-auto p-6">
 
         <div className="grid gap-3 lg:hidden">
-          {pagination.items.length === 0 ? (
+          {paginacao.items.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
               Nenhuma encomenda encontrada
             </Card>
           ) : (
-            pagination.items.map((order) => {
-              const currentStatus = statusById[order.id] ?? normalizeStatus(order.status);
-              const overdue = isOverdue(order.dueDate, currentStatus);
+            paginacao.items.map((encomenda) => {
+              const statusAtual = statusPorId[encomenda.id] ?? normalizarStatus(encomenda.status);
+              const atrasada = estaAtrasada(encomenda.previsao, statusAtual);
 
               return (
-                <Card key={order.id} className="space-y-3 p-4">
+                <Card key={encomenda.id} className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium">{order.customer}</div>
-                      <div className="font-mono text-xs text-muted-foreground">{order.id}</div>
+                      <div className="font-medium">{encomenda.cliente}</div>
+                      <div className="font-mono text-xs text-muted-foreground">{encomenda.id}</div>
                     </div>
-                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass[currentStatus]}`}>
-                      {statusLabel(currentStatus)}
+                    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus[statusAtual]}`}>
+                      {rotuloStatus(statusAtual)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">Cadastro</div>
-                      <div>{formatDate(order.createdAt)}</div>
+                      <div>{formatDate(encomenda.criadoEm)}</div>
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</div>
-                      <div>{formatDate(order.dueDate)}</div>
-                      {overdue && <div className="text-xs font-semibold text-destructive">Atrasada</div>}
+                      <div>{formatDate(encomenda.previsao)}</div>
+                      {atrasada && <div className="text-xs font-semibold text-destructive">Atrasada</div>}
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças</div>
-                      <OrderPiecesDetails order={order} triggerClassName="rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
+                      <DetalhesPecasEncomenda encomenda={encomenda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
                     </div>
                     <div>
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo</div>
-                      <div>{formatBRL(order.total - order.entry)}</div>
+                      <div>{formatBRL(encomenda.total - encomenda.entrada)}</div>
                     </div>
                     <div className="col-span-2">
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
-                      <div className="font-semibold">{formatBRL(order.total)}</div>
+                      <div className="font-semibold">{formatBRL(encomenda.total)}</div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <OrderActionButton
-                      id={order.id}
-                      status={currentStatus}
-                      onMove={moveStatus}
-                      actionProps={indexedTabs.getActionProps(tab)}
+                    <BotaoAcaoEncomenda
+                      id={encomenda.id}
+                      status={statusAtual}
+                      aoMover={moverStatus}
+                      propsAcao={indexedTabs.getActionProps(aba)}
                     />
-                    <Button variant="ghost" size="icon" asChild aria-label={`Editar ${order.id}`}>
-                      <Link {...indexedTabs.getActionProps(tab)} href={`/encomendas/${order.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                    <Button variant="ghost" size="icon" asChild aria-label={`Editar ${encomenda.id}`}>
+                      <Link {...indexedTabs.getActionProps(aba)} href={`/encomendas/${encomenda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
                   </div>
                 </Card>
@@ -282,7 +280,7 @@ export default function Encomendas() {
             })
           )}
         </div>
-        <PaginationFooter pagination={pagination} className="rounded-md border lg:hidden" />
+        <PaginationFooter pagination={paginacao} className="rounded-md border lg:hidden" />
 
         <Card className="hidden overflow-hidden lg:block">
           <div className="overflow-x-auto">
@@ -290,60 +288,62 @@ export default function Encomendas() {
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Ação</th>
-                {columns.map((column) => (
+                {colunas.map((coluna) => (
                   <DataGridColumnHeader
-                    key={column.id}
+                    key={coluna.id}
                     grid={grid}
-                    columnId={column.id}
-                    label={column.label}
-                    align={column.id === "pieces" ? "center" : ["total", "balance"].includes(column.id) ? "right" : "left"}
+                    columnId={coluna.id}
+                    label={coluna.label}
+                    align={coluna.id === "pecas" ? "center" : ["total", "balance"].includes(coluna.id) ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton cols={10} />
+              ) : paginacao.items.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     Nenhuma encomenda encontrada
                   </td>
                 </tr>
-              ) : filters.viewMode === "grouped" ? (
-                grouped.map((group) => (
-                  <Fragment key={group.status}>
+              ) : filtros.modoVisualizacao === "grouped" ? (
+                agrupadas.map((grupo) => (
+                  <Fragment key={grupo.status}>
                     <tr className="bg-muted/30">
                       <td colSpan={10} className="px-4 py-2">
-                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass[group.status]}`}>
-                          {statusLabel(group.status)} · {group.orders.length}
+                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus[grupo.status]}`}>
+                          {rotuloStatus(grupo.status)} · {grupo.encomendas.length}
                         </span>
                       </td>
                     </tr>
-                    {group.orders.map((order) => (
-                      <OrderRow
-                        key={order.id}
-                        order={order}
-                        status={statusById[order.id] ?? normalizeStatus(order.status)}
-                        onMove={moveStatus}
-                        actionProps={indexedTabs.getActionProps(tab)}
+                    {grupo.encomendas.map((encomenda) => (
+                      <LinhaEncomenda
+                        key={encomenda.id}
+                        encomenda={encomenda}
+                        status={statusPorId[encomenda.id] ?? normalizarStatus(encomenda.status)}
+                        aoMover={moverStatus}
+                        propsAcao={indexedTabs.getActionProps(aba)}
                       />
                     ))}
                   </Fragment>
                 ))
               ) : (
-                pagination.items.map((order) => (
-                  <OrderRow
-                    key={order.id}
-                    order={order}
-                    status={statusById[order.id] ?? normalizeStatus(order.status)}
-                    onMove={moveStatus}
-                    actionProps={indexedTabs.getActionProps(tab)}
+                paginacao.items.map((encomenda) => (
+                  <LinhaEncomenda
+                    key={encomenda.id}
+                    encomenda={encomenda}
+                    status={statusPorId[encomenda.id] ?? normalizarStatus(encomenda.status)}
+                    aoMover={moverStatus}
+                    propsAcao={indexedTabs.getActionProps(aba)}
                   />
                 ))
               )}
             </tbody>
           </table>
-          <PaginationFooter pagination={pagination} />
+          <PaginationFooter pagination={paginacao} />
           </div>
         </Card>
         </div>
@@ -352,80 +352,80 @@ export default function Encomendas() {
   );
 }
 
-function OrderRow({
-  order,
+function LinhaEncomenda({
+  encomenda,
   status,
-  onMove,
-  actionProps,
+  aoMover,
+  propsAcao,
 }: {
-  order: Order;
-  status: OrderListStatus;
-  onMove: (id: string, nextStatus: OrderListStatus) => void;
-  actionProps: Record<string, unknown>;
+  encomenda: Order;
+  status: StatusListaEncomenda;
+  aoMover: (id: string, novoStatus: StatusListaEncomenda) => void;
+  propsAcao: Record<string, unknown>;
 }) {
-  const overdue = isOverdue(order.dueDate, status);
+  const atrasada = estaAtrasada(encomenda.previsao, status);
 
   return (
     <tr className="hover:bg-muted/30">
       <td className="px-4 py-3">
-        <OrderActionButton id={order.id} status={status} onMove={onMove} actionProps={actionProps} />
+        <BotaoAcaoEncomenda id={encomenda.id} status={status} aoMover={aoMover} propsAcao={propsAcao} />
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{order.id}</td>
-      <td className="px-4 py-3 font-medium">{order.customer}</td>
-      <td className="px-4 py-3 text-muted-foreground">{formatDate(order.createdAt)}</td>
+      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{encomenda.id}</td>
+      <td className="px-4 py-3 font-medium">{encomenda.cliente}</td>
+      <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
       <td className="px-4 py-3">
-        <div className="text-muted-foreground">{formatDate(order.dueDate)}</div>
-        {overdue && <div className="text-xs font-semibold text-destructive">Atrasada</div>}
+        <div className="text-muted-foreground">{formatDate(encomenda.previsao)}</div>
+        {atrasada && <div className="text-xs font-semibold text-destructive">Atrasada</div>}
       </td>
       <td className="px-4 py-3 text-center font-medium">
-        <OrderPiecesDetails order={order} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
+        <DetalhesPecasEncomenda encomenda={encomenda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
       </td>
-      <td className="px-4 py-3 text-right font-semibold">{formatBRL(order.total)}</td>
-      <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(order.total - order.entry)}</td>
+      <td className="px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
+      <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
       <td className="px-4 py-3">
-        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass[status]}`}>
-          {statusLabel(status)}
+        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus[status]}`}>
+          {rotuloStatus(status)}
         </span>
       </td>
       <td className="px-4 py-3 text-right">
-        <Button variant="ghost" size="icon" asChild aria-label={`Editar ${order.id}`}>
-          <Link {...actionProps} href={`/encomendas/${order.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+        <Button variant="ghost" size="icon" asChild aria-label={`Editar ${encomenda.id}`}>
+          <Link {...propsAcao} href={`/encomendas/${encomenda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
         </Button>
       </td>
     </tr>
   );
 }
 
-function OrderPiecesDetails({ order, triggerClassName }: { order: Order; triggerClassName: string }) {
-  const { data: items } = useItensEncomenda(order.id);
+function DetalhesPecasEncomenda({ encomenda, triggerClassName }: { encomenda: Order; triggerClassName: string }) {
+  const { data: itens } = useItensEncomenda(encomenda.id);
 
   return (
     <PiecesDetailsDialog
-      pieces={piecesFor(order.total)}
-      title={`Peças da encomenda ${order.id}`}
-      description={`Detalhamento dos produtos e tamanhos reservados para ${order.customer}.`}
-      items={items}
+      pieces={encomenda.pecas}
+      title={`Peças da encomenda ${encomenda.id}`}
+      description={`Detalhamento dos produtos e tamanhos reservados para ${encomenda.cliente}.`}
+      items={itens ?? []}
       triggerClassName={triggerClassName}
     />
   );
 }
 
-function OrderActionButton({
+function BotaoAcaoEncomenda({
   id,
   status,
-  onMove,
-  actionProps,
+  aoMover,
+  propsAcao,
 }: {
   id: string;
-  status: OrderListStatus;
-  onMove: (id: string, nextStatus: OrderListStatus) => void;
-  actionProps: Record<string, unknown>;
+  status: StatusListaEncomenda;
+  aoMover: (id: string, novoStatus: StatusListaEncomenda) => void;
+  propsAcao: Record<string, unknown>;
 }) {
   if (status === "Novo") {
     return (
       <button
-        {...actionProps}
-        onClick={() => onMove(id, "Em produção")}
+        {...propsAcao}
+        onClick={() => aoMover(id, "Em produção")}
         className="inline-flex h-10 w-36 items-center justify-center gap-2 rounded-md border border-primary/25 bg-primary/10 text-sm font-medium text-primary transition hover:bg-primary/15"
       >
         <Play className="h-4 w-4" />
@@ -437,8 +437,8 @@ function OrderActionButton({
   if (status === "Em produção") {
     return (
       <button
-        {...actionProps}
-        onClick={() => onMove(id, "Fabricado parcialmente")}
+        {...propsAcao}
+        onClick={() => aoMover(id, "Fabricado parcialmente")}
         className="inline-flex h-10 w-36 items-center justify-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
       >
         <CircleCheck className="h-4 w-4" />
@@ -450,8 +450,8 @@ function OrderActionButton({
   if (status === "Fabricado parcialmente") {
     return (
       <button
-        {...actionProps}
-        onClick={() => onMove(id, "Pronta")}
+        {...propsAcao}
+        onClick={() => aoMover(id, "Pronta")}
         className="inline-flex h-10 w-36 items-center justify-center gap-2 rounded-md border border-[rgb(var(--partial))/0.35] bg-[rgb(var(--partial-soft))] text-sm font-medium text-[rgb(var(--partial-foreground))] transition hover:bg-[rgb(var(--partial-soft))/0.8]"
       >
         <CircleCheck className="h-4 w-4" />
@@ -463,7 +463,7 @@ function OrderActionButton({
   if (status === "Pronta") {
     return (
       <Link
-        {...actionProps}
+        {...propsAcao}
         href={`/vendas/nova?from=encomenda&id=${id}`}
         className="inline-flex h-10 w-36 items-center justify-center gap-2 rounded-md bg-emerald-600 text-sm font-semibold text-white transition hover:bg-emerald-700"
       >

@@ -14,6 +14,7 @@ import { PiecesDetailsDialog } from "@/components/PiecesDetailsDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatBRL, formatDate, type Ficha, type Order, type Sale } from "@/lib/types";
 import { useDadosOperacionais, useItensVenda } from "@/lib/api";
+import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
@@ -21,174 +22,174 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ClipboardList, FileClock, Info, Package2, Pencil, Plus, Receipt, Search } from "lucide-react";
 
-const tabs = ["Histórico", "Faturar encomendas", "Faturar fichas"] as const;
-type SalesTab = (typeof tabs)[number];
-type SalesTabFilters = {
-  query: string;
-  type: string;
-  payment: string;
+const abas = ["Histórico", "Faturar encomendas", "Faturar fichas"] as const;
+type AbaVendas = (typeof abas)[number];
+type FiltrosAba = {
+  busca: string;
+  tipo: string;
+  pagamento: string;
   status: string;
-  period: string;
+  periodo: string;
 };
-const tabHints: Partial<Record<SalesTab, string>> = {
+const dicasAba: Partial<Record<AbaVendas, string>> = {
   "Faturar encomendas": "Mostra encomendas prontas ou fabricadas parcialmente, aguardando geração de venda.",
   "Faturar fichas": "Mostra fichas com produtos vendidos, aguardando faturamento da revendedora.",
 };
-const defaultSalesTabFilters: SalesTabFilters = {
-  query: "",
-  type: "all",
-  payment: "all",
+const filtrosPadraoAba: FiltrosAba = {
+  busca: "",
+  tipo: "all",
+  pagamento: "all",
   status: "all",
-  period: "30d",
+  periodo: "30d",
 };
 
-function withinPeriod(dateIso: string, period: string) {
-  if (period === "todos") return true;
-  const d = new Date(dateIso + "T00:00:00").getTime();
+function dentroDoPeriodo(dataIso: string, periodo: string) {
+  if (periodo === "todos") return true;
+  const d = new Date(dataIso.substring(0, 10) + "T00:00:00").getTime();
   const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  if (period === "hoje") {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return d >= today.getTime();
+  const dia = 24 * 60 * 60 * 1000;
+  if (periodo === "hoje") {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return d >= hoje.getTime();
   }
-  if (period === "7d") return now - d <= 7 * day;
-  if (period === "30d") return now - d <= 30 * day;
+  if (periodo === "7d") return now - d <= 7 * dia;
+  if (periodo === "30d") return now - d <= 30 * dia;
   return true;
 }
 
-function piecesForOrder(total: number) {
+function pecasPorEncomenda(total: number) {
   return Math.max(1, Math.round(total / 198));
 }
 
 export default function Vendas() {
-  const { customers, fichas, orders, sales } = useDadosOperacionais();
-  const allOrders = orders;
+  const { clientes, fichas, encomendas, vendas, carregando } = useDadosOperacionais();
+  const todasEncomendas = encomendas;
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<SalesTab>("Histórico");
-  const [filtersByTab, setFiltersByTab] = useState<Record<SalesTab, SalesTabFilters>>(
-    () => Object.fromEntries(tabs.map((item) => [item, defaultSalesTabFilters])) as Record<SalesTab, SalesTabFilters>,
+  const [aba, setAba] = useState<AbaVendas>("Histórico");
+  const [filtrosPorAba, setFiltrosPorAba] = useState<Record<AbaVendas, FiltrosAba>>(
+    () => Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaVendas, FiltrosAba>,
   );
-  const [clearFiltersSignal, setClearFiltersSignal] = useState(0);
-  const filters = filtersByTab[tab];
-  const updateTabFilters = (patch: Partial<SalesTabFilters>) => {
-    setFiltersByTab((current) => ({ ...current, [tab]: { ...current[tab], ...patch } }));
+  const [sinalLimparFiltros, setSinalLimparFiltros] = useState(0);
+  const filtros = filtrosPorAba[aba];
+  const atualizarFiltrosAba = (patch: Partial<FiltrosAba>) => {
+    setFiltrosPorAba((current) => ({ ...current, [aba]: { ...current[aba], ...patch } }));
   };
-  const selectTab = (nextTab: SalesTab) => setTab(nextTab);
-  const indexedTabs = useIndexedTabs({ tabs, onTabChange: selectTab });
+  const selecionarAba = (proximaAba: AbaVendas) => setAba(proximaAba);
+  const abasIndexadas = useIndexedTabs({ tabs: abas, onTabChange: selecionarAba });
 
-  const customerType = (name: string) => customers.find((c) => c.name === name)?.type;
-  const isHistoryTab = tab === "Histórico";
+  const tipoCliente = (nome: string) => clientes.find((c) => c.nome === nome)?.tipo;
+  const ehAbaHistorico = aba === "Histórico";
 
   useEffect(() => {
     const from = searchParams.get("from");
-    if (from === "encomenda") setTab("Faturar encomendas");
-    if (from === "ficha") setTab("Faturar fichas");
+    if (from === "encomenda") setAba("Faturar encomendas");
+    if (from === "ficha") setAba("Faturar fichas");
   }, [searchParams]);
 
   useEffect(() => {
-    const handleSalesShortcut = (event: Event) => {
-      const customEvent = event as CustomEvent<{ shortcut?: "contextual" | "orders" | "fichas" }>;
+    const handleVendasShortcut = (event: Event) => {
+      const customEvent = event as CustomEvent<{ shortcut?: "contextual" | "encomendas" | "fichas" }>;
       const shortcut = customEvent.detail?.shortcut;
       if (!shortcut) return;
 
       if (shortcut === "contextual") {
-        if (tab === "Faturar encomendas" || tab === "Faturar fichas") {
+        if (aba === "Faturar encomendas" || aba === "Faturar fichas") {
           customEvent.preventDefault();
-          indexedTabs.focusFirstAction(tab);
+          abasIndexadas.focusFirstAction(aba);
         }
         return;
       }
 
-      if (shortcut === "orders") {
+      if (shortcut === "encomendas") {
         customEvent.preventDefault();
-        if (tab !== "Faturar encomendas") {
-          setTab("Faturar encomendas");
+        if (aba !== "Faturar encomendas") {
+          setAba("Faturar encomendas");
           return;
         }
-        indexedTabs.focusFirstAction("Faturar encomendas");
+        abasIndexadas.focusFirstAction("Faturar encomendas");
         return;
       }
 
       if (shortcut === "fichas") {
         customEvent.preventDefault();
-        if (tab !== "Faturar fichas") {
-          setTab("Faturar fichas");
+        if (aba !== "Faturar fichas") {
+          setAba("Faturar fichas");
           return;
         }
-        indexedTabs.focusFirstAction("Faturar fichas");
+        abasIndexadas.focusFirstAction("Faturar fichas");
       }
     };
 
-    window.addEventListener("app:vendas:shortcut", handleSalesShortcut as EventListener);
+    window.addEventListener("app:vendas:shortcut", handleVendasShortcut as EventListener);
     return () => {
-      window.removeEventListener("app:vendas:shortcut", handleSalesShortcut as EventListener);
+      window.removeEventListener("app:vendas:shortcut", handleVendasShortcut as EventListener);
     };
-  }, [indexedTabs, tab]);
+  }, [abasIndexadas, aba]);
 
-  const historicalSales = useMemo(() => {
-    return sales.filter((s) => {
-      const historyFilters = filtersByTab.Histórico;
-      if (!withinPeriod(s.date, historyFilters.period)) return false;
-      if (historyFilters.type !== "all" && customerType(s.customer) !== historyFilters.type) return false;
-      if (historyFilters.payment !== "all" && !s.payment.toLowerCase().includes(historyFilters.payment.toLowerCase())) return false;
-      if (historyFilters.status !== "all" && s.status !== historyFilters.status) return false;
-      if (historyFilters.query) {
-        const q = historyFilters.query.toLowerCase();
+  const vendasHistorico = useMemo(() => {
+    return vendas.filter((v) => {
+      const f = filtrosPorAba.Histórico;
+      if (!dentroDoPeriodo(v.data, f.periodo)) return false;
+      if (f.tipo !== "all" && tipoCliente(v.cliente) !== f.tipo) return false;
+      if (f.pagamento !== "all" && !v.pagamento.toLowerCase().includes(f.pagamento.toLowerCase())) return false;
+      if (f.status !== "all" && v.status !== f.status) return false;
+      if (f.busca) {
+        const q = f.busca.toLowerCase();
         const match =
-          s.customer.toLowerCase().includes(q) ||
-          s.total.toString().includes(q) ||
-          formatDate(s.date).includes(q);
+          v.cliente.toLowerCase().includes(q) ||
+          v.total.toString().includes(q) ||
+          formatDate(v.data).includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [filtersByTab]);
+  }, [filtrosPorAba]);
 
-  const ordersToBill = useMemo(() => {
-    const orderFilters = filtersByTab["Faturar encomendas"];
-    return allOrders.filter((order) => {
-      if (!["Pronta", "Fabricado parcialmente"].includes(order.status)) return false;
-      if (orderFilters.type !== "all" && customerType(order.customer) !== orderFilters.type) return false;
-      if (orderFilters.query) {
-        const q = orderFilters.query.toLowerCase();
+  const encomendasParaFaturar = useMemo(() => {
+    const f = filtrosPorAba["Faturar encomendas"];
+    return todasEncomendas.filter((encomenda) => {
+      if (!["Pronta", "Fabricado parcialmente"].includes(encomenda.status)) return false;
+      if (f.tipo !== "all" && tipoCliente(encomenda.cliente) !== f.tipo) return false;
+      if (f.busca) {
+        const q = f.busca.toLowerCase();
         const match =
-          order.customer.toLowerCase().includes(q) ||
-          order.id.toLowerCase().includes(q) ||
-          formatDate(order.dueDate).includes(q);
+          encomenda.cliente.toLowerCase().includes(q) ||
+          encomenda.id.toLowerCase().includes(q) ||
+          formatDate(encomenda.previsao).includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [allOrders, filtersByTab]);
+  }, [todasEncomendas, filtrosPorAba]);
 
-  const fichasToBill = useMemo(() => {
-    const fichaFilters = filtersByTab["Faturar fichas"];
+  const fichasParaFaturar = useMemo(() => {
+    const f = filtrosPorAba["Faturar fichas"];
     return fichas.filter((ficha) => {
-      if (ficha.sold <= 0) return false;
+      if (ficha.vendidas <= 0) return false;
       if (ficha.status === "Cancelada") return false;
-      if (fichaFilters.query) {
-        const q = fichaFilters.query.toLowerCase();
+      if (f.busca) {
+        const q = f.busca.toLowerCase();
         const match =
-          ficha.reseller.toLowerCase().includes(q) ||
+          ficha.revendedora.toLowerCase().includes(q) ||
           ficha.id.toLowerCase().includes(q) ||
-          formatDate(ficha.openedAt).includes(q);
+          formatDate(ficha.dataAbertura).includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [filtersByTab]);
+  }, [filtrosPorAba]);
 
   return (
     <AppShell>
       <ClearFiltersShortcutDialog
         onConfirm={() => {
-          setFiltersByTab(Object.fromEntries(tabs.map((item) => [item, defaultSalesTabFilters])) as Record<SalesTab, SalesTabFilters>);
-          setClearFiltersSignal((current) => current + 1);
+          setFiltrosPorAba(Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaVendas, FiltrosAba>);
+          setSinalLimparFiltros((current) => current + 1);
         }}
       />
       <PageHeader
-        breadcrumb={["Vendas", tab]}
+        breadcrumb={["Vendas", aba]}
         title="Vendas"
         infoTooltip="Centraliza o histórico de vendas e as filas de faturamento de encomendas e fichas."
         actions={
@@ -201,17 +202,17 @@ export default function Vendas() {
         }
       />
 
-      <div className="space-y-4 p-6">
-        <div className="sticky top-20 z-20 -mx-6 space-y-4 border-b bg-background/95 px-6 pb-4 pt-4 backdrop-blur">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 space-y-4 border-b px-6 py-4">
           <TooltipProvider>
             <IndexedTabsNav
-              tabs={tabs}
-              activeTab={tab}
-              onSelect={selectTab}
-              getTabButtonProps={indexedTabs.getTabButtonProps}
-              getShortcutLabel={indexedTabs.getShortcutLabel}
-              renderAccessory={(currentTab) =>
-                tabHints[currentTab] ? (
+              tabs={abas}
+              activeTab={aba}
+              onSelect={selecionarAba}
+              getTabButtonProps={abasIndexadas.getTabButtonProps}
+              getShortcutLabel={abasIndexadas.getShortcutLabel}
+              renderAccessory={(abaAtual) =>
+                dicasAba[abaAtual] ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="ml-2 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full text-current/70 transition hover:text-current">
@@ -219,7 +220,7 @@ export default function Vendas() {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent className="text-xs">
-                      {tabHints[currentTab]}
+                      {dicasAba[abaAtual]}
                     </TooltipContent>
                   </Tooltip>
                 ) : null
@@ -233,22 +234,22 @@ export default function Vendas() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={
-                  tab === "Histórico"
+                  aba === "Histórico"
                     ? "Buscar por cliente, valor ou data"
-                    : tab === "Faturar encomendas"
+                    : aba === "Faturar encomendas"
                       ? "Buscar por cliente, código ou entrega"
                       : "Buscar por revendedora, ficha ou abertura"
                 }
                 className="pl-9"
-                value={filters.query}
-                onChange={(e) => updateTabFilters({ query: e.target.value })}
+                value={filtros.busca}
+                onChange={(e) => atualizarFiltrosAba({ busca: e.target.value })}
               />
             </div>
-            {tab !== "Faturar fichas" && (
+            {aba !== "Faturar fichas" && (
               <AppSelect
                 className="w-full lg:w-[170px]"
-                value={filters.type}
-                onValueChange={(value) => updateTabFilters({ type: value })}
+                value={filtros.tipo}
+                onValueChange={(value) => atualizarFiltrosAba({ tipo: value })}
                 options={[
                   { value: "all", label: "Todos os tipos" },
                   { value: "varejo", label: "Varejo" },
@@ -256,12 +257,12 @@ export default function Vendas() {
                 ]}
               />
             )}
-            {isHistoryTab && (
+            {ehAbaHistorico && (
               <>
                 <AppSelect
                   className="w-full lg:w-[160px]"
-                  value={filters.payment}
-                  onValueChange={(value) => updateTabFilters({ payment: value })}
+                  value={filtros.pagamento}
+                  onValueChange={(value) => atualizarFiltrosAba({ pagamento: value })}
                   options={[
                     { value: "all", label: "Todas formas" },
                     { value: "Pix", label: "Pix" },
@@ -273,8 +274,8 @@ export default function Vendas() {
                 />
                 <AppSelect
                   className="w-full lg:w-[150px]"
-                  value={filters.status}
-                  onValueChange={(value) => updateTabFilters({ status: value })}
+                  value={filtros.status}
+                  onValueChange={(value) => atualizarFiltrosAba({ status: value })}
                   options={[
                     { value: "all", label: "Todos status" },
                     { value: "Gerada", label: "Gerada" },
@@ -283,8 +284,8 @@ export default function Vendas() {
                 />
                 <AppSelect
                   className="w-full lg:w-[170px]"
-                  value={filters.period}
-                  onValueChange={(value) => updateTabFilters({ period: value })}
+                  value={filtros.periodo}
+                  onValueChange={(value) => atualizarFiltrosAba({ periodo: value })}
                   options={[
                     { value: "hoje", label: "Hoje" },
                     { value: "7d", label: "Últimos 7 dias" },
@@ -298,237 +299,249 @@ export default function Vendas() {
           </Card>
         </div>
 
-        {tab === "Histórico" && (
-          <div {...indexedTabs.getTabPanelProps("Histórico")}>
-            <HistoricalSalesView rows={historicalSales} actionProps={indexedTabs.getActionProps("Histórico")} clearFiltersSignal={clearFiltersSignal} />
-          </div>
-        )}
-        {tab === "Faturar encomendas" && (
-          <div {...indexedTabs.getTabPanelProps("Faturar encomendas")}>
-            <OrdersBillingView rows={ordersToBill} actionProps={indexedTabs.getActionProps("Faturar encomendas")} clearFiltersSignal={clearFiltersSignal} />
-          </div>
-        )}
-        {tab === "Faturar fichas" && (
-          <div {...indexedTabs.getTabPanelProps("Faturar fichas")}>
-            <FichasBillingView rows={fichasToBill} actionProps={indexedTabs.getActionProps("Faturar fichas")} clearFiltersSignal={clearFiltersSignal} />
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto p-6">
+          {aba === "Histórico" && (
+            <div {...abasIndexadas.getTabPanelProps("Histórico")}>
+              <VisualizacaoHistorico linhas={vendasHistorico} actionProps={abasIndexadas.getActionProps("Histórico")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+            </div>
+          )}
+          {aba === "Faturar encomendas" && (
+            <div {...abasIndexadas.getTabPanelProps("Faturar encomendas")}>
+              <VisualizacaoFaturarEncomendas linhas={encomendasParaFaturar} actionProps={abasIndexadas.getActionProps("Faturar encomendas")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+            </div>
+          )}
+          {aba === "Faturar fichas" && (
+            <div {...abasIndexadas.getTabPanelProps("Faturar fichas")}>
+              <VisualizacaoFaturarFichas linhas={fichasParaFaturar} actionProps={abasIndexadas.getActionProps("Faturar fichas")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );
 }
 
-function HistoricalSalesView({
-  rows,
+function VisualizacaoHistorico({
+  linhas,
   actionProps,
-  clearFiltersSignal,
+  sinalLimparFiltros,
+  carregando,
 }: {
-  rows: Sale[];
+  linhas: Sale[];
   actionProps: Record<string, unknown>;
-  clearFiltersSignal: number;
+  sinalLimparFiltros: number;
+  carregando: boolean;
 }) {
-  const columns = useMemo<DataGridColumn<Sale>[]>(
+  const colunas = useMemo<DataGridColumn<Sale>[]>(
     () => [
-      { id: "customer", label: "Cliente", accessor: (sale) => sale.customer },
-      { id: "origin", label: "Origem", accessor: (sale) => sale.origin },
-      { id: "date", label: "Data", accessor: (sale) => sale.date, filterAccessor: (sale) => formatDate(sale.date) },
-      { id: "pieces", label: "Peças", accessor: (sale) => sale.pieces },
-      { id: "payment", label: "Pagamento", accessor: (sale) => sale.payment },
-      { id: "total", label: "Total", accessor: (sale) => sale.total },
-      { id: "status", label: "Status", accessor: (sale) => sale.status },
+      { id: "cliente", label: "Cliente", accessor: (v) => v.cliente },
+      { id: "origem", label: "Origem", accessor: (v) => v.origem },
+      { id: "data", label: "Data", accessor: (v) => v.data, filterAccessor: (v) => formatDate(v.data) },
+      { id: "pecas", label: "Peças", accessor: (v) => v.pecas },
+      { id: "pagamento", label: "Pagamento", accessor: (v) => v.pagamento },
+      { id: "total", label: "Total", accessor: (v) => v.total },
+      { id: "status", label: "Status", accessor: (v) => v.status },
     ],
     [],
   );
-  const grid = useDataGrid(rows, columns);
+  const grid = useDataGrid(linhas, colunas);
   useEffect(() => {
     grid.clearFilters();
-  }, [clearFiltersSignal]);
-  const pagination = usePagination(grid.rows);
+  }, [sinalLimparFiltros]);
+  const paginacao = usePagination(grid.rows);
 
   return (
     <>
       <div className="grid gap-3 lg:hidden">
-        {pagination.items.length === 0 ? (
+        {carregando ? (
+          <CardsSkeleton />
+        ) : paginacao.items.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
             Nenhuma venda encontrada com esses filtros
           </Card>
         ) : (
-          pagination.items.map((sale) => (
-            <Card key={sale.id} className="space-y-3 p-4">
+          paginacao.items.map((venda) => (
+            <Card key={venda.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{sale.customer}</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(sale.date)}</div>
+                  <div className="font-medium">{venda.cliente}</div>
+                  <div className="text-xs text-muted-foreground">{formatDate(venda.data)}</div>
                 </div>
-                <StatusBadge status={sale.status} />
+                <StatusBadge status={venda.status} />
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Origem</div>
-                  <div>{sale.origin}</div>
+                  <div>{venda.origem}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças</div>
-                  <SalePiecesDetails sale={sale} triggerClassName="rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
+                  <DetalhePecasVenda venda={venda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-1 text-sm font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Pagamento</div>
-                  <div>{sale.payment}</div>
+                  <div>{venda.pagamento}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
-                  <div className="font-semibold">{formatBRL(sale.total)}</div>
+                  <div className="font-semibold">{formatBRL(venda.total)}</div>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                   <FileClock className="h-3.5 w-3.5" />
-                  {sale.origin}
+                  {venda.origem}
                 </span>
-                <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${sale.id}`}>
-                  <Link {...actionProps} href={`/vendas/${sale.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${venda.id}`}>
+                  <Link {...actionProps} href={`/vendas/${venda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
                 </Button>
               </div>
             </Card>
           ))
         )}
       </div>
-      <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
+      <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
       <Card className="hidden overflow-hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                {columns.map((column) => (
+                {colunas.map((coluna) => (
                   <DataGridColumnHeader
-                    key={column.id}
+                    key={coluna.id}
                     grid={grid}
-                    columnId={column.id}
-                    label={column.label}
-                    align={column.id === "pieces" ? "center" : column.id === "total" ? "right" : "left"}
+                    columnId={coluna.id}
+                    label={coluna.label}
+                    align={coluna.id === "pecas" ? "center" : coluna.id === "total" ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {carregando ? (
+                <TableSkeleton cols={8} />
+              ) : paginacao.items.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     Nenhuma venda encontrada com esses filtros
                   </td>
                 </tr>
-              ) : pagination.items.map((sale) => (
-                <tr key={sale.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{sale.customer}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{sale.origin}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(sale.date)}</td>
+              ) : paginacao.items.map((venda) => (
+                <tr key={venda.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">{venda.cliente}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{venda.origem}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(venda.data)}</td>
                   <td className="px-4 py-3 text-center">
-                    <SalePiecesDetails sale={sale} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
+                    <DetalhePecasVenda venda={venda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{sale.payment}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(sale.total)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={sale.status} /></td>
+                  <td className="px-4 py-3 text-muted-foreground">{venda.pagamento}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(venda.total)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={venda.status} /></td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${sale.id}`}>
-                      <Link {...actionProps} href={`/vendas/${sale.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                    <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${venda.id}`}>
+                      <Link {...actionProps} href={`/vendas/${venda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <PaginationFooter pagination={pagination} />
+          <PaginationFooter pagination={paginacao} />
         </div>
       </Card>
     </>
   );
 }
 
-function SalePiecesDetails({ sale, triggerClassName }: { sale: Sale; triggerClassName: string }) {
-  const { data: items } = useItensVenda(sale.id);
+function DetalhePecasVenda({ venda, triggerClassName }: { venda: Sale; triggerClassName: string }) {
+  const { data: itens } = useItensVenda(venda.id);
 
   return (
     <PiecesDetailsDialog
-      pieces={sale.pieces}
-      title={`Peças da venda ${sale.id}`}
-      description={`Detalhamento dos produtos e tamanhos da venda para ${sale.customer}.`}
-      items={items}
+      pieces={venda.pecas}
+      title={`Peças da venda ${venda.id}`}
+      description={`Detalhamento dos produtos e tamanhos da venda para ${venda.cliente}.`}
+      items={itens ?? []}
       triggerClassName={triggerClassName}
     />
   );
 }
 
-function OrdersBillingView({
-  rows,
+function VisualizacaoFaturarEncomendas({
+  linhas,
   actionProps,
-  clearFiltersSignal,
+  sinalLimparFiltros,
+  carregando,
 }: {
-  rows: Order[];
+  linhas: Order[];
   actionProps: Record<string, unknown>;
-  clearFiltersSignal: number;
+  sinalLimparFiltros: number;
+  carregando: boolean;
 }) {
-  const columns = useMemo<DataGridColumn<Order>[]>(
+  const colunas = useMemo<DataGridColumn<Order>[]>(
     () => [
-      { id: "id", label: "Encomenda", accessor: (order) => order.id },
-      { id: "customer", label: "Cliente", accessor: (order) => order.customer },
-      { id: "createdAt", label: "Cadastro", accessor: (order) => order.createdAt, filterAccessor: (order) => formatDate(order.createdAt) },
-      { id: "dueDate", label: "Entrega", accessor: (order) => order.dueDate, filterAccessor: (order) => formatDate(order.dueDate) },
-      { id: "pieces", label: "Peças", accessor: (order) => piecesForOrder(order.total) },
-      { id: "total", label: "Total", accessor: (order) => order.total },
-      { id: "balance", label: "Saldo", accessor: (order) => order.total - order.entry },
-      { id: "status", label: "Status", accessor: (order) => order.status },
+      { id: "id", label: "Encomenda", accessor: (e) => e.id },
+      { id: "cliente", label: "Cliente", accessor: (e) => e.cliente },
+      { id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm) },
+      { id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao) },
+      { id: "pecas", label: "Peças", accessor: (e) => pecasPorEncomenda(e.total) },
+      { id: "total", label: "Total", accessor: (e) => e.total },
+      { id: "saldo", label: "Saldo", accessor: (e) => e.total - e.entrada },
+      { id: "status", label: "Status", accessor: (e) => e.status },
     ],
     [],
   );
-  const grid = useDataGrid(rows, columns);
+  const grid = useDataGrid(linhas, colunas);
   useEffect(() => {
     grid.clearFilters();
-  }, [clearFiltersSignal]);
-  const pagination = usePagination(grid.rows);
+  }, [sinalLimparFiltros]);
+  const paginacao = usePagination(grid.rows);
 
   return (
     <>
       <div className="grid gap-3 lg:hidden">
-        {pagination.items.length === 0 ? (
+        {carregando ? (
+          <CardsSkeleton />
+        ) : paginacao.items.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
             Nenhuma encomenda pronta para faturar
           </Card>
         ) : (
-          pagination.items.map((order) => (
-            <Card key={order.id} className="space-y-3 p-4">
+          paginacao.items.map((encomenda) => (
+            <Card key={encomenda.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{order.customer}</div>
-                  <div className="font-mono text-xs text-muted-foreground">{order.id}</div>
+                  <div className="font-medium">{encomenda.cliente}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{encomenda.id}</div>
                 </div>
-                <BillingOrderStatus status={order.status} />
+                <StatusEncomendaFatura status={encomenda.status} />
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Cadastro</div>
-                  <div>{formatDate(order.createdAt)}</div>
+                  <div>{formatDate(encomenda.criadoEm)}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</div>
-                  <div>{formatDate(order.dueDate)}</div>
+                  <div>{formatDate(encomenda.previsao)}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças</div>
-                  <div className="font-semibold">{piecesForOrder(order.total)}</div>
+                  <div className="font-semibold">{pecasPorEncomenda(encomenda.total)}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo</div>
-                  <div>{formatBRL(order.total - order.entry)}</div>
+                  <div>{formatBRL(encomenda.total - encomenda.entrada)}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
-                  <div className="font-semibold">{formatBRL(order.total)}</div>
+                  <div className="font-semibold">{formatBRL(encomenda.total)}</div>
                 </div>
               </div>
-              <BillingActionButton
-                href={`/vendas/nova?from=encomenda&id=${order.id}`}
+              <BotaoAcaoFatura
+                href={`/vendas/nova?from=encomenda&id=${encomenda.id}`}
                 className="w-full"
                 actionProps={actionProps}
               >
@@ -536,52 +549,54 @@ function OrdersBillingView({
                   <Receipt className="h-4 w-4" />
                   Gerar venda
                 </>
-              </BillingActionButton>
+              </BotaoAcaoFatura>
             </Card>
           ))
         )}
       </div>
-      <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
+      <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
       <Card className="hidden overflow-hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                {columns.map((column) => (
+                {colunas.map((coluna) => (
                   <DataGridColumnHeader
-                    key={column.id}
+                    key={coluna.id}
                     grid={grid}
-                    columnId={column.id}
-                    label={column.label}
-                    align={column.id === "pieces" ? "center" : ["total", "balance"].includes(column.id) ? "right" : "left"}
+                    columnId={coluna.id}
+                    label={coluna.label}
+                    align={coluna.id === "pecas" ? "center" : ["total", "saldo"].includes(coluna.id) ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {carregando ? (
+                <TableSkeleton cols={9} />
+              ) : paginacao.items.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     Nenhuma encomenda pronta para faturar
                   </td>
                 </tr>
-              ) : pagination.items.map((order) => (
-                <tr key={order.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{order.id}</td>
-                  <td className="px-4 py-3 font-medium">{order.customer}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(order.createdAt)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(order.dueDate)}</td>
-                  <td className="px-4 py-3 text-center font-semibold">{piecesForOrder(order.total)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(order.total)}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(order.total - order.entry)}</td>
+              ) : paginacao.items.map((encomenda) => (
+                <tr key={encomenda.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-mono text-xs">{encomenda.id}</td>
+                  <td className="px-4 py-3 font-medium">{encomenda.cliente}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.previsao)}</td>
+                  <td className="px-4 py-3 text-center font-semibold">{pecasPorEncomenda(encomenda.total)}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
+                  <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
                   <td className="px-4 py-3">
-                    <BillingOrderStatus status={order.status} />
+                    <StatusEncomendaFatura status={encomenda.status} />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <BillingActionButton
-                      href={`/vendas/nova?from=encomenda&id=${order.id}`}
+                    <BotaoAcaoFatura
+                      href={`/vendas/nova?from=encomenda&id=${encomenda.id}`}
                       size="sm"
                       actionProps={actionProps}
                     >
@@ -589,20 +604,20 @@ function OrdersBillingView({
                         <Receipt className="h-4 w-4" />
                         Gerar venda
                       </>
-                    </BillingActionButton>
+                    </BotaoAcaoFatura>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <PaginationFooter pagination={pagination} />
+          <PaginationFooter pagination={paginacao} />
         </div>
       </Card>
     </>
   );
 }
 
-function BillingOrderStatus({ status }: { status: Order["status"] }) {
+function StatusEncomendaFatura({ status }: { status: Order["status"] }) {
   if (status === "Pronta") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -620,47 +635,51 @@ function BillingOrderStatus({ status }: { status: Order["status"] }) {
   );
 }
 
-function FichasBillingView({
-  rows,
+function VisualizacaoFaturarFichas({
+  linhas,
   actionProps,
-  clearFiltersSignal,
+  sinalLimparFiltros,
+  carregando,
 }: {
-  rows: Ficha[];
+  linhas: Ficha[];
   actionProps: Record<string, unknown>;
-  clearFiltersSignal: number;
+  sinalLimparFiltros: number;
+  carregando: boolean;
 }) {
-  const columns = useMemo<DataGridColumn<Ficha>[]>(
+  const colunas = useMemo<DataGridColumn<Ficha>[]>(
     () => [
-      { id: "id", label: "Ficha", accessor: (ficha) => ficha.id },
-      { id: "reseller", label: "Revendedora", accessor: (ficha) => ficha.reseller },
-      { id: "openedAt", label: "Abertura", accessor: (ficha) => ficha.openedAt, filterAccessor: (ficha) => formatDate(ficha.openedAt) },
-      { id: "sold", label: "Vendidas", accessor: (ficha) => ficha.sold },
-      { id: "sent", label: "Enviadas", accessor: (ficha) => ficha.sent },
-      { id: "returned", label: "Devolvidas", accessor: (ficha) => ficha.returned },
-      { id: "totalSold", label: "Total vendido", accessor: (ficha) => ficha.totalSold },
-      { id: "status", label: "Status", accessor: (ficha) => ficha.status },
+      { id: "id", label: "Ficha", accessor: (f) => f.id },
+      { id: "revendedora", label: "Revendedora", accessor: (f) => f.revendedora },
+      { id: "dataAbertura", label: "Abertura", accessor: (f) => f.dataAbertura, filterAccessor: (f) => formatDate(f.dataAbertura) },
+      { id: "vendidas", label: "Vendidas", accessor: (f) => f.vendidas },
+      { id: "enviadas", label: "Enviadas", accessor: (f) => f.enviadas },
+      { id: "devolvidas", label: "Devolvidas", accessor: (f) => f.devolvidas },
+      { id: "totalVendido", label: "Total vendido", accessor: (f) => f.totalVendido },
+      { id: "status", label: "Status", accessor: (f) => f.status },
     ],
     [],
   );
-  const grid = useDataGrid(rows, columns);
+  const grid = useDataGrid(linhas, colunas);
   useEffect(() => {
     grid.clearFilters();
-  }, [clearFiltersSignal]);
-  const pagination = usePagination(grid.rows);
+  }, [sinalLimparFiltros]);
+  const paginacao = usePagination(grid.rows);
 
   return (
     <>
       <div className="grid gap-3 lg:hidden">
-        {pagination.items.length === 0 ? (
+        {carregando ? (
+          <CardsSkeleton />
+        ) : paginacao.items.length === 0 ? (
           <Card className="p-6 text-center text-sm text-muted-foreground">
             Nenhuma ficha com faturamento pendente
           </Card>
         ) : (
-          pagination.items.map((ficha) => (
+          paginacao.items.map((ficha) => (
             <Card key={ficha.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{ficha.reseller}</div>
+                  <div className="font-medium">{ficha.revendedora}</div>
                   <div className="font-mono text-xs text-muted-foreground">{ficha.id}</div>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
@@ -671,26 +690,26 @@ function FichasBillingView({
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Abertura</div>
-                  <div>{formatDate(ficha.openedAt)}</div>
+                  <div>{formatDate(ficha.dataAbertura)}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças vendidas</div>
-                  <div className="font-semibold text-primary">{ficha.sold}</div>
+                  <div className="font-semibold text-primary">{ficha.vendidas}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Enviadas</div>
-                  <div>{ficha.sent}</div>
+                  <div>{ficha.enviadas}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div>
-                  <div>{ficha.returned}</div>
+                  <div>{ficha.devolvidas}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div>
-                  <div className="font-semibold">{formatBRL(ficha.totalSold)}</div>
+                  <div className="font-semibold">{formatBRL(ficha.totalVendido)}</div>
                 </div>
               </div>
-              <BillingActionButton
+              <BotaoAcaoFatura
                 href={`/vendas/nova?from=ficha&id=${ficha.id}`}
                 className="w-full"
                 actionProps={actionProps}
@@ -699,28 +718,28 @@ function FichasBillingView({
                   <Receipt className="h-4 w-4" />
                   Gerar venda
                 </>
-              </BillingActionButton>
+              </BotaoAcaoFatura>
             </Card>
           ))
         )}
       </div>
-      <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
+      <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
       <Card className="hidden overflow-hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                {columns.map((column) => (
+                {colunas.map((coluna) => (
                   <DataGridColumnHeader
-                    key={column.id}
+                    key={coluna.id}
                     grid={grid}
-                    columnId={column.id}
-                    label={column.label}
+                    columnId={coluna.id}
+                    label={coluna.label}
                     align={
-                      ["sold", "sent", "returned"].includes(column.id)
+                      ["vendidas", "enviadas", "devolvidas"].includes(coluna.id)
                         ? "center"
-                        : column.id === "totalSold"
+                        : coluna.id === "totalVendido"
                           ? "right"
                           : "left"
                     }
@@ -730,21 +749,23 @@ function FichasBillingView({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {carregando ? (
+                <TableSkeleton cols={9} />
+              ) : paginacao.items.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     Nenhuma ficha com faturamento pendente
                   </td>
                 </tr>
-              ) : pagination.items.map((ficha) => (
+              ) : paginacao.items.map((ficha) => (
                 <tr key={ficha.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{ficha.id}</td>
-                  <td className="px-4 py-3 font-medium">{ficha.reseller}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(ficha.openedAt)}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-primary">{ficha.sold}</td>
-                  <td className="px-4 py-3 text-center">{ficha.sent}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">{ficha.returned}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(ficha.totalSold)}</td>
+                  <td className="px-4 py-3 font-medium">{ficha.revendedora}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(ficha.dataAbertura)}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-primary">{ficha.vendidas}</td>
+                  <td className="px-4 py-3 text-center">{ficha.enviadas}</td>
+                  <td className="px-4 py-3 text-center text-muted-foreground">{ficha.devolvidas}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(ficha.totalVendido)}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
                       <ClipboardList className="h-3.5 w-3.5" />
@@ -752,7 +773,7 @@ function FichasBillingView({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <BillingActionButton
+                    <BotaoAcaoFatura
                       href={`/vendas/nova?from=ficha&id=${ficha.id}`}
                       size="sm"
                       actionProps={actionProps}
@@ -761,20 +782,20 @@ function FichasBillingView({
                         <Receipt className="h-4 w-4" />
                         Gerar venda
                       </>
-                    </BillingActionButton>
+                    </BotaoAcaoFatura>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <PaginationFooter pagination={pagination} />
+          <PaginationFooter pagination={paginacao} />
         </div>
       </Card>
     </>
   );
 }
 
-const BillingActionButton = ({
+const BotaoAcaoFatura = ({
   href,
   className,
   size,
@@ -789,10 +810,7 @@ const BillingActionButton = ({
 }) => {
   return (
     <Button asChild className={className} size={size}>
-      <Link
-        {...actionProps}
-        href={href}
-      >
+      <Link {...actionProps} href={href}>
         {children}
       </Link>
     </Button>

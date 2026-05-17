@@ -5,6 +5,7 @@ import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDia
 import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
+import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,44 +17,44 @@ import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
 export default function Clientes() {
-  const { data: customers } = useClientes();
-  const [query, setQuery] = useState("");
-  const [type, setType] = useState("all");
-  const [status, setStatus] = useState("all");
-  const columns = useMemo<DataGridColumn<Customer>[]>(
+  const { data: clientes = [], isLoading } = useClientes();
+  const [busca, setBusca] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("all");
+  const [filtroStatus, setFiltroStatus] = useState("all");
+  const colunas = useMemo<DataGridColumn<Customer>[]>(
     () => [
-      { id: "name", label: "Nome", accessor: (customer) => customer.name },
-      { id: "phone", label: "Telefone", accessor: (customer) => customer.phone },
-      { id: "cpf", label: "CPF", accessor: (customer) => customer.cpf },
-      { id: "type", label: "Tipo", accessor: (customer) => customer.type },
-      { id: "credit", label: "Crédito", accessor: (customer) => customer.credit },
+      { id: "nome", label: "Nome", accessor: (c) => c.nome },
+      { id: "telefone", label: "Telefone", accessor: (c) => c.telefone },
+      { id: "cpf", label: "CPF", accessor: (c) => c.cpf },
+      { id: "tipo", label: "Tipo", accessor: (c) => c.tipo },
+      { id: "credito", label: "Crédito", accessor: (c) => c.credito },
     ],
     [],
   );
 
-  const filtered = useMemo(
+  const clientesFiltrados = useMemo(
     () =>
-      customers.filter((c) => {
-        if (type !== "all" && c.type !== type) return false;
-        if (status !== "all" && c.status !== status) return false;
-        if (query) {
-          const q = query.toLowerCase();
-          if (!c.name.toLowerCase().includes(q) && !c.phone.includes(q) && !c.cpf.includes(q)) return false;
+      clientes.filter((c) => {
+        if (filtroTipo !== "all" && c.tipo !== filtroTipo) return false;
+        if (filtroStatus !== "all" && c.status !== filtroStatus) return false;
+        if (busca) {
+          const q = busca.toLowerCase();
+          if (!c.nome.toLowerCase().includes(q) && !c.telefone.includes(q) && !c.cpf.includes(q)) return false;
         }
         return true;
       }),
-    [query, type, status]
+    [busca, filtroTipo, filtroStatus]
   );
-  const grid = useDataGrid(filtered, columns);
-  const pagination = usePagination(grid.rows);
+  const grid = useDataGrid(clientesFiltrados, colunas);
+  const paginacao = usePagination(grid.rows);
 
   return (
     <AppShell>
       <ClearFiltersShortcutDialog
         onConfirm={() => {
-          setQuery("");
-          setType("all");
-          setStatus("all");
+          setBusca("");
+          setFiltroTipo("all");
+          setFiltroStatus("all");
           grid.clearFilters();
         }}
       />
@@ -67,17 +68,18 @@ export default function Clientes() {
           </Button>
         }
       />
-      <div className="space-y-4 p-6">
-        <Card className="sticky top-20 z-20 p-4">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b px-6 py-4">
+        <Card className="p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[240px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, telefone ou CPF" className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <Input placeholder="Buscar por nome, telefone ou CPF" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
             </div>
             <AppSelect
               className="w-[150px]"
-              value={type}
-              onValueChange={setType}
+              value={filtroTipo}
+              onValueChange={setFiltroTipo}
               options={[
                 { value: "all", label: "Todos tipos" },
                 { value: "varejo", label: "Varejo" },
@@ -86,8 +88,8 @@ export default function Clientes() {
             />
             <AppSelect
               className="w-[130px]"
-              value={status}
-              onValueChange={setStatus}
+              value={filtroStatus}
+              onValueChange={setFiltroStatus}
               options={[
                 { value: "all", label: "Todos" },
                 { value: "Ativo", label: "Ativos" },
@@ -96,37 +98,41 @@ export default function Clientes() {
             />
           </div>
         </Card>
+        </div>
 
+        <div className="flex-1 overflow-y-auto p-6">
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                {columns.map((column) => (
+                {colunas.map((coluna) => (
                   <DataGridColumnHeader
-                    key={column.id}
+                    key={coluna.id}
                     grid={grid}
-                    columnId={column.id}
-                    label={column.label}
-                    align={column.id === "credit" ? "right" : "left"}
+                    columnId={coluna.id}
+                    label={coluna.label}
+                    align={coluna.id === "credito" ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton cols={6} />
+              ) : paginacao.items.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum cliente encontrado</td></tr>
-              ) : pagination.items.map((c) => (
+              ) : paginacao.items.map((c) => (
                 <tr key={c.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.phone}</td>
+                  <td className="px-4 py-3 font-medium">{c.nome}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.telefone}</td>
                   <td className="px-4 py-3 font-mono text-xs">{c.cpf}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium uppercase">{c.type}</span>
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium uppercase">{c.tipo}</span>
                   </td>
-                  <td className="px-4 py-3 text-right">{formatBRL(c.credit)}</td>
+                  <td className="px-4 py-3 text-right">{formatBRL(c.credito)}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="icon" asChild aria-label={`Editar ${c.name}`}>
+                    <Button variant="ghost" size="icon" asChild aria-label={`Editar ${c.nome}`}>
                       <Link href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
                   </td>
@@ -134,8 +140,9 @@ export default function Clientes() {
               ))}
             </tbody>
           </table>
-          <PaginationFooter pagination={pagination} />
+          <PaginationFooter pagination={paginacao} />
         </Card>
+        </div>
       </div>
     </AppShell>
   );

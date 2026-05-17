@@ -7,55 +7,56 @@ import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
 import { useProdutos } from "@/lib/api";
 
 const tabs = ["Saldos", "Movimentações", "Ajuste manual"] as const;
-const sizes = ["P", "M", "G", "GG"];
+const tamanhos = ["P", "M", "G", "GG"];
 
 export default function Estoque() {
-  const { data: products } = useProdutos();
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Saldos");
-  const indexedTabs = useIndexedTabs({ tabs, onTabChange: setTab });
-  const stockRows = useMemo(
+  const { data: produtos = [], isLoading } = useProdutos();
+  const [aba, setAba] = useState<(typeof tabs)[number]>("Saldos");
+  const indexedTabs = useIndexedTabs({ tabs, onTabChange: setAba });
+  const linhasEstoque = useMemo(
     () =>
-      products.map((product, index) => ({
-        ...product,
-        sizeStock: Object.fromEntries(sizes.map((size, sizeIndex) => [size, Math.max(0, Math.floor(product.stock / 4) + (sizeIndex - 1) + index)])),
-        inFichas: index * 2,
+      produtos.map((produto, index) => ({
+        ...produto,
+        estoquePorTamanho: Object.fromEntries(tamanhos.map((tamanho, i) => [tamanho, Math.max(0, Math.floor(produto.estoque / 4) + (i - 1) + index)])),
+        emFichas: index * 2,
       })),
-    [products],
+    [produtos],
   );
-  const columns = useMemo<DataGridColumn<(typeof stockRows)[number]>[]>(
+  const colunas = useMemo<DataGridColumn<(typeof linhasEstoque)[number]>[]>(
     () => [
-      { id: "name", label: "Produto", accessor: (product) => product.name },
-      ...sizes.map((size) => ({
-        id: size,
-        label: size,
-        accessor: (product: (typeof stockRows)[number]) => product.sizeStock[size],
+      { id: "nome", label: "Produto", accessor: (p) => p.nome },
+      ...tamanhos.map((tamanho) => ({
+        id: tamanho,
+        label: tamanho,
+        accessor: (p: (typeof linhasEstoque)[number]) => p.estoquePorTamanho[tamanho],
       })),
-      { id: "inFichas", label: "Em ficha", accessor: (product) => product.inFichas },
-      { id: "stock", label: "Total", accessor: (product) => product.stock },
+      { id: "emFichas", label: "Em ficha", accessor: (p) => p.emFichas },
+      { id: "estoque", label: "Total", accessor: (p) => p.estoque },
     ],
-    [stockRows],
+    [linhasEstoque],
   );
-  const grid = useDataGrid(stockRows, columns);
-  const pagination = usePagination(grid.rows);
+  const grid = useDataGrid(linhasEstoque, colunas);
+  const paginacao = usePagination(grid.rows);
   return (
     <AppShell>
       <ClearFiltersShortcutDialog onConfirm={() => grid.clearFilters()} />
       <PageHeader
-        breadcrumb={["Estoque", tab]}
+        breadcrumb={["Estoque", aba]}
         title="Estoque"
         infoTooltip="Mostra saldos por produto e tamanho, movimentações e ajustes manuais de estoque."
       />
-      <div className="space-y-4 p-6">
-        <div className="sticky top-20 z-20 -mx-6 border-b bg-background/95 px-6 pb-4 pt-4 backdrop-blur">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b px-6 py-4">
           <IndexedTabsNav
             tabs={tabs}
-            activeTab={tab}
-            onSelect={setTab}
+            activeTab={aba}
+            onSelect={setAba}
             getTabButtonProps={indexedTabs.getTabButtonProps}
             getShortcutLabel={indexedTabs.getShortcutLabel}
             className="flex gap-1 border-b"
@@ -66,56 +67,60 @@ export default function Estoque() {
           />
         </div>
 
-        {tab === "Saldos" && (
+        <div className="flex-1 overflow-y-auto p-6">
+        {aba === "Saldos" && (
           <div {...indexedTabs.getTabPanelProps("Saldos")}>
           <Card className="overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  {columns.map((column) => (
+                  {colunas.map((coluna) => (
                     <DataGridColumnHeader
-                      key={column.id}
+                      key={coluna.id}
                       grid={grid}
-                      columnId={column.id}
-                      label={column.label}
-                      align={column.id === "name" ? "left" : "center"}
+                      columnId={coluna.id}
+                      label={coluna.label}
+                      align={coluna.id === "nome" ? "left" : "center"}
                     />
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {pagination.items.map((p) => (
+                {isLoading ? (
+                  <TableSkeleton cols={7} />
+                ) : paginacao.items.map((p) => (
                   <tr key={p.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{p.name}</td>
-                    {sizes.map((s) => {
-                      const val = p.sizeStock[s];
+                    <td className="px-4 py-3 font-medium">{p.nome}</td>
+                    {tamanhos.map((t) => {
+                      const val = p.estoquePorTamanho[t];
                       return (
-                        <td key={s} className={`px-4 py-3 text-center ${val === 0 ? "text-muted-foreground" : ""}`}>
+                        <td key={t} className={`px-4 py-3 text-center ${val === 0 ? "text-muted-foreground" : ""}`}>
                           {val}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3 text-center text-warning">{p.inFichas}</td>
-                    <td className="px-4 py-3 text-center font-semibold">{p.stock}</td>
+                    <td className="px-4 py-3 text-center text-warning">{p.emFichas}</td>
+                    <td className="px-4 py-3 text-center font-semibold">{p.estoque}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <PaginationFooter pagination={pagination} />
+            <PaginationFooter pagination={paginacao} />
           </Card>
           </div>
         )}
 
-        {tab === "Movimentações" && (
+        {aba === "Movimentações" && (
           <Card {...indexedTabs.getTabPanelProps("Movimentações")} className="p-10 text-center text-sm text-muted-foreground">
             Histórico de entradas, vendas, envios e devoluções aparecerá aqui.
           </Card>
         )}
-        {tab === "Ajuste manual" && (
+        {aba === "Ajuste manual" && (
           <Card {...indexedTabs.getTabPanelProps("Ajuste manual")} className="p-10 text-center text-sm text-muted-foreground">
             Formulário de ajuste manual com justificativa obrigatória.
           </Card>
         )}
+        </div>
       </div>
     </AppShell>
   );

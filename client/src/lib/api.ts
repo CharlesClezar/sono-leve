@@ -1,41 +1,48 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Account, Customer, Ficha, Order, PieceDetailItem, Product, Sale } from "@/lib/types";
-import { auth, type UsuarioLogado } from "@/lib/auth";
-import { http } from "@/lib/http";
+import { http, BASE_URL } from "@/lib/http";
+
+// Constantes estáveis para evitar que `?? []` crie nova referência a cada render
+const CLIENTES_VAZIOS: Customer[] = [];
+const PRODUTOS_VAZIOS: Product[] = [];
+const VENDAS_VAZIAS: Sale[] = [];
+const ENCOMENDAS_VAZIAS: Order[] = [];
+const FICHAS_VAZIAS: Ficha[] = [];
+const CONTAS_VAZIAS: Account[] = [];
 
 // ─── Tipos de entrada (mutations) ────────────────────────────────────────────
 
 export type VendaSalvar = {
   id?: string;
-  customer: string;
-  date?: string;
-  pieces: number;
-  payment: string;
+  cliente: string;
+  data?: string;
+  pecas: number;
+  pagamento: string;
   total: number;
   status: Sale["status"];
-  origin: Sale["origin"];
+  origem: Sale["origem"];
   items?: PieceDetailItem[];
 };
 
 export type EncomendaSalvar = {
   id?: string;
-  customer: string;
-  createdAt?: string;
-  dueDate: string;
+  cliente: string;
+  criadoEm?: string;
+  previsao: string;
   total: number;
-  entry: number;
+  entrada: number;
   status: Order["status"];
   items?: PieceDetailItem[];
 };
 
 export type FichaSalvar = {
   id?: string;
-  reseller: string;
-  openedAt?: string;
-  sent: number;
-  returned: number;
-  sold: number;
-  totalSold: number;
+  revendedora: string;
+  dataAbertura?: string;
+  enviadas: number;
+  devolvidas: number;
+  vendidas: number;
+  totalVendido: number;
   status: Ficha["status"];
 };
 
@@ -75,6 +82,29 @@ export type CatalogoProdutoSalvar = {
   period?: string;
 };
 
+export type CatalogoProdutoItem = {
+  id: string;
+  name: string;
+  active: boolean;
+  grade?: string[];
+  type?: string;
+  period?: string;
+  products?: number;
+  subtypes?: number;
+};
+
+export type CatalogSlug = "categorias" | "grades" | "marcas" | "tipos" | "subtipos" | "colecoes" | "modelos";
+
+export type FormaPagamento = {
+  id: string;
+  nome: string;
+  condicao: string;
+  taxa: string;
+  ativo: boolean;
+};
+
+export type FormaPagamentoSalvar = Omit<FormaPagamento, "id">;
+
 type ListaResponse<T> = {
   data: T[];
   total: number;
@@ -82,17 +112,6 @@ type ListaResponse<T> = {
   pageSize: number;
   totalPages: number;
 };
-
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-
-export async function login(email: string, senha: string): Promise<{ token: string; usuario: UsuarioLogado }> {
-  return http.post("/auth/login", { email, senha });
-}
-
-export async function logout(): Promise<void> {
-  await http.post("/auth/logout").catch(() => null);
-  auth.clearToken();
-}
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -135,24 +154,35 @@ export const api = {
 
   // ─── Clientes ──────────────────────────────────────────────────────────────
 
-  salvarCliente: (cliente: Omit<Customer, "id">) =>
-    http.post<Customer>("/clientes", cliente),
+  salvarCliente: (cliente: Omit<Customer, "id">, idempotencyKey?: string) =>
+    http.post<Customer>("/clientes", cliente, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
   atualizarCliente: (cliente: Customer) =>
     http.put<Customer>(`/clientes/${cliente.id}`, cliente),
 
   // ─── Produtos ──────────────────────────────────────────────────────────────
 
-  salvarProduto: (produto: Omit<Product, "id">) =>
-    http.post<Product>("/produtos", produto),
+  salvarProduto: (produto: Omit<Product, "id">, idempotencyKey?: string) =>
+    http.post<Product>("/produtos", produto, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
   atualizarProduto: (produto: Product) =>
     http.put<Product>(`/produtos/${produto.id}`, produto),
 
+  uploadImagemProduto: async (id: string, arquivo: File): Promise<{ imagemUrl: string }> => {
+    const form = new FormData();
+    form.append("arquivo", arquivo);
+    const res = await fetch(`${BASE_URL}/api/produtos/${id}/imagem`, { method: "POST", body: form });
+    if (!res.ok) throw new Error("Falha no upload da imagem.");
+    return res.json();
+  },
+
+  removerImagemProduto: (id: string) =>
+    http.delete<void>(`/produtos/${id}/imagem`),
+
   // ─── Vendas ────────────────────────────────────────────────────────────────
 
-  salvarVenda: (entrada: VendaSalvar) =>
-    http.post<Sale>("/vendas", entrada),
+  salvarVenda: (entrada: VendaSalvar, idempotencyKey?: string) =>
+    http.post<Sale>("/vendas", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
   atualizarVenda: (entrada: VendaSalvar & { id: string }) =>
     http.put<Sale>(`/vendas/${entrada.id}`, entrada),
@@ -162,8 +192,8 @@ export const api = {
 
   // ─── Encomendas ────────────────────────────────────────────────────────────
 
-  salvarEncomenda: (entrada: EncomendaSalvar) =>
-    http.post<Order>("/encomendas", entrada),
+  salvarEncomenda: (entrada: EncomendaSalvar, idempotencyKey?: string) =>
+    http.post<Order>("/encomendas", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
   atualizarEncomenda: (entrada: EncomendaSalvar & { id: string }) =>
     http.put<Order>(`/encomendas/${entrada.id}`, entrada),
@@ -173,31 +203,53 @@ export const api = {
 
   // ─── Fichas ────────────────────────────────────────────────────────────────
 
-  salvarFicha: (entrada: FichaSalvar) =>
-    http.post<Ficha>("/fichas", entrada),
+  salvarFicha: (entrada: FichaSalvar, idempotencyKey?: string) =>
+    http.post<Ficha>("/fichas", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
   atualizarFicha: (entrada: FichaSalvar & { id: string }) =>
     http.put<Ficha>(`/fichas/${entrada.id}`, entrada),
 
   // ─── Catálogo de Produtos ──────────────────────────────────────────────────
 
-  salvarCategoriaProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<CategoriaCatalogo>("/produtos/catalogo/categorias", entrada),
+  salvarCategoriaProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<CategoriaCatalogo>("/produtos/catalogo/categorias", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarMarcaProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<CatalogoSimples>("/produtos/catalogo/marcas", entrada),
+  salvarMarcaProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<CatalogoSimples>("/produtos/catalogo/marcas", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarTipoProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<TipoCatalogo>("/produtos/catalogo/tipos", entrada),
+  salvarTipoProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<TipoCatalogo>("/produtos/catalogo/tipos", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarSubtipoProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<SubtipoCatalogo>("/produtos/catalogo/subtipos", entrada),
+  salvarSubtipoProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<SubtipoCatalogo>("/produtos/catalogo/subtipos", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarColecaoProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<ColecaoCatalogo>("/produtos/catalogo/colecoes", entrada),
+  salvarColecaoProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<ColecaoCatalogo>("/produtos/catalogo/colecoes", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarModeloProduto: (entrada: CatalogoProdutoSalvar) =>
-    http.post<CatalogoSimples>("/produtos/catalogo/modelos", entrada),
+  salvarModeloProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
+    http.post<CatalogoSimples>("/produtos/catalogo/modelos", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
+
+  obterCatalogoProduto: (tipo: CatalogSlug, id: string) =>
+    http.get<CatalogoProdutoItem>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`),
+
+  atualizarCatalogoProduto: (tipo: CatalogSlug, id: string, entrada: CatalogoProdutoSalvar) =>
+    http.put<CatalogoProdutoItem>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`, entrada),
+
+  excluirCatalogoProduto: (tipo: CatalogSlug, id: string) =>
+    http.delete<void>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`),
+
+  // ─── Formas de Pagamento ───────────────────────────────────────────────────
+
+  formasPagamento: () => http.get<FormaPagamento[]>("/formas-pagamento"),
+
+  salvarFormaPagamento: (entrada: FormaPagamentoSalvar) =>
+    http.post<FormaPagamento>("/formas-pagamento", entrada),
+
+  atualizarFormaPagamento: (id: string, entrada: FormaPagamentoSalvar) =>
+    http.put<FormaPagamento>(`/formas-pagamento/${id}`, entrada),
+
+  excluirFormaPagamento: (id: string) =>
+    http.delete<void>(`/formas-pagamento/${id}`),
 };
 
 // ─── React Query Hooks ────────────────────────────────────────────────────────
@@ -246,6 +298,18 @@ export function useCatalogoProdutos() {
   return useQuery({ queryKey: ["catalogo-produtos"], queryFn: api.catalogoProdutos });
 }
 
+export function useItemCatalogoProduto(tipo: CatalogSlug, id: string) {
+  return useQuery({
+    queryKey: ["catalogo-produtos", tipo, id],
+    queryFn: () => api.obterCatalogoProduto(tipo, id),
+    enabled: !!id,
+  });
+}
+
+export function useFormasPagamento() {
+  return useQuery({ queryKey: ["formas-pagamento"], queryFn: api.formasPagamento });
+}
+
 export function useDadosOperacionais() {
   const clientes = useClientes();
   const produtos = useProdutos();
@@ -255,13 +319,13 @@ export function useDadosOperacionais() {
   const contas = useContasReceber();
 
   return {
-    customers: clientes.data ?? [],
-    products: produtos.data ?? [],
-    sales: vendas.data ?? [],
-    orders: encomendas.data ?? [],
-    fichas: fichas.data ?? [],
-    accounts: contas.data ?? [],
-    isLoading:
+    clientes: clientes.data ?? CLIENTES_VAZIOS,
+    produtos: produtos.data ?? PRODUTOS_VAZIOS,
+    vendas: vendas.data ?? VENDAS_VAZIAS,
+    encomendas: encomendas.data ?? ENCOMENDAS_VAZIAS,
+    fichas: fichas.data ?? FICHAS_VAZIAS,
+    contas: contas.data ?? CONTAS_VAZIAS,
+    carregando:
       clientes.isLoading ||
       produtos.isLoading ||
       vendas.isLoading ||
@@ -281,5 +345,6 @@ export function useInvalidarConsultas() {
     fichas: () => queryClient.invalidateQueries({ queryKey: ["fichas"] }),
     contasReceber: () => queryClient.invalidateQueries({ queryKey: ["contas-receber"] }),
     catalogo: () => queryClient.invalidateQueries({ queryKey: ["catalogo-produtos"] }),
+    formasPagamento: () => queryClient.invalidateQueries({ queryKey: ["formas-pagamento"] }),
   };
 }

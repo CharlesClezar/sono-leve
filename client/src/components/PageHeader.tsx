@@ -42,7 +42,7 @@ export function PageHeader({ breadcrumb, title, status, description, infoTooltip
   };
 
   return (
-    <div className="sticky top-0 z-30 flex min-h-20 flex-wrap items-center justify-between gap-4 border-b bg-card/95 px-4 py-4 backdrop-blur md:px-6">
+    <div className="shrink-0 sticky top-0 z-30 flex min-h-20 flex-wrap items-center justify-between gap-4 border-b bg-card/95 px-4 py-4 backdrop-blur md:px-6">
       <div className="flex min-w-0 items-start gap-3 md:items-center">
         <SidebarTrigger className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground md:mt-0" />
         <div className="min-w-0">

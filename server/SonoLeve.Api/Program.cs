@@ -1,7 +1,6 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using SonoLeve.Api.Filters;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Application.Services;
 using SonoLeve.Infra.Data;
@@ -9,7 +8,11 @@ using SonoLeve.Infra.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddScoped<IdempotencyFilter>();
+builder.Services.AddScoped<IIdempotencyService, SonoLeve.Infra.Repositories.IdempotencyService>();
+
+builder.Services.AddControllers(opcoes =>
+    opcoes.Filters.Add(new ServiceFilterAttribute(typeof(IdempotencyFilter))));
 
 // EF Core + PostgreSQL
 builder.Services.AddDbContext<SonoLeveDbContext>(opcoes =>
@@ -23,49 +26,39 @@ builder.Services.AddCors(opcoes =>
     opcoes.AddDefaultPolicy(politica =>
         politica.WithOrigins(origensPermitidas)
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()));
-
-// JWT
-var segredoJwt = builder.Configuration["Jwt:Segredo"]
-    ?? throw new InvalidOperationException("Jwt:Segredo não configurado.");
-
-builder.Services.Configure<JwtOpcoes>(builder.Configuration.GetSection("Jwt"));
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opcoes =>
-    {
-        opcoes.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(segredoJwt)),
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
-
-builder.Services.AddAuthorization();
+                .AllowAnyMethod()));
 
 // Repositories
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
+builder.Services.AddScoped<IProdutoRepository, ProdutoRepository>();
+builder.Services.AddScoped<IVendaRepository, VendaRepository>();
+builder.Services.AddScoped<IEncomendaRepository, EncomendaRepository>();
+builder.Services.AddScoped<IFichaRepository, FichaRepository>();
+builder.Services.AddScoped<IContaRepository, ContaRepository>();
+builder.Services.AddScoped<IFormaPagamentoRepository, FormaPagamentoRepository>();
 
 // Services
-builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<IProdutoService, ProdutoService>();
+builder.Services.AddScoped<IVendaService, VendaService>();
+builder.Services.AddScoped<IEncomendaService, EncomendaService>();
+builder.Services.AddScoped<IFichaService, FichaService>();
+builder.Services.AddScoped<IContaService, ContaService>();
+builder.Services.AddScoped<IFormaPagamentoService, FormaPagamentoService>();
 
 var app = builder.Build();
 
-// Aplicar migrations automaticamente
+// Aplicar migrations e seed de desenvolvimento
 using (var escopo = app.Services.CreateScope())
 {
     var db = escopo.ServiceProvider.GetRequiredService<SonoLeveDbContext>();
     db.Database.Migrate();
+
+    if (app.Environment.IsDevelopment())
+        await DataSeeder.SeedAsync(db);
 }
 
 app.UseCors();
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseStaticFiles();
 app.MapControllers();
 app.Run();

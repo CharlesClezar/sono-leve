@@ -15,13 +15,14 @@ import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
+import { TableSkeleton } from "@/components/TableSkeleton";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
 const tabs = ["Histórico", "Aberta", "Parcial", "Finalizada", "Cancelada"] as const;
 
 export default function Fichas() {
-  const { data: fichas } = useFichas();
+  const { data: fichas = [], isLoading } = useFichas();
   const newShortcutLabel = useShortcutLabel("new_contextual");
   const [tab, setTab] = useState<(typeof tabs)[number]>("Histórico");
   const [queryByTab, setQueryByTab] = useState<Record<(typeof tabs)[number], string>>(
@@ -36,12 +37,12 @@ export default function Fichas() {
   const columns = useMemo<DataGridColumn<Ficha>[]>(
     () => [
       { id: "id", label: "Ficha", accessor: (ficha) => ficha.id },
-      { id: "reseller", label: "Revendedora", accessor: (ficha) => ficha.reseller },
-      { id: "openedAt", label: "Abertura", accessor: (ficha) => ficha.openedAt, filterAccessor: (ficha) => formatDate(ficha.openedAt) },
-      { id: "sent", label: "Enviadas", accessor: (ficha) => ficha.sent },
-      { id: "returned", label: "Devolvidas", accessor: (ficha) => ficha.returned },
-      { id: "sold", label: "Vendidas", accessor: (ficha) => ficha.sold },
-      { id: "totalSold", label: "Total vendido", accessor: (ficha) => ficha.totalSold },
+      { id: "revendedora", label: "Revendedora", accessor: (ficha) => ficha.revendedora },
+      { id: "dataAbertura", label: "Abertura", accessor: (ficha) => ficha.dataAbertura, filterAccessor: (ficha) => formatDate(ficha.dataAbertura) },
+      { id: "enviadas", label: "Enviadas", accessor: (ficha) => ficha.enviadas },
+      { id: "devolvidas", label: "Devolvidas", accessor: (ficha) => ficha.devolvidas },
+      { id: "vendidas", label: "Vendidas", accessor: (ficha) => ficha.vendidas },
+      { id: "totalVendido", label: "Total vendido", accessor: (ficha) => ficha.totalVendido },
       { id: "status", label: "Status", accessor: (ficha) => ficha.status },
     ],
     [],
@@ -51,11 +52,11 @@ export default function Fichas() {
     () =>
       fichas.filter((f) => {
         if (tab !== "Histórico" && f.status !== tab) return false;
-        if (query && !f.reseller.toLowerCase().includes(query.toLowerCase()) && !f.id.toLowerCase().includes(query.toLowerCase()))
+        if (query && !f.revendedora.toLowerCase().includes(query.toLowerCase()) && !f.id.toLowerCase().includes(query.toLowerCase()))
           return false;
         return true;
       }),
-    [query, tab]
+    [query, tab, fichas]
   );
   const grid = useDataGrid(filtered, columns);
   const pagination = usePagination(grid.rows);
@@ -80,14 +81,7 @@ export default function Fichas() {
       />
       <div className="space-y-4 p-6">
         <div className="sticky top-20 z-20 -mx-6 space-y-4 border-b bg-background/95 px-6 pb-4 pt-4 backdrop-blur">
-          <IndexedTabsNav
-            tabs={tabs}
-            activeTab={tab}
-            onSelect={selectTab}
-            getTabButtonProps={indexedTabs.getTabButtonProps}
-            getShortcutLabel={indexedTabs.getShortcutLabel}
-          />
-
+          <IndexedTabsNav tabs={tabs} activeTab={tab} onSelect={selectTab} getTabButtonProps={indexedTabs.getTabButtonProps} getShortcutLabel={indexedTabs.getShortcutLabel} />
           <Card className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
             <div className="relative min-w-0 flex-1">
@@ -99,7 +93,6 @@ export default function Fichas() {
         </div>
 
         <div {...indexedTabs.getTabPanelProps(tab)} className="space-y-4">
-
         <div className="grid gap-3 lg:hidden">
           {pagination.items.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</Card>
@@ -108,32 +101,17 @@ export default function Fichas() {
               <Card key={f.id} className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-medium">{f.reseller}</div>
+                    <div className="font-medium">{f.revendedora}</div>
                     <div className="font-mono text-xs text-muted-foreground">{f.id}</div>
                   </div>
                   <StatusBadge status={f.status} />
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Abertura</div>
-                    <div>{formatDate(f.openedAt)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Enviadas</div>
-                    <div>{f.sent}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div>
-                    <div>{f.returned}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Vendidas</div>
-                    <div className="font-semibold text-primary">{f.sold}</div>
-                  </div>
-                  <div className="col-span-2">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div>
-                    <div className="font-semibold">{formatBRL(f.totalSold)}</div>
-                  </div>
+                  <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Abertura</div><div>{formatDate(f.dataAbertura)}</div></div>
+                  <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Enviadas</div><div>{f.enviadas}</div></div>
+                  <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div><div>{f.devolvidas}</div></div>
+                  <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Vendidas</div><div className="font-semibold text-primary">{f.vendidas}</div></div>
+                  <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div><div className="font-semibold">{formatBRL(f.totalVendido)}</div></div>
                 </div>
                 <div className="flex justify-end">
                   <Button variant="ghost" size="icon" asChild aria-label={`Editar ${f.id}`}>
@@ -157,30 +135,26 @@ export default function Fichas() {
                     grid={grid}
                     columnId={column.id}
                     label={column.label}
-                    align={
-                      ["sent", "returned", "sold"].includes(column.id)
-                        ? "center"
-                        : column.id === "totalSold"
-                          ? "right"
-                          : "left"
-                    }
+                    align={["enviadas", "devolvidas", "vendidas"].includes(column.id) ? "center" : column.id === "totalVendido" ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {pagination.items.length === 0 ? (
+              {isLoading ? (
+                <TableSkeleton cols={9} />
+              ) : pagination.items.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</td></tr>
               ) : pagination.items.map((f) => (
                 <tr key={f.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
-                  <td className="px-4 py-3 font-medium">{f.reseller}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(f.openedAt)}</td>
-                  <td className="px-4 py-3 text-center">{f.sent}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">{f.returned}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-primary">{f.sold}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(f.totalSold)}</td>
+                  <td className="px-4 py-3 font-medium">{f.revendedora}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{formatDate(f.dataAbertura)}</td>
+                  <td className="px-4 py-3 text-center">{f.enviadas}</td>
+                  <td className="px-4 py-3 text-center text-muted-foreground">{f.devolvidas}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-primary">{f.vendidas}</td>
+                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(f.totalVendido)}</td>
                   <td className="px-4 py-3"><StatusBadge status={f.status} /></td>
                   <td className="px-4 py-3 text-right">
                     <Button variant="ghost" size="icon" asChild aria-label={`Editar ${f.id}`}>

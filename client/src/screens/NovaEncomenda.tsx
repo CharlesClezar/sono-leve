@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
@@ -6,87 +6,111 @@ import { AppSelect } from "@/components/AppSelect";
 import { FormHeaderActions } from "@/components/FormHeaderActions";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/types";
-import { api, useDadosOperacionais } from "@/lib/api";
+import { api, useDadosOperacionais, useItensEncomenda } from "@/lib/api";
+import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function NovaEncomenda() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { customers, products, orders } = useDadosOperacionais();
+  const { clientes, produtos, encomendas } = useDadosOperacionais();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
-  const order = orders.find((item) => item.id === params.id);
-  const isEditing = Boolean(order);
-  const cameFromDashboard = searchParams.get("from") === "dashboard";
-  const breadcrumb = cameFromDashboard
-    ? ["Dashboard", "Encomenda", isEditing ? "Editar encomenda" : "Nova encomenda"]
-    : ["Encomendas", isEditing ? "Editar" : "Nova"];
-  const cancelHref = cameFromDashboard ? "/" : "/encomendas";
-  const [saving, setSaving] = useState(false);
-  const [productId, setProductId] = useState(products[0]?.id ?? "");
-  const [customerName, setCustomerName] = useState(order?.customer ?? customers[0]?.name ?? "");
-  const [dueDate, setDueDate] = useState(order?.dueDate ?? "");
-  const [size, setSize] = useState("P");
-  const [quantity, setQuantity] = useState(1);
-  const [entry, setEntry] = useState(order?.entry ?? 0);
+  const encomenda = encomendas.find((item) => item.id === params.id);
+  const editando = Boolean(encomenda);
+  const vieuDoDashboard = searchParams.get("from") === "dashboard";
+  const breadcrumb = vieuDoDashboard
+    ? ["Dashboard", "Encomenda", editando ? "Editar encomenda" : "Nova encomenda"]
+    : ["Encomendas", editando ? "Editar" : "Nova"];
+  const cancelHref = vieuDoDashboard ? "/" : "/encomendas";
+  const idempotencyKey = useRef(crypto.randomUUID());
+  const itensPreenchidos = useRef(false);
+  const [salvando, setSalvando] = useState(false);
+  const [produtoId, setProdutoId] = useState("");
+  const [buscaProduto, setBuscaProduto] = useState("");
+  const { data: itensExistentes } = useItensEncomenda(editando ? (params.id ?? "") : "");
+  const [nomeCliente, setNomeCliente] = useState(encomenda?.cliente ?? clientes[0]?.nome ?? "");
+  const [previsao, setPrevisao] = useState(encomenda?.previsao ?? "");
+  const [tamanho, setTamanho] = useState("P");
+  const [quantidade, setQuantidade] = useState(1);
+  const [entrada, setEntrada] = useState(encomenda?.entrada ?? 0);
 
-  const selectedProduct = products.find((product) => product.id === productId);
-  const total = selectedProduct ? selectedProduct.priceRetail * quantity : order?.total ?? 0;
+  const produtoSelecionado = produtos.find((p) => p.id === produtoId);
+  const total = produtoSelecionado ? produtoSelecionado.precoVarejo * quantidade : encomenda?.total ?? 0;
+
+  const produtosFiltrados = buscaProduto
+    ? produtos.filter(
+        (p) =>
+          p.ativo &&
+          (p.nome.toLowerCase().includes(buscaProduto.toLowerCase()) ||
+            p.ref.toLowerCase().includes(buscaProduto.toLowerCase()))
+      )
+    : [];
 
   useEffect(() => {
-    if (order) {
-      setCustomerName(order.customer);
-      setDueDate(order.dueDate);
-      setEntry(order.entry);
+    if (encomenda) {
+      setNomeCliente(encomenda.cliente);
+      setPrevisao(encomenda.previsao);
+      setEntrada(encomenda.entrada);
       return;
     }
 
-    if (!customerName && customers[0]) setCustomerName(customers[0].name);
-  }, [customerName, customers, order]);
+    if (!nomeCliente && clientes[0]) setNomeCliente(clientes[0].nome);
+  }, [nomeCliente, clientes, encomenda]);
 
   useEffect(() => {
-    if (!productId && products[0]) setProductId(products[0].id);
-  }, [productId, products]);
+    if (!editando || itensPreenchidos.current || !itensExistentes?.length || !produtos.length) return;
+    const primeiro = itensExistentes[0];
+    const produto = produtos.find((p) => p.ref === primeiro.ref) ?? produtos.find((p) => p.nome === primeiro.product);
+    if (produto) {
+      setProdutoId(produto.id);
+      setTamanho(primeiro.size);
+      setQuantidade(primeiro.quantity);
+    }
+    itensPreenchidos.current = true;
+  }, [itensExistentes, editando, produtos]);
 
-  const handleSave = async () => {
-    if (!customerName) return toast.error("Selecione um cliente.");
-    if (!dueDate) return toast.error("Informe a previsão de entrega.");
-    if (!selectedProduct) return toast.error("Selecione um produto.");
+  const handleSalvar = async () => {
+    if (!nomeCliente) return toast.error("Selecione um cliente.");
+    if (!previsao) return toast.error("Informe a previsão de entrega.");
+    if (!produtoSelecionado) return toast.error("Selecione um produto.");
 
-    setSaving(true);
+    setSalvando(true);
     try {
       const payload = {
-        id: order?.id,
-        customer: customerName,
-        createdAt: order?.createdAt,
-        dueDate,
+        id: encomenda?.id,
+        cliente: nomeCliente,
+        criadoEm: encomenda?.criadoEm,
+        previsao,
         total,
-        entry,
-        status: order?.status ?? "Aberta" as const,
+        entrada,
+        status: encomenda?.status ?? "Aberta" as const,
         items: [{
-          product: selectedProduct.name,
-          ref: selectedProduct.ref,
-          size,
-          quantity,
-          unitPrice: selectedProduct.priceRetail,
+          product: produtoSelecionado.nome,
+          ref: produtoSelecionado.ref,
+          size: tamanho,
+          quantity: quantidade,
+          unitPrice: produtoSelecionado.precoVarejo,
         }],
       };
-      if (isEditing) await api.atualizarEncomenda({ ...payload, id: order!.id });
-      else await api.salvarEncomenda(payload);
+      if (editando) await api.atualizarEncomenda({ ...payload, id: encomenda!.id });
+      else await api.salvarEncomenda(payload, idempotencyKey.current);
       await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
-      setSaving(false);
-      toast.success(isEditing ? "Encomenda atualizada com sucesso!" : "Encomenda cadastrada com sucesso!");
+      setSalvando(false);
+      toast.success(editando ? "Encomenda atualizada com sucesso!" : "Encomenda cadastrada com sucesso!");
       router.push("/encomendas");
     } catch {
       toast.error("Não foi possível salvar a encomenda.");
     } finally {
-      setSaving(false);
+      setSalvando(false);
     }
   };
 
@@ -94,19 +118,20 @@ export default function NovaEncomenda() {
     <AppShell>
       <PageHeader
         breadcrumb={breadcrumb}
-        title={isEditing ? "Editar encomenda" : "Nova encomenda"}
-        status={isEditing ? order?.status : "Não salvo"}
+        title={editando ? "Editar encomenda" : "Nova encomenda"}
+        status={editando ? encomenda?.status : "Não salvo"}
         actions={
           <FormHeaderActions
             cancelHref={cancelHref}
             cancelLabel={`Cancelar${cancelShortcutLabel}`}
-            onSave={handleSave}
-            saving={saving}
-            idleLabel={`${isEditing ? "Salvar alterações" : "Cadastrar encomenda"}${saveShortcutLabel}`}
+            onSave={handleSalvar}
+            saving={salvando}
+            idleLabel={`${editando ? "Salvar alterações" : "Cadastrar encomenda"}${saveShortcutLabel}`}
           />
         }
       />
 
+      <div className="flex-1 overflow-y-auto">
       <div className="grid gap-6 p-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           <Card className="p-5">
@@ -115,48 +140,88 @@ export default function NovaEncomenda() {
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Cliente</span>
                 <AppSelect
-                  value={customerName}
-                  onValueChange={setCustomerName}
-                  options={customers.map((customer) => ({ value: customer.name, label: customer.name }))}
+                  value={nomeCliente}
+                  onValueChange={setNomeCliente}
+                  options={clientes.map((c) => ({ value: c.nome, label: c.nome }))}
                 />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Previsão de entrega</span>
-                <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+                <Input type="date" value={previsao} onChange={(event) => setPrevisao(event.target.value)} />
               </label>
             </div>
           </Card>
 
           <Card className="p-5">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Item encomendado</h3>
-            <div className="grid gap-4 md:grid-cols-4">
-              <label className="space-y-1.5 md:col-span-2">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
                 <span className="text-sm font-medium">Produto</span>
-                <AppSelect
-                  className="w-full"
-                  value={productId}
-                  onValueChange={setProductId}
-                  options={products.map((product) => ({
-                    value: product.id,
-                    label: `${product.name} (${product.ref})`,
-                  }))}
-                />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-medium">Tamanho</span>
-                <AppSelect
-                  defaultValue="P"
-                  value={size}
-                  onValueChange={setSize}
-                  options={["P", "M", "G", "GG"].map((size) => ({ value: size, label: size }))}
-                />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-medium">Quantidade</span>
-                <Input type="number" min={1} value={quantity} onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))} />
-              </label>
+                {produtoSelecionado ? (
+                  <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
+                    <div className="flex items-center gap-3">
+                      {produtoSelecionado.imagemUrl ? (
+                        <img src={`${BASE_URL}${produtoSelecionado.imagemUrl}`} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 shrink-0 rounded bg-muted" />
+                      )}
+                      <div>
+                        <div className="font-medium">{produtoSelecionado.nome}</div>
+                        <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>Trocar</Button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por nome ou referência..."
+                      className="pl-9"
+                      value={buscaProduto}
+                      onChange={(e) => setBuscaProduto(e.target.value)}
+                    />
+                    {produtosFiltrados.length > 0 && (
+                      <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
+                        {produtosFiltrados.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => { setProdutoId(p.id); setBuscaProduto(""); }}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
+                          >
+                            {p.imagemUrl ? (
+                              <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
+                            ) : (
+                              <div className="h-8 w-8 shrink-0 rounded bg-muted" />
+                            )}
+                            <span className="flex-1 min-w-0">{p.nome} <span className="text-xs text-muted-foreground">({p.ref})</span></span>
+                            <span className="shrink-0 text-xs font-semibold">{formatBRL(p.precoVarejo)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium">Tamanho</span>
+                  <AppSelect
+                    defaultValue="P"
+                    value={tamanho}
+                    onValueChange={setTamanho}
+                    options={["P", "M", "G", "GG"].map((t) => ({ value: t, label: t }))}
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-sm font-medium">Quantidade</span>
+                  <Input type="number" min={1} value={quantidade} onChange={(event) => setQuantidade(Math.max(1, Number(event.target.value || 1)))} />
+                </label>
+              </div>
+
+              <Textarea placeholder="Observações da encomenda" />
             </div>
-            <Textarea className="mt-4" placeholder="Observações da encomenda" />
           </Card>
         </div>
 
@@ -165,11 +230,11 @@ export default function NovaEncomenda() {
           <div className="space-y-2.5 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Preço unitário</span>
-              <span className="font-medium">{selectedProduct ? formatBRL(selectedProduct.priceRetail) : formatBRL(0)}</span>
+              <span className="font-medium">{produtoSelecionado ? formatBRL(produtoSelecionado.precoVarejo) : formatBRL(0)}</span>
             </div>
             <label className="block space-y-1.5 pt-2">
               <span className="text-sm font-medium">Entrada</span>
-              <Input type="number" min={0} step="0.01" value={entry} onChange={(event) => setEntry(Number(event.target.value || 0))} placeholder="0,00" />
+              <Input type="number" min={0} step="0.01" value={entrada} onChange={(event) => setEntrada(Number(event.target.value || 0))} placeholder="0,00" />
             </label>
             <div className="flex justify-between pt-2">
               <span className="text-muted-foreground">Total</span>
@@ -178,6 +243,7 @@ export default function NovaEncomenda() {
             <p className="pt-2 text-xs text-muted-foreground">O saldo fica em aberto até a entrega ou geração da venda.</p>
           </div>
         </Card>
+      </div>
       </div>
     </AppShell>
   );

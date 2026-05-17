@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
@@ -18,103 +18,105 @@ export default function NovoCliente() {
   const queryClient = useQueryClient();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
-  const [saving, setSaving] = useState(false);
+  const idempotencyKey = useRef(crypto.randomUUID());
+  const [salvando, setSalvando] = useState(false);
   const params = useParams<{ id?: string }>();
-  const { data: customers } = useClientes();
-  const customer = customers.find((item) => item.id === params.id);
-  const isEditing = Boolean(customer);
+  const { data: clientes = [] } = useClientes();
+  const cliente = clientes.find((item) => item.id === params.id);
+  const editando = Boolean(cliente);
   const [form, setForm] = useState({
-    name: "",
-    phone: "",
+    nome: "",
+    telefone: "",
     cpf: "",
-    type: "varejo" as Customer["type"],
-    credit: "",
+    tipo: "varejo" as Customer["tipo"],
+    credito: "",
   });
-  const [active, setActive] = useState(true);
+  const [ativo, setAtivo] = useState(true);
 
   useEffect(() => {
-    if (!customer) return;
+    if (!cliente) return;
     setForm({
-      name: customer.name,
-      phone: customer.phone,
-      cpf: customer.cpf,
-      type: customer.type,
-      credit: String(customer.credit),
+      nome: cliente.nome,
+      telefone: cliente.telefone,
+      cpf: cliente.cpf,
+      tipo: cliente.tipo,
+      credito: String(cliente.credito),
     });
-    setActive(customer.status !== "Inativo");
-  }, [customer]);
+    setAtivo(cliente.status !== "Inativo");
+  }, [cliente]);
 
-  const updateField = (field: keyof typeof form, value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const atualizarCampo = (campo: keyof typeof form, valor: string) => {
+    setForm((atual) => ({ ...atual, [campo]: valor }));
   };
 
-  const handleSave = async () => {
-    if (!form.name.trim()) {
+  const handleSalvar = async () => {
+    if (!form.nome.trim()) {
       toast.error("Preencha o nome do cliente.");
       return;
     }
 
-    setSaving(true);
+    setSalvando(true);
     try {
-      const cliente: Customer = {
-        id: customer?.id ?? "",
-        name: form.name.trim(),
-        phone: form.phone.trim(),
+      const dadosCliente: Customer = {
+        id: cliente?.id ?? "",
+        nome: form.nome.trim(),
+        telefone: form.telefone.trim(),
         cpf: form.cpf.trim(),
-        type: form.type,
-        status: active ? "Ativo" : "Inativo",
-        credit: Number(form.credit || 0),
+        tipo: form.tipo,
+        status: ativo ? "Ativo" : "Inativo",
+        credito: Number(form.credito || 0),
       };
-      if (isEditing) await api.atualizarCliente(cliente);
-      else await api.salvarCliente(cliente);
+      if (editando) await api.atualizarCliente(dadosCliente);
+      else await api.salvarCliente(dadosCliente, idempotencyKey.current);
       await queryClient.invalidateQueries({ queryKey: ["clientes"] });
-      toast.success(isEditing ? "Cliente atualizado com sucesso!" : "Cliente cadastrado com sucesso!");
+      toast.success(editando ? "Cliente atualizado com sucesso!" : "Cliente cadastrado com sucesso!");
       router.push("/clientes");
     } catch {
       toast.error("Não foi possível salvar o cliente.");
     } finally {
-      setSaving(false);
+      setSalvando(false);
     }
   };
 
   return (
     <AppShell>
       <PageHeader
-        breadcrumb={["Clientes", isEditing ? "Editar" : "Novo"]}
-        title={isEditing ? "Editar cliente" : "Novo cliente"}
-        status={isEditing ? undefined : "Não salvo"}
+        breadcrumb={["Clientes", editando ? "Editar" : "Novo"]}
+        title={editando ? "Editar cliente" : "Novo cliente"}
+        status={editando ? undefined : "Não salvo"}
         actions={
           <FormHeaderActions
             cancelHref="/clientes"
             cancelLabel={`Cancelar${cancelShortcutLabel}`}
-            onSave={handleSave}
-            saving={saving}
-            idleLabel={`${isEditing ? "Salvar alterações" : "Cadastrar cliente"}${saveShortcutLabel}`}
+            onSave={handleSalvar}
+            saving={salvando}
+            idleLabel={`${editando ? "Salvar alterações" : "Cadastrar cliente"}${saveShortcutLabel}`}
           />
         }
       />
 
+      <div className="flex-1 overflow-y-auto">
       <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
         <Card className="p-5">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do cliente</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 md:col-span-2">
               <span className="text-sm font-medium">Nome</span>
-              <Input value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Nome completo ou razão social" />
+              <Input value={form.nome} onChange={(event) => atualizarCampo("nome", event.target.value)} placeholder="Nome completo ou razão social" />
             </label>
             <label className="space-y-1.5">
               <span className="text-sm font-medium">Telefone</span>
-              <Input value={form.phone} onChange={(event) => updateField("phone", event.target.value)} placeholder="(00) 00000-0000" />
+              <Input value={form.telefone} onChange={(event) => atualizarCampo("telefone", event.target.value)} placeholder="(00) 00000-0000" />
             </label>
             <label className="space-y-1.5">
               <span className="text-sm font-medium">CPF/CNPJ</span>
-              <Input value={form.cpf} onChange={(event) => updateField("cpf", event.target.value)} placeholder="000.000.000-00" />
+              <Input value={form.cpf} onChange={(event) => atualizarCampo("cpf", event.target.value)} placeholder="000.000.000-00" />
             </label>
             <label className="space-y-1.5">
               <span className="text-sm font-medium">Tipo</span>
               <AppSelect
-                value={form.type}
-                onValueChange={(value) => updateField("type", value as Customer["type"])}
+                value={form.tipo}
+                onValueChange={(value) => atualizarCampo("tipo", value as Customer["tipo"])}
                 options={[
                   { value: "varejo", label: "Varejo" },
                   { value: "atacado", label: "Atacado" },
@@ -123,7 +125,7 @@ export default function NovoCliente() {
             </label>
             <label className="space-y-1.5">
               <span className="text-sm font-medium">Limite de crédito</span>
-              <Input type="number" min={0} step="0.01" value={form.credit} onChange={(event) => updateField("credit", event.target.value)} placeholder="0,00" />
+              <Input type="number" min={0} step="0.01" value={form.credito} onChange={(event) => atualizarCampo("credito", event.target.value)} placeholder="0,00" />
             </label>
           </div>
         </Card>
@@ -135,7 +137,7 @@ export default function NovoCliente() {
               <div className="text-sm font-medium">Cliente ativo</div>
               <p className="text-xs text-muted-foreground">Disponível para vendas, fichas e encomendas</p>
             </div>
-            <Switch checked={active} onCheckedChange={setActive} />
+            <Switch checked={ativo} onCheckedChange={setAtivo} />
           </div>
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Endereço</h3>
           <div className="space-y-4">
@@ -149,6 +151,7 @@ export default function NovoCliente() {
             </label>
           </div>
         </Card>
+      </div>
       </div>
     </AppShell>
   );

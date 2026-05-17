@@ -6,28 +6,29 @@ export type CustomerType = "varejo" | "atacado";
 
 export interface Customer {
   id: string;
-  name: string;
-  phone: string;
+  nome: string;
+  telefone: string;
   cpf: string;
-  type: CustomerType;
+  tipo: CustomerType;
   status: "Ativo" | "Inativo";
-  credit: number;
+  credito: number;
 }
 
 export interface Product {
   id: string;
-  name: string;
+  nome: string;
   ref: string;
-  brand: string;
-  type: string;
-  subtype: string;
-  category: string;
-  collection?: string;
-  model?: string;
-  priceRetail: number;
-  priceWholesale: number;
-  active: boolean;
-  stock: number;
+  marca: string;
+  tipo: string;
+  subtipo: string;
+  categoria: string;
+  colecao?: string;
+  modelo?: string;
+  precoVarejo: number;
+  precoAtacado: number;
+  ativo: boolean;
+  estoque: number;
+  imagemUrl?: string;
 }
 
 export interface PieceDetailItem {
@@ -40,43 +41,44 @@ export interface PieceDetailItem {
 
 export interface Sale {
   id: string;
-  customer: string;
-  date: string;
-  pieces: number;
-  payment: string;
+  cliente: string;
+  data: string;
+  pecas: number;
+  pagamento: string;
   total: number;
   status: SaleStatus;
-  origin: "Balcão" | "Encomenda" | "Ficha";
+  origem: "Balcão" | "Encomenda" | "Ficha";
 }
 
 export interface Order {
   id: string;
-  customer: string;
-  createdAt: string;
-  dueDate: string;
+  cliente: string;
+  criadoEm: string;
+  previsao: string;
   total: number;
-  entry: number;
+  entrada: number;
+  pecas: number;
   status: OrderStatus;
 }
 
 export interface Ficha {
   id: string;
-  reseller: string;
-  openedAt: string;
-  sent: number;
-  returned: number;
-  sold: number;
-  totalSold: number;
+  revendedora: string;
+  dataAbertura: string;
+  enviadas: number;
+  devolvidas: number;
+  vendidas: number;
+  totalVendido: number;
   status: FichaStatus;
 }
 
 export interface Account {
   id: string;
-  customer: string;
-  origin: string;
+  cliente: string;
+  origem: string;
   total: number;
-  received: number;
-  dueDate: string;
+  recebido: number;
+  vencimento: string;
   status: AccountStatus;
 }
 
@@ -85,5 +87,5 @@ export function formatBRL(value: number) {
 }
 
 export function formatDate(date: string) {
-  return new Date(date + "T00:00:00").toLocaleDateString("pt-BR");
+  return new Date(date.substring(0, 10) + "T00:00:00").toLocaleDateString("pt-BR");
 }

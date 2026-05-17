@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { AppSelect } from "@/components/AppSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatBRL, formatDate, type OrderStatus } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { formatBRL, formatDate, type OrderStatus, type PieceDetailItem } from "@/lib/types";
 import { api, useDadosOperacionais } from "@/lib/api";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import Link from "next/link";
@@ -26,17 +27,19 @@ import {
   CircleCheck,
   Play,
   ShoppingCart,
+  PackageCheck,
+  X,
 } from "lucide-react";
 
-const toneClass: Record<string, string> = {
+const tonalidade: Record<string, string> = {
   primary: "bg-primary-soft text-primary",
   success: "bg-[hsl(var(--success-soft))] text-[hsl(var(--success))]",
   warning: "bg-warning-soft text-warning",
   info: "bg-info-soft text-info",
 };
 
-const calendarStatusOrder: OrderStatus[] = ["Aberta", "Em produção", "Fabricado parcialmente", "Pronta"];
-const calendarStatusLabel: Record<OrderStatus, string> = {
+const ordemStatusCalendario: OrderStatus[] = ["Aberta", "Em produção", "Fabricado parcialmente", "Pronta"];
+const rotuloStatusCalendario: Record<OrderStatus, string> = {
   Aberta: "Novo",
   "Em produção": "Em produção",
   "Fabricado parcialmente": "Fabricado parcialmente",
@@ -45,7 +48,7 @@ const calendarStatusLabel: Record<OrderStatus, string> = {
   Cancelada: "Cancelada",
 };
 
-const statusDotClass: Record<OrderStatus, string> = {
+const classePontoStatus: Record<OrderStatus, string> = {
   Aberta: "bg-primary text-primary-foreground shadow-[0_0_0_2px_rgb(255_255_255)]",
   "Em produção": "bg-warning text-warning-foreground shadow-[0_0_0_2px_rgb(255_255_255)]",
   "Fabricado parcialmente": "bg-[rgb(var(--partial))] text-white shadow-[0_0_0_2px_rgb(255_255_255)]",
@@ -54,7 +57,7 @@ const statusDotClass: Record<OrderStatus, string> = {
   Cancelada: "hidden",
 };
 
-const statusPillClass: Record<OrderStatus, string> = {
+const classePilula: Record<OrderStatus, string> = {
   Aberta: "bg-primary-soft text-primary",
   "Em produção": "bg-warning-soft text-warning",
   "Fabricado parcialmente": "bg-[rgb(var(--partial-soft))] text-[rgb(var(--partial-foreground))]",
@@ -63,175 +66,237 @@ const statusPillClass: Record<OrderStatus, string> = {
   Cancelada: "bg-[hsl(var(--destructive-soft))] text-[hsl(var(--destructive))]",
 };
 
-type DashboardPeriod = "today" | "7d" | "30d" | "all";
+type PeriodoDashboard = "today" | "7d" | "30d" | "all";
 
-const formatIsoDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+type ConfirmacaoPendente = { id: string; novoStatus: OrderStatus; mensagem: string } | null;
+type ModalItensPendente = { id: string; itens: PieceDetailItem[]; modo: "parcial" | "finalizar" } | null;
+
+const formatarDataIso = (data: Date) => {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
 };
 
-const shiftDays = (iso: string, amount: number) => {
-  const date = new Date(`${iso}T00:00:00`);
-  date.setDate(date.getDate() + amount);
-  return formatIsoDate(date);
+const deslocarDias = (iso: string, quantidade: number) => {
+  const data = new Date(`${iso}T00:00:00`);
+  data.setDate(data.getDate() + quantidade);
+  return formatarDataIso(data);
 };
 
 export default function Dashboard() {
-  const { accounts, fichas, orders, sales } = useDadosOperacionais();
+  const { contas, fichas, encomendas, vendas } = useDadosOperacionais();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const saleShortcutLabel = useShortcutLabel("dashboard_new_sale");
-  const orderShortcutLabel = useShortcutLabel("dashboard_new_order");
-  const fichaShortcutLabel = useShortcutLabel("dashboard_new_ficha");
-  const [selectedPeriod, setSelectedPeriod] = useState<DashboardPeriod>("today");
-  const [calendarBaseDate, setCalendarBaseDate] = useState(() => new Date());
-  const [statusById, setStatusById] = useState<Record<string, OrderStatus>>(
-    () => Object.fromEntries(orders.map((order) => [order.id, order.status])),
+  const atalhoNovaVenda = useShortcutLabel("dashboard_new_sale");
+  const atalhoNovaEncomenda = useShortcutLabel("dashboard_new_order");
+  const atalhoNovaFicha = useShortcutLabel("dashboard_new_ficha");
+  const [periodoSelecionado, setPeriodoSelecionado] = useState<PeriodoDashboard>("today");
+  const [dataBaseCalendario, setDataBaseCalendario] = useState(() => new Date());
+  const [statusPorId, setStatusPorId] = useState<Record<string, OrderStatus>>(
+    () => Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status])),
   );
-  useEffect(() => {
-    setStatusById((current) => ({
-      ...Object.fromEntries(orders.map((order) => [order.id, order.status])),
-      ...current,
-    }));
-  }, [orders]);
-  const year = calendarBaseDate.getFullYear();
-  const month = calendarBaseDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const previousMonthYear = month === 0 ? year - 1 : year;
-  const previousMonth = month === 0 ? 11 : month - 1;
-  const nextMonthYear = month === 11 ? year + 1 : year;
-  const nextMonth = month === 11 ? 0 : month + 1;
-  const previousMonthDays = new Date(year, month, 0).getDate();
-  const cells = Array.from({ length: 42 }, (_, index) => {
-    const dayNumber = index - firstDay + 1;
+  const [confirmacaoPendente, setConfirmacaoPendente] = useState<ConfirmacaoPendente>(null);
+  const [modalItens, setModalItens] = useState<ModalItensPendente>(null);
+  const [carregandoItensId, setCarregandoItensId] = useState<string | null>(null);
 
-    if (dayNumber <= 0) {
-      const day = previousMonthDays + dayNumber;
+  useEffect(() => {
+    setStatusPorId((atual) => ({
+      ...Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status])),
+      ...atual,
+    }));
+  }, [encomendas]);
+
+  const ano = dataBaseCalendario.getFullYear();
+  const mes = dataBaseCalendario.getMonth();
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const anoMesAnterior = mes === 0 ? ano - 1 : ano;
+  const mesAnterior = mes === 0 ? 11 : mes - 1;
+  const anoProximoMes = mes === 11 ? ano + 1 : ano;
+  const proximoMes = mes === 11 ? 0 : mes + 1;
+  const diasMesAnterior = new Date(ano, mes, 0).getDate();
+  const celulas = Array.from({ length: 42 }, (_, index) => {
+    const numeroDia = index - primeiroDia + 1;
+
+    if (numeroDia <= 0) {
+      const dia = diasMesAnterior + numeroDia;
       return {
-        day,
-        inCurrentMonth: false,
-        iso: `${previousMonthYear}-${String(previousMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        dia,
+        noMesAtual: false,
+        iso: `${anoMesAnterior}-${String(mesAnterior + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
       };
     }
 
-    if (dayNumber > daysInMonth) {
-      const day = dayNumber - daysInMonth;
+    if (numeroDia > diasNoMes) {
+      const dia = numeroDia - diasNoMes;
       return {
-        day,
-        inCurrentMonth: false,
-        iso: `${nextMonthYear}-${String(nextMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        dia,
+        noMesAtual: false,
+        iso: `${anoProximoMes}-${String(proximoMes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`,
       };
     }
 
     return {
-      day: dayNumber,
-      inCurrentMonth: true,
-      iso: `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNumber).padStart(2, "0")}`,
+      dia: numeroDia,
+      noMesAtual: true,
+      iso: `${ano}-${String(mes + 1).padStart(2, "0")}-${String(numeroDia).padStart(2, "0")}`,
     };
   });
-  const deliveriesByDate = useMemo(() => {
-    const grouped = new Map<string, typeof orders>();
-    orders.forEach((order) => {
-      const currentStatus = statusById[order.id] ?? order.status;
-      if (currentStatus === "Cancelada" || currentStatus === "Entregue") return;
-      const dueDate = new Date(`${order.dueDate}T00:00:00`);
-      const iso = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-      const current = grouped.get(iso) ?? [];
-      current.push(order);
-      grouped.set(iso, current);
+
+  const entregasPorData = useMemo(() => {
+    const agrupadas = new Map<string, typeof encomendas>();
+    encomendas.forEach((encomenda) => {
+      const statusAtual = statusPorId[encomenda.id] ?? encomenda.status;
+      if (statusAtual === "Cancelada" || statusAtual === "Entregue") return;
+      const iso = encomenda.previsao.substring(0, 10);
+      const atuais = agrupadas.get(iso) ?? [];
+      atuais.push(encomenda);
+      agrupadas.set(iso, atuais);
     });
-    return grouped;
-  }, [statusById]);
-  const visibleDeliveryIsos = useMemo(
-    () => cells.map((cell) => cell.iso).filter((iso) => deliveriesByDate.has(iso)),
-    [cells, deliveriesByDate]
+    return agrupadas;
+  }, [statusPorId]);
+
+  const isosEntregasVisiveis = useMemo(
+    () => celulas.map((celula) => celula.iso).filter((iso) => entregasPorData.has(iso)),
+    [celulas, entregasPorData]
   );
-  const deliveryDays = new Set(visibleDeliveryIsos);
-  const currentDateIso = useMemo(() => {
-    const today = new Date();
-    return formatIsoDate(today);
+  const diasEntrega = new Set(isosEntregasVisiveis);
+  const dataAtualIso = useMemo(() => {
+    const hoje = new Date();
+    return formatarDataIso(hoje);
   }, []);
-  const periodRange = useMemo(() => {
-    if (selectedPeriod === "all") return null;
-    if (selectedPeriod === "today") return { start: currentDateIso, end: currentDateIso };
-    if (selectedPeriod === "7d") return { start: shiftDays(currentDateIso, -6), end: currentDateIso };
-    return { start: shiftDays(currentDateIso, -29), end: currentDateIso };
-  }, [currentDateIso, selectedPeriod]);
-  const filteredSales = useMemo(
+  const intervaloPeriodo = useMemo(() => {
+    if (periodoSelecionado === "all") return null;
+    if (periodoSelecionado === "today") return { inicio: dataAtualIso, fim: dataAtualIso };
+    if (periodoSelecionado === "7d") return { inicio: deslocarDias(dataAtualIso, -6), fim: dataAtualIso };
+    return { inicio: deslocarDias(dataAtualIso, -29), fim: dataAtualIso };
+  }, [dataAtualIso, periodoSelecionado]);
+
+  const vendasFiltradas = useMemo(
     () =>
-      sales.filter(
-        (sale) =>
-          sale.status === "Gerada" &&
-          (periodRange ? sale.date >= periodRange.start && sale.date <= periodRange.end : true)
+      vendas.filter(
+        (venda) =>
+          venda.status === "Gerada" &&
+          (intervaloPeriodo ? venda.data.substring(0, 10) >= intervaloPeriodo.inicio && venda.data.substring(0, 10) <= intervaloPeriodo.fim : true)
       ),
-    [periodRange]
+    [intervaloPeriodo]
   );
-  const filteredAccounts = useMemo(
+  const contasFiltradas = useMemo(
     () =>
-      accounts.filter((account) =>
-        periodRange ? account.dueDate >= periodRange.start && account.dueDate <= periodRange.end : true
+      contas.filter((conta) =>
+        intervaloPeriodo ? conta.vencimento.substring(0, 10) >= intervaloPeriodo.inicio && conta.vencimento.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [periodRange]
+    [intervaloPeriodo]
   );
-  const filteredFichas = useMemo(
+  const fichasFiltradas = useMemo(
     () =>
       fichas.filter((ficha) =>
-        periodRange ? ficha.openedAt >= periodRange.start && ficha.openedAt <= periodRange.end : true
+        intervaloPeriodo ? ficha.dataAbertura.substring(0, 10) >= intervaloPeriodo.inicio && ficha.dataAbertura.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [periodRange]
+    [intervaloPeriodo]
   );
-  const filteredOrders = useMemo(
+  const encomendasFiltradas = useMemo(
     () =>
-      orders.filter((order) =>
-        periodRange ? order.dueDate >= periodRange.start && order.dueDate <= periodRange.end : true
+      encomendas.filter((encomenda) =>
+        intervaloPeriodo ? encomenda.previsao.substring(0, 10) >= intervaloPeriodo.inicio && encomenda.previsao.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [periodRange]
+    [intervaloPeriodo]
   );
   const kpis = useMemo(() => {
-    const faturado = filteredSales.reduce((total, sale) => total + sale.total, 0);
-    const recebido = filteredAccounts.reduce((total, account) => total + account.received, 0);
-    const emAberto = filteredAccounts.reduce((total, account) => total + Math.max(account.total - account.received, 0), 0);
-    const vendas = filteredSales.length;
-    const ticketMedio = vendas > 0 ? faturado / vendas : 0;
-    const fichasAbertas = filteredFichas.filter((ficha) => ficha.status === "Aberta" || ficha.status === "Parcial").length;
-    const encomendasProntas = filteredOrders.filter((order) => (statusById[order.id] ?? order.status) === "Pronta").length;
+    const faturado = vendasFiltradas.reduce((total, venda) => total + venda.total, 0);
+    const recebido = contasFiltradas.reduce((total, conta) => total + conta.recebido, 0);
+    const emAberto = contasFiltradas.reduce((total, conta) => total + Math.max(conta.total - conta.recebido, 0), 0);
+    const numVendas = vendasFiltradas.length;
+    const ticketMedio = numVendas > 0 ? faturado / numVendas : 0;
+    const fichasAbertas = fichasFiltradas.filter((ficha) => ficha.status === "Aberta" || ficha.status === "Parcial").length;
+    const encomendasProntas = encomendasFiltradas.filter((encomenda) => (statusPorId[encomenda.id] ?? encomenda.status) === "Pronta").length;
 
     return [
-      { label: "Faturado", value: formatBRL(faturado), icon: TrendingUp, tone: "primary" },
-      { label: "Recebido", value: formatBRL(recebido), icon: Wallet, tone: "success" },
-      { label: "Em aberto", value: formatBRL(emAberto), icon: Clock, tone: "warning" },
-      { label: "Vendas", value: vendas.toString(), icon: ShoppingBag, tone: "primary" },
-      { label: "Ticket médio", value: formatBRL(ticketMedio), icon: Receipt, tone: "primary" },
-      { label: "Fichas abertas", value: fichasAbertas.toString(), icon: ClipboardList, tone: "primary" },
-      { label: "Encomendas prontas", value: encomendasProntas.toString(), icon: Package2, tone: "info" },
+      { label: "Faturado", value: formatBRL(faturado), icon: TrendingUp, tom: "primary" },
+      { label: "Recebido", value: formatBRL(recebido), icon: Wallet, tom: "success" },
+      { label: "Em aberto", value: formatBRL(emAberto), icon: Clock, tom: "warning" },
+      { label: "Vendas", value: numVendas.toString(), icon: ShoppingBag, tom: "primary" },
+      { label: "Ticket médio", value: formatBRL(ticketMedio), icon: Receipt, tom: "primary" },
+      { label: "Fichas abertas", value: fichasAbertas.toString(), icon: ClipboardList, tom: "primary" },
+      { label: "Encomendas prontas", value: encomendasProntas.toString(), icon: Package2, tom: "info" },
     ];
-  }, [filteredAccounts, filteredFichas, filteredOrders, filteredSales, statusById]);
-  const [selectedDateIso, setSelectedDateIso] = useState<string | null>(null);
-  useEffect(() => {
-    setSelectedDateIso((current) => {
-      if (current && cells.some((cell) => cell.iso === current)) return current;
-      if (cells.some((cell) => cell.iso === currentDateIso)) return currentDateIso;
-      return visibleDeliveryIsos[0] ?? null;
-    });
-  }, [cells, currentDateIso, deliveriesByDate, visibleDeliveryIsos]);
+  }, [contasFiltradas, fichasFiltradas, encomendasFiltradas, vendasFiltradas, statusPorId]);
 
-  const selectedOrders = selectedDateIso ? deliveriesByDate.get(selectedDateIso) ?? [] : [];
-  const selectedDateLabel = selectedDateIso ? formatDate(selectedDateIso) : null;
-  const moveStatus = async (id: string, nextStatus: OrderStatus) => {
-    setStatusById((current) => ({ ...current, [id]: nextStatus }));
-    await api.atualizarStatusEncomenda(id, nextStatus);
+  const [dataIsoSelecionada, setDataIsoSelecionada] = useState<string | null>(null);
+  useEffect(() => {
+    setDataIsoSelecionada((atual) => {
+      if (atual && celulas.some((celula) => celula.iso === atual)) return atual;
+      if (celulas.some((celula) => celula.iso === dataAtualIso)) return dataAtualIso;
+      return isosEntregasVisiveis[0] ?? null;
+    });
+  }, [celulas, dataAtualIso, entregasPorData, isosEntregasVisiveis]);
+
+  const encomendasSelecionadas = dataIsoSelecionada ? entregasPorData.get(dataIsoSelecionada) ?? [] : [];
+  const rotuloDataSelecionada = dataIsoSelecionada ? formatDate(dataIsoSelecionada) : null;
+
+  const moverStatus = async (id: string, novoStatus: OrderStatus) => {
+    setStatusPorId((atual) => ({ ...atual, [id]: novoStatus }));
+    await api.atualizarStatusEncomenda(id, novoStatus);
     await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
   };
 
-  const goToPreviousMonth = () => {
-    setCalendarBaseDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+  const abrirConfirmacaoIniciar = (id: string) =>
+    setConfirmacaoPendente({ id, novoStatus: "Em produção", mensagem: "Confirma o início da produção desta encomenda?" });
+
+  const abrirConfirmacaoConcluir = (id: string) =>
+    setConfirmacaoPendente({
+      id,
+      novoStatus: "Pronta",
+      mensagem: "Confirma a conclusão de todos os itens desta encomenda? Todos os produtos serão marcados como concluídos.",
+    });
+
+  const confirmarAcao = async () => {
+    if (!confirmacaoPendente) return;
+    const { id, novoStatus } = confirmacaoPendente;
+    setConfirmacaoPendente(null);
+    await moverStatus(id, novoStatus);
   };
 
-  const goToNextMonth = () => {
-    setCalendarBaseDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+  const abrirModalItens = async (id: string, modo: "parcial" | "finalizar") => {
+    setCarregandoItensId(id);
+    try {
+      const itens = await api.itensEncomenda(id);
+      setModalItens({ id, itens, modo });
+    } finally {
+      setCarregandoItensId(null);
+    }
+  };
+
+  const confirmarSelecaoItens = async (itensConcluidos: PieceDetailItem[]) => {
+    if (!modalItens) return;
+    const { id, modo } = modalItens;
+    setModalItens(null);
+    if (modo === "parcial") {
+      localStorage.setItem(`sono_leve_parcial_${id}`, JSON.stringify(itensConcluidos));
+      await moverStatus(id, "Fabricado parcialmente");
+    } else {
+      await moverStatus(id, "Pronta");
+    }
+  };
+
+  const irParaVenda = (id: string, status: OrderStatus) => {
+    if (status === "Fabricado parcialmente") {
+      const parcialStr = localStorage.getItem(`sono_leve_parcial_${id}`);
+      const itensParciais: PieceDetailItem[] = parcialStr ? JSON.parse(parcialStr) : [];
+      sessionStorage.setItem("sono_leve_itens_venda", JSON.stringify(itensParciais));
+      router.push(`/vendas/nova?from=encomenda&id=${id}&parcial=1`);
+    } else {
+      router.push(`/vendas/nova?from=encomenda&id=${id}`);
+    }
+  };
+
+  const irParaMesAnterior = () => {
+    setDataBaseCalendario((atual) => new Date(atual.getFullYear(), atual.getMonth() - 1, 1));
+  };
+
+  const irParaProximoMes = () => {
+    setDataBaseCalendario((atual) => new Date(atual.getFullYear(), atual.getMonth() + 1, 1));
   };
 
   return (
@@ -244,8 +309,8 @@ export default function Dashboard() {
           <>
             <AppSelect
               className="h-9 w-[170px]"
-              value={selectedPeriod}
-              onValueChange={(value) => setSelectedPeriod(value as DashboardPeriod)}
+              value={periodoSelecionado}
+              onValueChange={(value) => setPeriodoSelecionado(value as PeriodoDashboard)}
               options={[
                 { value: "today", label: "Hoje" },
                 { value: "7d", label: "Últimos 7 dias" },
@@ -254,13 +319,13 @@ export default function Dashboard() {
               ]}
             />
             <Button asChild variant="outline">
-              <Link href="/fichas/nova?from=dashboard">{`Nova ficha${fichaShortcutLabel}`}</Link>
+              <Link href="/fichas/nova?from=dashboard">{`Nova ficha${atalhoNovaFicha}`}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/encomendas/nova?from=dashboard">{`Nova encomenda${orderShortcutLabel}`}</Link>
+              <Link href="/encomendas/nova?from=dashboard">{`Nova encomenda${atalhoNovaEncomenda}`}</Link>
             </Button>
             <Button asChild>
-              <Link href="/vendas/nova?from=dashboard">{`Nova venda${saleShortcutLabel}`}</Link>
+              <Link href="/vendas/nova?from=dashboard">{`Nova venda${atalhoNovaVenda}`}</Link>
             </Button>
           </>
         }
@@ -272,7 +337,7 @@ export default function Dashboard() {
             {kpis.map((k) => (
               <Card key={k.label} className="p-3 transition hover:shadow-md">
                 <div className="mb-2 flex items-center gap-2">
-                  <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${toneClass[k.tone]}`}>
+                  <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${tonalidade[k.tom]}`}>
                     <k.icon className="h-4 w-4" />
                   </div>
                   <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</div>
@@ -289,18 +354,18 @@ export default function Dashboard() {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={goToPreviousMonth}
+                    onClick={irParaMesAnterior}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     aria-label="Mês anterior"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <span className="min-w-[120px] text-center text-xs text-muted-foreground sm:text-sm">
-                    {calendarBaseDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                    {dataBaseCalendario.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
                   </span>
                   <button
                     type="button"
-                    onClick={goToNextMonth}
+                    onClick={irParaProximoMes}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     aria-label="Próximo mês"
                   >
@@ -314,42 +379,40 @@ export default function Dashboard() {
                 ))}
               </div>
               <div className="grid flex-1 grid-cols-7 grid-rows-6 gap-1 text-center sm:gap-1.5">
-                {cells.map((cell, i) => (
+                {celulas.map((celula, i) => (
                   (() => {
-                    const day = cell.day;
-                    const inCurrentMonth = cell.inCurrentMonth;
-                    const iso = cell.iso;
-                    const dayOrders = deliveriesByDate.get(iso) ?? [];
-                    const dayStatusCounts = calendarStatusOrder
+                    const { dia, noMesAtual, iso } = celula;
+                    const encomendasDia = entregasPorData.get(iso) ?? [];
+                    const contagensStatusDia = ordemStatusCalendario
                       .map((status) => ({
                         status,
-                        count: dayOrders.filter((order) => (statusById[order.id] ?? order.status) === status).length,
+                        count: encomendasDia.filter((encomenda) => (statusPorId[encomenda.id] ?? encomenda.status) === status).length,
                       }))
-                      .filter((entry) => entry.count > 0);
+                      .filter((entrada) => entrada.count > 0);
 
                     return (
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setSelectedDateIso(iso)}
+                        onClick={() => setDataIsoSelecionada(iso)}
                         className={`relative flex h-full min-h-[3.25rem] items-center justify-center rounded-xl border text-sm font-medium transition-all sm:min-h-[3.5rem] sm:text-base ${
-                          deliveryDays.has(iso)
-                            ? selectedDateIso === iso
+                          diasEntrega.has(iso)
+                            ? dataIsoSelecionada === iso
                               ? "border-primary bg-primary text-primary-foreground shadow-sm"
                               : "border-primary/35 bg-primary-soft/90 font-semibold text-primary hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-soft hover:shadow-sm"
-                            : inCurrentMonth
+                            : noMesAtual
                               ? "border-transparent text-foreground hover:bg-muted"
                               : "border-transparent text-muted-foreground/40 hover:bg-muted/40"
-                        } ${selectedDateIso === iso ? "ring-2 ring-primary ring-offset-1" : ""}`}
+                        } ${dataIsoSelecionada === iso ? "ring-2 ring-primary ring-offset-1" : ""}`}
                       >
-                        <span className={`${dayStatusCounts.length > 0 ? "pb-3" : ""}`}>{day}</span>
-                        {dayStatusCounts.length > 0 && (
+                        <span className={`${contagensStatusDia.length > 0 ? "pb-3" : ""}`}>{dia}</span>
+                        {contagensStatusDia.length > 0 && (
                           <span className="absolute bottom-1 right-1 flex items-center gap-1">
-                            {dayStatusCounts.map(({ status, count }) => (
+                            {contagensStatusDia.map(({ status, count }) => (
                               <span
                                 key={status}
-                                className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${statusDotClass[status]}`}
-                                title={`${count} ${calendarStatusLabel[status]}`}
+                                className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${classePontoStatus[status]}`}
+                                title={`${count} ${rotuloStatusCalendario[status]}`}
                               >
                                 {count}
                               </span>
@@ -368,11 +431,11 @@ export default function Dashboard() {
                 <CalendarClock className="h-4 w-4 text-primary" />
                 <h3 className="font-semibold">Encomendas do dia</h3>
               </div>
-              {selectedDateLabel ? (
+              {rotuloDataSelecionada ? (
                 <p className="mb-3 text-sm text-muted-foreground">
-                  {selectedOrders.length > 0
-                    ? `${selectedOrders.length} encomenda${selectedOrders.length > 1 ? "s" : ""} para ${selectedDateLabel}`
-                    : `Nenhuma encomenda para ${selectedDateLabel}`}
+                  {encomendasSelecionadas.length > 0
+                    ? `${encomendasSelecionadas.length} encomenda${encomendasSelecionadas.length > 1 ? "s" : ""} para ${rotuloDataSelecionada}`
+                    : `Nenhuma encomenda para ${rotuloDataSelecionada}`}
                 </p>
               ) : (
                 <p className="mb-3 text-sm text-muted-foreground">
@@ -380,42 +443,47 @@ export default function Dashboard() {
                 </p>
               )}
               <div className="min-h-0 flex-1">
-                {selectedOrders.length > 0 ? (
+                {encomendasSelecionadas.length > 0 ? (
                   <ul className="space-y-2 lg:h-full lg:overflow-y-auto lg:pr-1">
-                    {selectedOrders.map((order) => (
+                    {encomendasSelecionadas.map((encomenda) => (
                       <li
-                        key={order.id}
+                        key={encomenda.id}
                         role="button"
                         tabIndex={0}
-                        onClick={() => router.push(`/encomendas?encomenda=${encodeURIComponent(order.id)}`)}
+                        onClick={() => router.push(`/encomendas?encomenda=${encodeURIComponent(encomenda.id)}`)}
                         onKeyDown={(event) => {
                           if (event.target !== event.currentTarget) return;
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            router.push(`/encomendas?encomenda=${encodeURIComponent(order.id)}`);
+                            router.push(`/encomendas?encomenda=${encodeURIComponent(encomenda.id)}`);
                           }
                         }}
                         className="cursor-pointer rounded-lg border bg-muted/30 p-3 transition hover:border-primary/35 hover:bg-primary-soft/40 focus-within:border-primary/35"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-medium">{order.customer}</div>
-                            <div className="text-xs text-muted-foreground">{order.id}</div>
+                            <div className="font-medium">{encomenda.cliente}</div>
+                            <div className="text-xs text-muted-foreground">{encomenda.id}</div>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-2">
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusPillClass[statusById[order.id] ?? order.status]}`}>
-                              {calendarStatusLabel[statusById[order.id] ?? order.status]}
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${classePilula[statusPorId[encomenda.id] ?? encomenda.status]}`}>
+                              {rotuloStatusCalendario[statusPorId[encomenda.id] ?? encomenda.status]}
                             </span>
-                            <DashboardOrderActionButton
-                              id={order.id}
-                              status={statusById[order.id] ?? order.status}
-                              onMove={moveStatus}
+                            <BotaoAcaoEncomendaDashboard
+                              id={encomenda.id}
+                              status={statusPorId[encomenda.id] ?? encomenda.status}
+                              carregando={carregandoItensId === encomenda.id}
+                              aoIniciar={abrirConfirmacaoIniciar}
+                              aoConcluirTudo={abrirConfirmacaoConcluir}
+                              aoConcluirParcial={(id) => abrirModalItens(id, "parcial")}
+                              aoFinalizarParcial={(id) => abrirModalItens(id, "finalizar")}
+                              aoVender={irParaVenda}
                             />
                           </div>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Total</span>
-                          <span className="font-semibold">{formatBRL(order.total)}</span>
+                          <span className="font-semibold">{formatBRL(encomenda.total)}</span>
                         </div>
                       </li>
                     ))}
@@ -435,28 +503,52 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {confirmacaoPendente && (
+        <ModalConfirmacao
+          mensagem={confirmacaoPendente.mensagem}
+          onConfirmar={confirmarAcao}
+          onCancelar={() => setConfirmacaoPendente(null)}
+        />
+      )}
+      {modalItens && (
+        <ModalSelecaoItens
+          itens={modalItens.itens}
+          modo={modalItens.modo}
+          onConfirmar={confirmarSelecaoItens}
+          onCancelar={() => setModalItens(null)}
+        />
+      )}
     </AppShell>
   );
 }
 
-function DashboardOrderActionButton({
+function BotaoAcaoEncomendaDashboard({
   id,
   status,
-  onMove,
+  carregando,
+  aoIniciar,
+  aoConcluirTudo,
+  aoConcluirParcial,
+  aoFinalizarParcial,
+  aoVender,
 }: {
   id: string;
   status: OrderStatus;
-  onMove: (id: string, nextStatus: OrderStatus) => void;
+  carregando: boolean;
+  aoIniciar: (id: string) => void;
+  aoConcluirTudo: (id: string) => void;
+  aoConcluirParcial: (id: string) => void;
+  aoFinalizarParcial: (id: string) => void;
+  aoVender: (id: string, status: OrderStatus) => void;
 }) {
   if (status === "Aberta") {
     return (
       <button
         type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onMove(id, "Em produção");
-        }}
-        className="inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 text-xs font-medium text-primary transition hover:bg-primary/15"
+        onClick={(event) => { event.stopPropagation(); aoIniciar(id); }}
+        disabled={carregando}
+        className="inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 text-xs font-medium text-primary transition hover:bg-primary/15 disabled:opacity-50"
       >
         <Play className="h-3.5 w-3.5" />
         Iniciar
@@ -466,48 +558,243 @@ function DashboardOrderActionButton({
 
   if (status === "Em produção") {
     return (
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onMove(id, "Fabricado parcialmente");
-        }}
-        className="inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
-      >
-        <CircleCheck className="h-3.5 w-3.5" />
-        Concluir
-      </button>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); aoConcluirParcial(id); }}
+          disabled={carregando}
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-warning/30 bg-warning-soft px-2.5 text-xs font-medium text-warning transition hover:bg-warning/10 disabled:opacity-50"
+        >
+          <PackageCheck className="h-3.5 w-3.5" />
+          Parcial
+        </button>
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); aoConcluirTudo(id); }}
+          disabled={carregando}
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+        >
+          <CircleCheck className="h-3.5 w-3.5" />
+          Concluir
+        </button>
+      </div>
     );
   }
 
   if (status === "Fabricado parcialmente") {
     return (
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onMove(id, "Pronta");
-        }}
-        className="inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border border-[rgb(var(--partial))/0.35] bg-[rgb(var(--partial-soft))] text-xs font-medium text-[rgb(var(--partial-foreground))] transition hover:bg-[rgb(var(--partial-soft))/0.8]"
-      >
-        <CircleCheck className="h-3.5 w-3.5" />
-        Concluir
-      </button>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); aoFinalizarParcial(id); }}
+          disabled={carregando}
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-[rgb(var(--partial))/0.35] bg-[rgb(var(--partial-soft))] px-2.5 text-xs font-medium text-[rgb(var(--partial-foreground))] transition hover:opacity-80 disabled:opacity-50"
+        >
+          <CircleCheck className="h-3.5 w-3.5" />
+          Concluir
+        </button>
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); aoVender(id, status); }}
+          disabled={carregando}
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-emerald-600 px-2.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          Vender
+        </button>
+      </div>
     );
   }
 
   if (status === "Pronta") {
     return (
-      <Link
-        href={`/vendas/nova?from=encomenda&id=${id}`}
-        onClick={(event) => event.stopPropagation()}
+      <button
+        type="button"
+        onClick={(event) => { event.stopPropagation(); aoVender(id, status); }}
         className="inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md bg-emerald-600 text-xs font-semibold text-white transition hover:bg-emerald-700"
       >
         <ShoppingCart className="h-3.5 w-3.5" />
         Vender
-      </Link>
+      </button>
     );
   }
 
   return null;
+}
+
+function ModalConfirmacao({
+  mensagem,
+  onConfirmar,
+  onCancelar,
+}: {
+  mensagem: string;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  const confirmarRef = useRef<HTMLButtonElement>(null);
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    confirmarRef.current?.focus();
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onCancelar}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancelar(); }}
+    >
+      <div
+        className="w-96 rounded-xl border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="mb-2 text-base font-semibold">Confirmar ação</h3>
+        <p className="mb-6 text-sm text-muted-foreground">{mensagem}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            ref={cancelarRef}
+            type="button"
+            onClick={onCancelar}
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+            onKeyDown={(e) => {
+              if (e.key === "Tab" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                e.preventDefault();
+                confirmarRef.current?.focus();
+              }
+            }}
+          >
+            Cancelar
+          </button>
+          <button
+            ref={confirmarRef}
+            type="button"
+            onClick={onConfirmar}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            onKeyDown={(e) => {
+              if (e.key === "Tab" || e.key === "ArrowRight" || e.key === "ArrowDown") {
+                e.preventDefault();
+                cancelarRef.current?.focus();
+              }
+            }}
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalSelecaoItens({
+  itens,
+  modo,
+  onConfirmar,
+  onCancelar,
+}: {
+  itens: PieceDetailItem[];
+  modo: "parcial" | "finalizar";
+  onConfirmar: (itensSelecionados: PieceDetailItem[]) => void;
+  onCancelar: () => void;
+}) {
+  const [quantidades, setQuantidades] = useState<number[]>(() => itens.map((i) => i.quantity));
+
+  const atualizar = (idx: number, val: number) =>
+    setQuantidades((prev) => prev.map((q, i) => (i === idx ? Math.max(0, Math.min(itens[idx].quantity, val)) : q)));
+
+  const agrupados = useMemo(() => {
+    const map = new Map<string, { item: PieceDetailItem; idx: number }[]>();
+    itens.forEach((item, idx) => {
+      const key = `${item.ref}__${item.product}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({ item, idx });
+    });
+    return Array.from(map.entries());
+  }, [itens]);
+
+  const itensConcluidos = itens
+    .map((item, i) => ({ ...item, quantity: quantidades[i] }))
+    .filter((item) => item.quantity > 0);
+
+  const titulo = modo === "parcial" ? "Conclusão parcial" : "Concluir encomenda";
+  const descricao =
+    modo === "parcial"
+      ? "Informe quantas peças de cada item foram concluídas. Itens com zero não serão registrados."
+      : "Informe quais itens foram concluídos nesta etapa.";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onCancelar}
+      onKeyDown={(e) => { if (e.key === "Escape") onCancelar(); }}
+    >
+      <div
+        className="flex max-h-[85vh] w-[520px] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between border-b p-5">
+          <div>
+            <h3 className="font-semibold">{titulo}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelar}
+            className="ml-4 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+          {agrupados.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum item cadastrado nesta encomenda.</p>
+          )}
+          {agrupados.map(([key, entries]) => {
+            const { item } = entries[0];
+            return (
+              <div key={key} className="rounded-lg border p-4">
+                <div className="mb-3">
+                  <div className="text-sm font-medium">{item.product}</div>
+                  <div className="text-xs text-muted-foreground">{item.ref} · {formatBRL(item.unitPrice)}</div>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {entries.map(({ item: it, idx }) => (
+                    <div key={it.size} className="rounded-md bg-muted/40 p-2 text-center">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">{it.size}</div>
+                      <div className="mt-0.5 text-[10px] text-muted-foreground/70">máx: {it.quantity}</div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={it.quantity}
+                        value={quantidades[idx]}
+                        onChange={(e) => atualizar(idx, Number(e.target.value))}
+                        className="mt-1 h-8 border-0 bg-card text-center text-sm font-semibold"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end gap-3 border-t p-5">
+          <button
+            type="button"
+            onClick={onCancelar}
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirmar(itensConcluidos)}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            {modo === "parcial" ? "Confirmar conclusão parcial" : "Concluir encomenda"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

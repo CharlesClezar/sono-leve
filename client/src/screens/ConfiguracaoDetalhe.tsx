@@ -4,6 +4,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,12 +12,13 @@ import { PaginationFooter } from "@/components/PaginationFooter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
 import { useShortcutSettings } from "@/hooks/useShortcutSettings";
+import { api, useFormasPagamento, type FormaPagamento, type FormaPagamentoSalvar } from "@/lib/api";
 import {
   formatShortcutBinding,
   formatShortcutDisplayValue,
@@ -28,13 +30,6 @@ import {
   saveShortcutSettings,
   type ShortcutDefinition,
 } from "@/lib/shortcuts";
-
-const payments = [
-  { name: "Pix", condition: "À vista", fee: "0%", active: true },
-  { name: "Dinheiro", condition: "À vista", fee: "0%", active: true },
-  { name: "Crédito", condition: "Até 3x", fee: "Conforme maquininha", active: true },
-  { name: "Boleto", condition: "7 dias", fee: "0%", active: true },
-];
 
 const params = [
   { name: "Estoque mínimo", value: "3 peças", description: "Sinaliza produto com saldo baixo" },
@@ -102,12 +97,12 @@ export default function ConfiguracaoDetalhe() {
     setShortcutDraft(storedShortcuts);
   }, [storedShortcuts]);
 
-  const shortcutsChanged = useMemo(
+  const atalhosAlterados = useMemo(
     () => JSON.stringify(shortcutDraft) !== JSON.stringify(storedShortcuts),
     [shortcutDraft, storedShortcuts]
   );
 
-  const handleSave = () => {
+  const handleSalvar = () => {
     if (sectionKey === "atalhos") {
       saveShortcutSettings(shortcutDraft);
       toast.success("Atalhos salvos nesta máquina.");
@@ -146,9 +141,11 @@ export default function ConfiguracaoDetalhe() {
                 Restaurar padrão
               </Button>
             )}
-            <Button onClick={handleSave} disabled={sectionKey === "atalhos" ? !shortcutsChanged : false}>
-              {`Salvar alterações${saveShortcutLabel}`}
-            </Button>
+            {sectionKey !== "pagamentos" && (
+              <Button onClick={handleSalvar} disabled={sectionKey === "atalhos" ? !atalhosAlterados : false}>
+                {`Salvar alterações${saveShortcutLabel}`}
+              </Button>
+            )}
           </>
         }
       />
@@ -182,7 +179,7 @@ function ShortcutsTable({
 }) {
   const editableField = platform === "mac" ? "mac" : "windows";
   const platformLabel = platform === "mac" ? "macOS" : "Windows/Linux";
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [idEditando, setEditingId] = useState<string | null>(null);
   const [draftDisplay, setDraftDisplay] = useState("");
   const [collapsedScopes, setCollapsedScopes] = useState<string[]>([]);
   const defaultById = useMemo(
@@ -278,7 +275,7 @@ function ShortcutsTable({
             <div className="space-y-3 bg-muted/10 p-3">
               <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                 {items.map((item) => {
-                  const isEditing = editingId === item.id;
+                  const editando =idEditando === item.id;
                   const itemDefault = defaultById.get(item.id);
                   const currentValue = platform === "mac" ? item.mac : item.windows;
                   const defaultValue = platform === "mac" ? itemDefault?.mac ?? item.mac : itemDefault?.windows ?? item.windows;
@@ -301,7 +298,7 @@ function ShortcutsTable({
                           onClick={() => {
                             if (!itemDefault) return;
                             onChange(item.id, editableField, defaultValue);
-                            if (editingId === item.id) stopEditing();
+                            if (idEditando === item.id) stopEditing();
                           }}
                           disabled={!canResetLine}
                           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
@@ -323,14 +320,14 @@ function ShortcutsTable({
                             onClick={() => startEditing(item)}
                             onKeyDown={(event) => handleCapture(event, item)}
                             className={`inline-flex min-h-10 items-center rounded-xl border px-2.5 py-1.5 text-left text-sm transition ${
-                              isEditing
+                              editando
                                 ? "border-primary/35 bg-primary-soft text-primary shadow-sm"
                                 : "border-border/80 bg-background hover:border-primary/40 hover:bg-muted/30"
                             }`}
                           >
                             <ShortcutKeycaps
-                              value={isEditing ? draftDisplay || "Pressione..." : getShortcutDisplayValue(item, platform)}
-                              active={isEditing}
+                              value={editando ? draftDisplay || "Pressione..." : getShortcutDisplayValue(item, platform)}
+                              active={editando}
                             />
                           </button>
                         </div>
@@ -380,38 +377,148 @@ function formatMainKey(key: string) {
 }
 
 function PaymentsTable() {
-  const columns = useMemo<DataGridColumn<(typeof payments)[number]>[]>(
-    () => [
-      { id: "name", label: "Forma", accessor: (item) => item.name },
-      { id: "condition", label: "Condição", accessor: (item) => item.condition },
-      { id: "fee", label: "Taxa", accessor: (item) => item.fee },
-    ],
-    [],
+  const { data: formas = [], isLoading } = useFormasPagamento();
+  const queryClient = useQueryClient();
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [adicionando, setAdicionando] = useState(false);
+  const [draft, setDraft] = useState<FormaPagamentoSalvar>({ nome: "", condicao: "", taxa: "", ativo: true });
+  const [confirmandoExcluirId, setConfirmandoExcluirId] = useState<string | null>(null);
+
+  const invalidar = () => queryClient.invalidateQueries({ queryKey: ["formas-pagamento"] });
+
+  const handleEditar = (forma: FormaPagamento) => {
+    setEditandoId(forma.id);
+    setDraft({ nome: forma.nome, condicao: forma.condicao, taxa: forma.taxa, ativo: forma.ativo });
+    setAdicionando(false);
+    setConfirmandoExcluirId(null);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!editandoId) return;
+    try {
+      await api.atualizarFormaPagamento(editandoId, draft);
+      setEditandoId(null);
+      await invalidar();
+      toast.success("Forma de pagamento atualizada.");
+    } catch {
+      toast.error("Erro ao atualizar forma de pagamento.");
+    }
+  };
+
+  const handleAdicionar = () => {
+    setAdicionando(true);
+    setDraft({ nome: "", condicao: "", taxa: "", ativo: true });
+    setEditandoId(null);
+    setConfirmandoExcluirId(null);
+  };
+
+  const handleSalvarNova = async () => {
+    try {
+      await api.salvarFormaPagamento(draft);
+      setAdicionando(false);
+      await invalidar();
+      toast.success("Forma de pagamento adicionada.");
+    } catch {
+      toast.error("Erro ao adicionar forma de pagamento.");
+    }
+  };
+
+  const handleExcluir = async (id: string) => {
+    try {
+      await api.excluirFormaPagamento(id);
+      setConfirmandoExcluirId(null);
+      await invalidar();
+      toast.success("Forma de pagamento excluída.");
+    } catch {
+      toast.error("Erro ao excluir forma de pagamento.");
+    }
+  };
+
+  const editRow = (rowKey: string, onSave: () => void, onCancel: () => void) => (
+    <tr key={rowKey} className="bg-primary/5">
+      <td className="px-4 py-2">
+        <Input value={draft.nome} onChange={e => setDraft(d => ({ ...d, nome: e.target.value }))} className="h-8 max-w-[160px]" placeholder="Ex: Pix" />
+      </td>
+      <td className="px-4 py-2">
+        <Input value={draft.condicao} onChange={e => setDraft(d => ({ ...d, condicao: e.target.value }))} className="h-8 max-w-[140px]" placeholder="Ex: À vista" />
+      </td>
+      <td className="px-4 py-2">
+        <Input value={draft.taxa} onChange={e => setDraft(d => ({ ...d, taxa: e.target.value }))} className="h-8 max-w-[120px]" placeholder="Ex: 0%" />
+      </td>
+      <td className="px-4 py-2">
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input type="checkbox" className="h-4 w-4" checked={draft.ativo} onChange={e => setDraft(d => ({ ...d, ativo: e.target.checked }))} />
+          <span className="text-muted-foreground">Ativo</span>
+        </label>
+      </td>
+      <td className="px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={onSave}>Salvar</Button>
+          <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+        </div>
+      </td>
+    </tr>
   );
-  const grid = useDataGrid(payments, columns);
-  const pagination = usePagination(grid.rows);
 
   return (
     <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <span className="text-sm font-medium text-muted-foreground">Formas de pagamento</span>
+        <Button size="sm" onClick={handleAdicionar} disabled={adicionando}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          Adicionar
+        </Button>
+      </div>
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            {columns.map((column) => (
-              <DataGridColumnHeader key={column.id} grid={grid} columnId={column.id} label={column.label} />
-            ))}
+            <th className="px-4 py-3 font-medium">Forma</th>
+            <th className="px-4 py-3 font-medium">Condição</th>
+            <th className="px-4 py-3 font-medium">Taxa</th>
+            <th className="px-4 py-3 font-medium">Status</th>
+            <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y">
-          {pagination.items.map((item) => (
-            <tr key={item.name} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{item.condition}</td>
-              <td className="px-4 py-3">{item.fee}</td>
-            </tr>
-          ))}
+          {isLoading ? (
+            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
+          ) : formas.length === 0 && !adicionando ? (
+            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma forma de pagamento cadastrada.</td></tr>
+          ) : formas.map((forma) =>
+            editandoId === forma.id ? (
+              editRow(forma.id, handleSalvarEdicao, () => setEditandoId(null))
+            ) : confirmandoExcluirId === forma.id ? (
+              <tr key={forma.id} className="bg-destructive/5">
+                <td colSpan={4} className="px-4 py-3 text-sm">Excluir <strong>{forma.nome}</strong>?</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="destructive" onClick={() => handleExcluir(forma.id)}>Excluir</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmandoExcluirId(null)}>Cancelar</Button>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              <tr key={forma.id} className="hover:bg-muted/30">
+                <td className="px-4 py-3 font-medium">{forma.nome}</td>
+                <td className="px-4 py-3 text-muted-foreground">{forma.condicao}</td>
+                <td className="px-4 py-3">{forma.taxa}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    forma.ativo ? "bg-green-500/15 text-green-700 dark:text-green-400" : "bg-muted text-muted-foreground"
+                  }`}>{forma.ativo ? "Ativo" : "Inativo"}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(forma)}>Editar</Button>
+                    <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmandoExcluirId(forma.id)}>Excluir</Button>
+                  </div>
+                </td>
+              </tr>
+            )
+          )}
+          {adicionando && editRow("new", handleSalvarNova, () => setAdicionando(false))}
         </tbody>
       </table>
-      <PaginationFooter pagination={pagination} />
     </Card>
   );
 }

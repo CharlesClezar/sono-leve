@@ -3,50 +3,33 @@
   "tasks": [
     {
       "label": "backend: build",
-      "command": "dotnet",
       "type": "process",
+      "command": "dotnet",
       "args": [
         "build",
         "${workspaceFolder}/server/SonoLeve.Api/SonoLeve.Api.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
+      "group": "build",
+      "presentation": { "reveal": "silent" },
       "problemMatcher": "$msCompile"
     },
     {
-      "label": "frontend: iniciar",
+      "label": "DB: subir postgres (dev)",
       "type": "shell",
-      "command": "npm run dev",
-      "options": {
-        "cwd": "${workspaceFolder}/client"
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "label": "Frontend"
-      },
-      "problemMatcher": {
-        "owner": "nextjs",
-        "pattern": [
-          {
-            "regexp": "^(NOMATCH)(.*)$",
-            "kind": "file",
-            "file": 1,
-            "message": 2
-          }
-        ],
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "next",
-          "endsPattern": "Local:"
-        }
-      }
+      "command": "docker compose -f docker-compose.dev.yml up -d",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
     },
     {
-      "label": "full stack: preparar",
-      "dependsOn": ["backend: build", "frontend: iniciar"],
-      "dependsOrder": "parallel",
+      "label": "DB: derrubar postgres (dev)",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml down",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "silent", "panel": "shared" },
       "problemMatcher": []
     }
   ]
