@@ -33,7 +33,7 @@ export default function NovaFicha() {
   const cancelHref = vieuDoDashboard ? "/" : "/fichas";
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
-  const [revendedora, setRevendedora] = useState(ficha?.revendedora ?? "");
+  const [clienteId, setClienteId] = useState(ficha?.clienteId ?? "");
   const [produtoId, setProdutoId] = useState("");
   const [buscaProduto, setBuscaProduto] = useState("");
   const [tamanho, setTamanho] = useState("P");
@@ -52,23 +52,23 @@ export default function NovaFicha() {
 
   useEffect(() => {
     if (ficha) {
-      setRevendedora(ficha.revendedora);
+      setClienteId(ficha.clienteId);
       setQuantidade(ficha.enviadas);
       return;
     }
 
     const primeiraRevendedora = clientes.find((c) => c.tipo === "atacado");
-    if (!revendedora && primeiraRevendedora) setRevendedora(primeiraRevendedora.nome);
-  }, [clientes, ficha, revendedora]);
+    if (!clienteId && primeiraRevendedora) setClienteId(primeiraRevendedora.id);
+  }, [clientes, ficha, clienteId]);
 
   const handleSalvar = async () => {
-    if (!revendedora) return toast.error("Selecione uma revendedora.");
+    if (!clienteId) return toast.error("Selecione uma revendedora.");
 
     setSalvando(true);
     try {
       const payload = {
         id: ficha?.id,
-        revendedora,
+        clienteId,
         dataAbertura: ficha?.dataAbertura,
         enviadas: quantidade,
         devolvidas: ficha?.devolvidas ?? 0,
@@ -113,11 +113,11 @@ export default function NovaFicha() {
             <label className="space-y-1.5">
               <span className="text-sm font-medium">Cliente</span>
               <AppSelect
-                value={revendedora}
-                onValueChange={setRevendedora}
+                value={clienteId}
+                onValueChange={setClienteId}
                 options={clientes
                   .filter((c) => c.tipo === "atacado")
-                  .map((c) => ({ value: c.nome, label: c.nome }))}
+                  .map((c) => ({ value: c.id, label: c.nome }))}
               />
             </label>
           </Card>

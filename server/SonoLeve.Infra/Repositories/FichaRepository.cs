@@ -12,7 +12,7 @@ public class FichaRepository : IFichaRepository
 
     public async Task<(IEnumerable<Ficha> items, int total)> ListarAsync(int pagina, int tamanhoPagina)
     {
-        var query = _db.Fichas.AsQueryable();
+        var query = _db.Fichas.Include(f => f.Cliente);
         var total = await query.CountAsync();
         var items = await query.OrderByDescending(f => f.DataAbertura)
             .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();
@@ -20,7 +20,8 @@ public class FichaRepository : IFichaRepository
     }
 
     public async Task<Ficha> ObterPorIdAsync(Guid id) =>
-        await _db.Fichas.FindAsync(id) ?? throw new KeyNotFoundException("Ficha não encontrada.");
+        await _db.Fichas.Include(f => f.Cliente)
+            .FirstOrDefaultAsync(f => f.Id == id) ?? throw new KeyNotFoundException("Ficha não encontrada.");
 
     public async Task<Ficha> CriarAsync(Ficha ficha)
     {

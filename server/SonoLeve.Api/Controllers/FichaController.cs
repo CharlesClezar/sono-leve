@@ -43,7 +43,7 @@ public class FichaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.Revendedora = request.Revendedora;
+            existente.ClienteId = request.ClienteId;
             existente.DataAbertura = request.DataAbertura;
             existente.Enviadas = request.Enviadas;
             existente.Devolvidas = request.Devolvidas;
@@ -57,14 +57,14 @@ public class FichaController : ControllerBase
 
     private static Ficha MapearEntidade(FichaRequest r) => new()
     {
-        Revendedora = r.Revendedora, DataAbertura = r.DataAbertura,
+        ClienteId = r.ClienteId, DataAbertura = r.DataAbertura,
         Enviadas = r.Enviadas, Devolvidas = r.Devolvidas,
         Vendidas = r.Vendidas, TotalVendido = r.TotalVendido,
         Status = Enum.Parse<StatusFicha>(r.Status, true),
     };
 
     private static FichaResponse Mapear(Ficha f) => new(
-        f.Id, f.Revendedora, f.DataAbertura, f.Enviadas, f.Devolvidas,
+        f.Id, f.ClienteId, f.Cliente?.Nome ?? "", f.DataAbertura, f.Enviadas, f.Devolvidas,
         f.Vendidas, f.TotalVendido, f.Status.ToString(), f.CriadoEm
     );
 }

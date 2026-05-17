@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import type { PieceDetailItem } from "@/lib/types";
+import type { ItemVenda } from "@/lib/types";
 import { formatBRL } from "@/lib/types";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { usePagination } from "@/hooks/usePagination";
@@ -28,21 +28,21 @@ export function PiecesDetailsDialog({
   pieces: number;
   title: string;
   description: string;
-  items: PieceDetailItem[];
+  items: ItemVenda[];
 }) {
-  const total = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+  const total = useMemo(() => items.reduce((sum, item) => sum + item.quantidade, 0), [items]);
   const totalValue = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    () => items.reduce((sum, item) => sum + item.quantidade * item.precoUnitario, 0),
     [items]
   );
-  const columns = useMemo<DataGridColumn<PieceDetailItem>[]>(
+  const columns = useMemo<DataGridColumn<ItemVenda>[]>(
     () => [
-      { id: "product", label: "Produto", accessor: (item) => item.product },
-      { id: "ref", label: "Ref.", accessor: (item) => item.ref },
-      { id: "size", label: "Tam.", accessor: (item) => item.size },
-      { id: "quantity", label: "Qtd.", accessor: (item) => item.quantity },
-      { id: "unitPrice", label: "Valor un.", accessor: (item) => item.unitPrice },
-      { id: "total", label: "Total", accessor: (item) => item.quantity * item.unitPrice },
+      { id: "produtoNome", label: "Produto", accessor: (item) => item.produtoNome },
+      { id: "produtoRef", label: "Ref.", accessor: (item) => item.produtoRef },
+      { id: "tamanho", label: "Tam.", accessor: (item) => item.tamanho },
+      { id: "quantidade", label: "Qtd.", accessor: (item) => item.quantidade },
+      { id: "precoUnitario", label: "Valor un.", accessor: (item) => item.precoUnitario },
+      { id: "total", label: "Total", accessor: (item) => item.quantidade * item.precoUnitario },
     ],
     [],
   );
@@ -78,7 +78,7 @@ export function PiecesDetailsDialog({
             <div className="rounded-xl border bg-muted/30 p-3">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Tamanhos</div>
               <div className="mt-1 text-2xl font-semibold">
-                {new Set(items.map((item) => item.size)).size}
+                {new Set(items.map((item) => item.tamanho)).size}
               </div>
             </div>
             {hasItems && (
@@ -108,17 +108,17 @@ export function PiecesDetailsDialog({
                   </thead>
                   <tbody className="divide-y">
                     {pagination.items.map((item, index) => (
-                      <tr key={`${item.ref}-${item.size}-${index}`}>
-                        <td className="px-4 py-3 font-medium">{item.product}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.ref}</td>
+                      <tr key={`${item.produtoRef}-${item.tamanho}-${index}`}>
+                        <td className="px-4 py-3 font-medium">{item.produtoNome}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.produtoRef}</td>
                         <td className="px-4 py-3 text-center">
                           <span className="inline-flex min-w-12 justify-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                            {item.size}
+                            {item.tamanho}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold">{item.quantity}</td>
-                        <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(item.unitPrice)}</td>
-                        <td className="px-4 py-3 text-right font-semibold">{formatBRL(item.quantity * item.unitPrice)}</td>
+                        <td className="px-4 py-3 text-right font-semibold">{item.quantidade}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(item.precoUnitario)}</td>
+                        <td className="px-4 py-3 text-right font-semibold">{formatBRL(item.quantidade * item.precoUnitario)}</td>
                       </tr>
                     ))}
                   </tbody>

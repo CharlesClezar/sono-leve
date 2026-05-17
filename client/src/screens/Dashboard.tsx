@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatBRL, formatDate, type OrderStatus, type PieceDetailItem } from "@/lib/types";
+import { formatBRL, formatDate, type ItemVenda, type OrderStatus } from "@/lib/types";
 import { api, useDadosOperacionais } from "@/lib/api";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import Link from "next/link";
@@ -69,7 +69,7 @@ const classePilula: Record<OrderStatus, string> = {
 type PeriodoDashboard = "today" | "7d" | "30d" | "all";
 
 type ConfirmacaoPendente = { id: string; novoStatus: OrderStatus; mensagem: string } | null;
-type ModalItensPendente = { id: string; itens: PieceDetailItem[]; modo: "parcial" | "finalizar" } | null;
+type ModalItensPendente = { id: string; itens: ItemVenda[]; modo: "parcial" | "finalizar" } | null;
 
 const formatarDataIso = (data: Date) => {
   const ano = data.getFullYear();
@@ -268,7 +268,7 @@ export default function Dashboard() {
     }
   };
 
-  const confirmarSelecaoItens = async (itensConcluidos: PieceDetailItem[]) => {
+  const confirmarSelecaoItens = async (itensConcluidos: ItemVenda[]) => {
     if (!modalItens) return;
     const { id, modo } = modalItens;
     setModalItens(null);
@@ -283,7 +283,7 @@ export default function Dashboard() {
   const irParaVenda = (id: string, status: OrderStatus) => {
     if (status === "Fabricado parcialmente") {
       const parcialStr = localStorage.getItem(`sono_leve_parcial_${id}`);
-      const itensParciais: PieceDetailItem[] = parcialStr ? JSON.parse(parcialStr) : [];
+      const itensParciais: ItemVenda[] = parcialStr ? JSON.parse(parcialStr) : [];
       sessionStorage.setItem("sono_leve_itens_venda", JSON.stringify(itensParciais));
       router.push(`/vendas/nova?from=encomenda&id=${id}&parcial=1`);
     } else {
@@ -462,7 +462,7 @@ export default function Dashboard() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-medium">{encomenda.cliente}</div>
+                            <div className="font-medium">{encomenda.clienteNome}</div>
                             <div className="text-xs text-muted-foreground">{encomenda.id}</div>
                           </div>
                           <div className="flex shrink-0 flex-col items-end gap-2">
@@ -691,20 +691,20 @@ function ModalSelecaoItens({
   onConfirmar,
   onCancelar,
 }: {
-  itens: PieceDetailItem[];
+  itens: ItemVenda[];
   modo: "parcial" | "finalizar";
-  onConfirmar: (itensSelecionados: PieceDetailItem[]) => void;
+  onConfirmar: (itensSelecionados: ItemVenda[]) => void;
   onCancelar: () => void;
 }) {
-  const [quantidades, setQuantidades] = useState<number[]>(() => itens.map((i) => i.quantity));
+  const [quantidades, setQuantidades] = useState<number[]>(() => itens.map((i) => i.quantidade));
 
   const atualizar = (idx: number, val: number) =>
-    setQuantidades((prev) => prev.map((q, i) => (i === idx ? Math.max(0, Math.min(itens[idx].quantity, val)) : q)));
+    setQuantidades((prev) => prev.map((q, i) => (i === idx ? Math.max(0, Math.min(itens[idx].quantidade, val)) : q)));
 
   const agrupados = useMemo(() => {
-    const map = new Map<string, { item: PieceDetailItem; idx: number }[]>();
+    const map = new Map<string, { item: ItemVenda; idx: number }[]>();
     itens.forEach((item, idx) => {
-      const key = `${item.ref}__${item.product}`;
+      const key = `${item.produtoRef}__${item.produtoNome}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push({ item, idx });
     });
@@ -712,8 +712,8 @@ function ModalSelecaoItens({
   }, [itens]);
 
   const itensConcluidos = itens
-    .map((item, i) => ({ ...item, quantity: quantidades[i] }))
-    .filter((item) => item.quantity > 0);
+    .map((item, i) => ({ ...item, quantidade: quantidades[i] }))
+    .filter((item) => item.quantidade > 0);
 
   const titulo = modo === "parcial" ? "Conclusão parcial" : "Concluir encomenda";
   const descricao =
@@ -754,18 +754,18 @@ function ModalSelecaoItens({
             return (
               <div key={key} className="rounded-lg border p-4">
                 <div className="mb-3">
-                  <div className="text-sm font-medium">{item.product}</div>
-                  <div className="text-xs text-muted-foreground">{item.ref} · {formatBRL(item.unitPrice)}</div>
+                  <div className="text-sm font-medium">{item.produtoNome}</div>
+                  <div className="text-xs text-muted-foreground">{item.produtoRef} · {formatBRL(item.precoUnitario)}</div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {entries.map(({ item: it, idx }) => (
-                    <div key={it.size} className="rounded-md bg-muted/40 p-2 text-center">
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">{it.size}</div>
-                      <div className="mt-0.5 text-[10px] text-muted-foreground/70">máx: {it.quantity}</div>
+                    <div key={it.tamanho} className="rounded-md bg-muted/40 p-2 text-center">
+                      <div className="text-xs font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
+                      <div className="mt-0.5 text-[10px] text-muted-foreground/70">máx: {it.quantidade}</div>
                       <Input
                         type="number"
                         min={0}
-                        max={it.quantity}
+                        max={it.quantidade}
                         value={quantidades[idx]}
                         onChange={(e) => atualizar(idx, Number(e.target.value))}
                         className="mt-1 h-8 border-0 bg-card text-center text-sm font-semibold"

@@ -57,7 +57,7 @@ public class EncomendaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.Cliente = request.Cliente;
+            existente.ClienteId = request.ClienteId;
             existente.Previsao = request.Previsao;
             existente.Total = request.Total;
             existente.Entrada = request.Entrada;
@@ -83,25 +83,26 @@ public class EncomendaController : ControllerBase
     private static IEnumerable<ItemEncomenda>? MapearItensRequest(List<ItemEncomendaRequest>? items) =>
         items?.Select(i => new ItemEncomenda
         {
-            Produto = i.Product,
-            Ref = i.Ref,
-            Tamanho = i.Size,
-            Quantidade = i.Quantity,
-            PrecoUnitario = i.UnitPrice,
+            ProdutoId = i.ProdutoId,
+            Tamanho = i.Tamanho,
+            Quantidade = i.Quantidade,
+            PrecoUnitario = i.PrecoUnitario,
         });
 
     private static Encomenda MapearEntidade(EncomendaRequest r) => new()
     {
-        Cliente = r.Cliente, Previsao = r.Previsao, Total = r.Total,
+        ClienteId = r.ClienteId, Previsao = r.Previsao, Total = r.Total,
         Entrada = r.Entrada, Status = ParseStatus(r.Status),
     };
 
     private static EncomendaResponse Mapear(Encomenda e) => new(
-        e.Id, e.Cliente, e.Previsao, e.Total, e.Entrada, e.Pecas, StatusPt(e.Status), e.CriadoEm
+        e.Id, e.ClienteId, e.Cliente?.Nome ?? "",
+        e.Previsao, e.Total, e.Entrada, e.Pecas, StatusPt(e.Status), e.CriadoEm
     );
 
     private static ItemEncomendaResponse MapearItem(ItemEncomenda i) => new(
-        i.Produto, i.Ref, i.Tamanho, i.Quantidade, i.PrecoUnitario
+        i.Id, i.ProdutoId, i.Produto?.Nome ?? "", i.Produto?.Ref ?? "",
+        i.Tamanho, i.Quantidade, i.PrecoUnitario
     );
 
     private static string StatusPt(StatusEncomenda status) => status switch

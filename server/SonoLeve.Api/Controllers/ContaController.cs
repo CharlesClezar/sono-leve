@@ -43,7 +43,7 @@ public class ContaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.Cliente = request.Cliente;
+            existente.ClienteId = request.ClienteId;
             existente.Origem = request.Origem;
             existente.Total = request.Total;
             existente.Recebido = request.Recebido;
@@ -56,12 +56,13 @@ public class ContaController : ControllerBase
 
     private static Conta MapearEntidade(ContaRequest r) => new()
     {
-        Cliente = r.Cliente, Origem = r.Origem, Total = r.Total,
+        ClienteId = r.ClienteId, Origem = r.Origem, Total = r.Total,
         Recebido = r.Recebido, Vencimento = r.Vencimento,
         Status = Enum.Parse<StatusConta>(r.Status, true),
     };
 
     private static ContaResponse Mapear(Conta c) => new(
-        c.Id, c.Cliente, c.Origem, c.Total, c.Recebido, c.Vencimento, c.Status.ToString(), c.CriadoEm
+        c.Id, c.ClienteId, c.Cliente?.Nome ?? "", c.Origem, c.Total,
+        c.Recebido, c.Vencimento, c.Status.ToString(), c.CriadoEm
     );
 }

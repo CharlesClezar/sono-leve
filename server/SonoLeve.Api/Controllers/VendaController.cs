@@ -57,10 +57,10 @@ public class VendaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.Cliente = request.Cliente;
+            existente.ClienteId = request.ClienteId;
+            existente.FormaPagamentoId = request.FormaPagamentoId;
             existente.Data = request.Data;
             existente.Pecas = request.Pecas;
-            existente.Pagamento = request.Pagamento;
             existente.Total = request.Total;
             existente.Status = Enum.Parse<StatusVenda>(request.Status, true);
             existente.Origem = ParseOrigem(request.Origem);
@@ -85,28 +85,29 @@ public class VendaController : ControllerBase
     private static IEnumerable<ItemVenda>? MapearItensRequest(List<ItemVendaRequest>? items) =>
         items?.Select(i => new ItemVenda
         {
-            Produto = i.Product,
-            Ref = i.Ref,
-            Tamanho = i.Size,
-            Quantidade = i.Quantity,
-            PrecoUnitario = i.UnitPrice,
+            ProdutoId = i.ProdutoId,
+            Tamanho = i.Tamanho,
+            Quantidade = i.Quantidade,
+            PrecoUnitario = i.PrecoUnitario,
         });
 
     private static Venda MapearEntidade(VendaRequest r) => new()
     {
-        Cliente = r.Cliente, Data = r.Data, Pecas = r.Pecas,
-        Pagamento = r.Pagamento, Total = r.Total,
+        ClienteId = r.ClienteId, FormaPagamentoId = r.FormaPagamentoId,
+        Data = r.Data, Pecas = r.Pecas, Total = r.Total,
         Status = Enum.Parse<StatusVenda>(r.Status, true),
         Origem = ParseOrigem(r.Origem),
     };
 
     private static VendaResponse Mapear(Venda v) => new(
-        v.Id, v.Cliente, v.Data, v.Pecas, v.Pagamento, v.Total,
+        v.Id, v.ClienteId, v.Cliente?.Nome ?? "", v.FormaPagamentoId,
+        v.FormaPagamento?.Nome, v.Data, v.Pecas, v.Total,
         v.Status.ToString(), OrigemPt(v.Origem), v.CriadoEm
     );
 
     private static ItemVendaResponse MapearItem(ItemVenda i) => new(
-        i.Produto, i.Ref, i.Tamanho, i.Quantidade, i.PrecoUnitario
+        i.Id, i.ProdutoId, i.Produto?.Nome ?? "", i.Produto?.Ref ?? "",
+        i.Tamanho, i.Quantidade, i.PrecoUnitario
     );
 
     private static string OrigemPt(OrigemVenda origem) => origem switch

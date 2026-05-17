@@ -1,7 +1,7 @@
 namespace SonoLeve.Api.DTOs;
 
 public record FichaRequest(
-    string Revendedora,
+    Guid ClienteId,
     DateTime DataAbertura,
     int Enviadas,
     int Devolvidas,
@@ -12,7 +12,8 @@ public record FichaRequest(
 
 public record FichaResponse(
     Guid Id,
-    string Revendedora,
+    Guid ClienteId,
+    string RevendedoraNome,
     DateTime DataAbertura,
     int Enviadas,
     int Devolvidas,

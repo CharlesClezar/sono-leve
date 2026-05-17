@@ -37,7 +37,7 @@ export default function NovaEncomenda() {
   const [produtoId, setProdutoId] = useState("");
   const [buscaProduto, setBuscaProduto] = useState("");
   const { data: itensExistentes } = useItensEncomenda(editando ? (params.id ?? "") : "");
-  const [nomeCliente, setNomeCliente] = useState(encomenda?.cliente ?? clientes[0]?.nome ?? "");
+  const [clienteId, setClienteId] = useState(encomenda?.clienteId ?? clientes[0]?.id ?? "");
   const [previsao, setPrevisao] = useState(encomenda?.previsao ?? "");
   const [tamanho, setTamanho] = useState("P");
   const [quantidade, setQuantidade] = useState(1);
@@ -57,29 +57,29 @@ export default function NovaEncomenda() {
 
   useEffect(() => {
     if (encomenda) {
-      setNomeCliente(encomenda.cliente);
+      setClienteId(encomenda.clienteId);
       setPrevisao(encomenda.previsao);
       setEntrada(encomenda.entrada);
       return;
     }
 
-    if (!nomeCliente && clientes[0]) setNomeCliente(clientes[0].nome);
-  }, [nomeCliente, clientes, encomenda]);
+    if (!clienteId && clientes[0]) setClienteId(clientes[0].id);
+  }, [clienteId, clientes, encomenda]);
 
   useEffect(() => {
     if (!editando || itensPreenchidos.current || !itensExistentes?.length || !produtos.length) return;
     const primeiro = itensExistentes[0];
-    const produto = produtos.find((p) => p.ref === primeiro.ref) ?? produtos.find((p) => p.nome === primeiro.product);
+    const produto = produtos.find((p) => p.id === primeiro.produtoId) ?? produtos.find((p) => p.ref === primeiro.produtoRef);
     if (produto) {
       setProdutoId(produto.id);
-      setTamanho(primeiro.size);
-      setQuantidade(primeiro.quantity);
+      setTamanho(primeiro.tamanho);
+      setQuantidade(primeiro.quantidade);
     }
     itensPreenchidos.current = true;
   }, [itensExistentes, editando, produtos]);
 
   const handleSalvar = async () => {
-    if (!nomeCliente) return toast.error("Selecione um cliente.");
+    if (!clienteId) return toast.error("Selecione um cliente.");
     if (!previsao) return toast.error("Informe a previsão de entrega.");
     if (!produtoSelecionado) return toast.error("Selecione um produto.");
 
@@ -87,18 +87,16 @@ export default function NovaEncomenda() {
     try {
       const payload = {
         id: encomenda?.id,
-        cliente: nomeCliente,
-        criadoEm: encomenda?.criadoEm,
+        clienteId,
         previsao,
         total,
         entrada,
         status: encomenda?.status ?? "Aberta" as const,
         items: [{
-          product: produtoSelecionado.nome,
-          ref: produtoSelecionado.ref,
-          size: tamanho,
-          quantity: quantidade,
-          unitPrice: produtoSelecionado.precoVarejo,
+          produtoId: produtoId,
+          tamanho,
+          quantidade,
+          precoUnitario: produtoSelecionado.precoVarejo,
         }],
       };
       if (editando) await api.atualizarEncomenda({ ...payload, id: encomenda!.id });
@@ -140,9 +138,9 @@ export default function NovaEncomenda() {
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Cliente</span>
                 <AppSelect
-                  value={nomeCliente}
-                  onValueChange={setNomeCliente}
-                  options={clientes.map((c) => ({ value: c.nome, label: c.nome }))}
+                  value={clienteId}
+                  onValueChange={setClienteId}
+                  options={clientes.map((c) => ({ value: c.id, label: c.nome }))}
                 />
               </label>
               <label className="space-y-1.5">

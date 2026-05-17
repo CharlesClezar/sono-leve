@@ -12,7 +12,7 @@ public class EncomendaRepository : IEncomendaRepository
 
     public async Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(int pagina, int tamanhoPagina)
     {
-        var query = _db.Encomendas.AsQueryable();
+        var query = _db.Encomendas.Include(e => e.Cliente);
         var total = await query.CountAsync();
         var items = await query.OrderByDescending(e => e.Previsao)
             .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();
@@ -20,7 +20,8 @@ public class EncomendaRepository : IEncomendaRepository
     }
 
     public async Task<Encomenda> ObterPorIdAsync(Guid id) =>
-        await _db.Encomendas.FindAsync(id) ?? throw new KeyNotFoundException("Encomenda não encontrada.");
+        await _db.Encomendas.Include(e => e.Cliente)
+            .FirstOrDefaultAsync(e => e.Id == id) ?? throw new KeyNotFoundException("Encomenda não encontrada.");
 
     public async Task<Encomenda> CriarAsync(Encomenda encomenda)
     {
@@ -38,7 +39,7 @@ public class EncomendaRepository : IEncomendaRepository
     }
 
     public async Task<IEnumerable<ItemEncomenda>> ObterItensAsync(Guid encomendaId) =>
-        await _db.ItensEncomenda.Where(i => i.EncomendaId == encomendaId).ToListAsync();
+        await _db.ItensEncomenda.Include(i => i.Produto).Where(i => i.EncomendaId == encomendaId).ToListAsync();
 
     public async Task SalvarItensAsync(Guid encomendaId, IEnumerable<ItemEncomenda> itens)
     {

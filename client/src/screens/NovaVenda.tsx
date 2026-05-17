@@ -7,8 +7,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatBRL, type PieceDetailItem, type Sale } from "@/lib/types";
-import { api, useDadosOperacionais, useItensEncomenda } from "@/lib/api";
+import { formatBRL, type ItemVenda, type Sale } from "@/lib/types";
+import { api, useDadosOperacionais, useItensEncomenda, type VendaSalvar } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search, X, UserPlus } from "lucide-react";
@@ -44,11 +44,11 @@ export default function NovaVenda() {
     : ["Vendas", editando ? "Editar" : "Nova"];
   const cancelHref = vieuDoDashboard ? "/" : "/vendas";
   const clienteIdInicial = venda
-    ? clientes.find((item) => item.nome === venda.cliente)?.id ?? null
+    ? venda.clienteId
     : encomendaOrigem
-      ? clientes.find((item) => item.nome === encomendaOrigem.cliente)?.id ?? null
+      ? encomendaOrigem.clienteId
       : fichaOrigem
-        ? clientes.find((item) => item.nome === fichaOrigem.revendedora)?.id ?? null
+        ? fichaOrigem.clienteId
       : null;
   const primeiroProduto = produtos[0];
   const [buscaCliente, setBuscaCliente] = useState("");
@@ -75,12 +75,12 @@ export default function NovaVenda() {
       const str = sessionStorage.getItem("sono_leve_itens_venda");
       sessionStorage.removeItem("sono_leve_itens_venda");
       if (!str) return;
-      const novosItens = mapearItensParaVenda(JSON.parse(str) as PieceDetailItem[], produtos);
+      const novosItens = mapearItensParaVenda(JSON.parse(str) as ItemVenda[]);
       if (novosItens.length > 0) setItens(novosItens);
     } else {
       if (!itensEncomendaOrigem || itensEncomendaOrigem.length === 0) return;
       itensPreenchidos.current = true;
-      const novosItens = mapearItensParaVenda(itensEncomendaOrigem, produtos);
+      const novosItens = mapearItensParaVenda(itensEncomendaOrigem);
       if (novosItens.length > 0) setItens(novosItens);
     }
   }, [itensEncomendaOrigem, encomendaOrigemId, parcial, produtos]);
@@ -133,25 +133,20 @@ export default function NovaVenda() {
     setGerando(true);
     try {
       const origem: Sale["origem"] = encomendaOrigem ? "Encomenda" : fichaOrigem ? "Ficha" : "Balcão";
-      const payload = {
+      const payload: VendaSalvar = {
         id: venda?.id,
-        cliente: cliente.nome,
+        clienteId: cliente.id,
         data: venda?.data,
         pecas: itensValidos.reduce((sum, item) => sum + item.quantidade, 0),
-        pagamento: valorPago > 0 && saldo > 0 ? "Parcial" : valorPago > 0 ? "Pago" : "A receber",
         total,
         status: venda?.status ?? "Gerada" as const,
         origem,
-        items: itensValidos.map((item) => {
-          const produto = produtos.find((entry) => entry.id === item.produtoId)!;
-          return {
-            product: produto.nome,
-            ref: produto.ref,
-            size: item.tamanho,
-            quantity: item.quantidade,
-            unitPrice: item.preco,
-          };
-        }),
+        items: itensValidos.map((item) => ({
+          produtoId: item.produtoId,
+          tamanho: item.tamanho,
+          quantidade: item.quantidade,
+          precoUnitario: item.preco,
+        })),
       };
 
       if (editando) await api.atualizarVenda({ ...payload, id: venda!.id });
@@ -159,9 +154,7 @@ export default function NovaVenda() {
 
       if (!editando && encomendaOrigem?.status === "Fabricado parcialmente" && saldoRestante > 0) {
         await api.salvarEncomenda({
-          id: `${encomendaOrigem.id}-R${Date.now().toString().slice(-4)}`,
-          cliente: encomendaOrigem.cliente,
-          criadoEm: new Date().toISOString().slice(0, 10),
+          clienteId: encomendaOrigem.clienteId,
           previsao: encomendaOrigem.previsao,
           total: Number(saldoRestante.toFixed(2)),
           entrada: 0,
@@ -405,15 +398,15 @@ export default function NovaVenda() {
   );
 }
 
-function mapearItensParaVenda(fonte: PieceDetailItem[], produtos: { id: string; ref: string; nome: string }[]): Item[] {
+function mapearItensParaVenda(fonte: ItemVenda[]): Item[] {
   return fonte
-    .filter((pi) => pi.quantity > 0)
-    .map((pi) => {
-      const produto = produtos.find((p) => p.ref === pi.ref) ?? produtos.find((p) => p.nome === pi.product);
-      if (!produto) return null;
-      return { produtoId: produto.id, tamanho: pi.size, quantidade: pi.quantity, preco: pi.unitPrice };
-    })
-    .filter(Boolean) as Item[];
+    .filter((pi) => pi.quantidade > 0)
+    .map((pi) => ({
+      produtoId: pi.produtoId,
+      tamanho: pi.tamanho,
+      quantidade: pi.quantidade,
+      preco: pi.precoUnitario,
+    }));
 }
 
 function Linha({ label, valor, negrito, tom }: { label: string; valor: string; negrito?: boolean; tom?: "mudo" | "aviso" | "sucesso" }) {

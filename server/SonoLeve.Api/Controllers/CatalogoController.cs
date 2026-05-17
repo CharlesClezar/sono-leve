@@ -23,16 +23,16 @@ public class CatalogoController : ControllerBase
         var colecoes = await _db.CatalogoColecoes.OrderBy(x => x.Name).ToListAsync();
         var modelos = await _db.CatalogoModelos.OrderBy(x => x.Name).ToListAsync();
         var produtos = await _db.Produtos
-            .Select(p => new { p.Marca, p.Tipo, p.Subtipo, p.Categoria, p.Colecao, p.Modelo })
+            .Select(p => new { p.MarcaId, p.TipoId, p.SubtipoId, p.CategoriaId, p.ColecaoId, p.ModeloId })
             .ToListAsync();
 
         return Ok(new CatalogoProdutosResponse(
-            categorias.Select(c => new CategoriaCatalogoResponse(c.Id, c.Name, c.Grade, produtos.Count(p => p.Categoria == c.Name), c.Active)),
-            marcas.Select(m => new CatalogoSimplesResponse(m.Id, m.Name, produtos.Count(p => p.Marca == m.Name), m.Active)),
-            tipos.Select(t => new TipoCatalogoResponse(t.Id, t.Name, produtos.Count(p => p.Tipo == t.Name), t.Active, subtipos.Count(s => s.Type == t.Name))),
-            subtipos.Select(s => new SubtipoCatalogoResponse(s.Id, s.Name, produtos.Count(p => p.Subtipo == s.Name), s.Active, s.Type)),
-            colecoes.Select(c => new ColecaoCatalogoResponse(c.Id, c.Name, produtos.Count(p => p.Colecao == c.Name), c.Active, c.Period)),
-            modelos.Select(m => new CatalogoSimplesResponse(m.Id, m.Name, produtos.Count(p => p.Modelo == m.Name), m.Active))
+            categorias.Select(c => new CategoriaCatalogoResponse(c.Id, c.Name, c.Grade, produtos.Count(p => p.CategoriaId == c.Id), c.Active)),
+            marcas.Select(m => new CatalogoSimplesResponse(m.Id, m.Name, produtos.Count(p => p.MarcaId == m.Id), m.Active)),
+            tipos.Select(t => new TipoCatalogoResponse(t.Id, t.Name, produtos.Count(p => p.TipoId == t.Id), t.Active, subtipos.Count(s => s.Type == t.Name))),
+            subtipos.Select(s => new SubtipoCatalogoResponse(s.Id, s.Name, produtos.Count(p => p.SubtipoId == s.Id), s.Active, s.Type)),
+            colecoes.Select(c => new ColecaoCatalogoResponse(c.Id, c.Name, produtos.Count(p => p.ColecaoId == c.Id), c.Active, c.Period)),
+            modelos.Select(m => new CatalogoSimplesResponse(m.Id, m.Name, produtos.Count(p => p.ModeloId == m.Id), m.Active))
         ));
     }
 
@@ -52,7 +52,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CategoriasBase.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Categoria == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.CategoriaId == item.Id);
         return Ok(new CategoriaCatalogoResponse(item.Id, item.Name, item.Grade, count, item.Active));
     }
 
@@ -65,7 +65,7 @@ public class CatalogoController : ControllerBase
         item.Grade = request.Grade ?? item.Grade;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Categoria == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.CategoriaId == item.Id);
         return Ok(new CategoriaCatalogoResponse(item.Id, item.Name, item.Grade, count, item.Active));
     }
 
@@ -95,7 +95,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CatalogoMarcas.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Marca == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.MarcaId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 
@@ -107,7 +107,7 @@ public class CatalogoController : ControllerBase
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Marca == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.MarcaId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 
@@ -137,7 +137,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CatalogoTipos.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Tipo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
         var subtypes = await _db.CatalogoSubtipos.CountAsync(s => s.Type == item.Name);
         return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active, subtypes));
     }
@@ -150,7 +150,7 @@ public class CatalogoController : ControllerBase
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Tipo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
         var subtypes = await _db.CatalogoSubtipos.CountAsync(s => s.Type == item.Name);
         return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active, subtypes));
     }
@@ -181,7 +181,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CatalogoSubtipos.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Subtipo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.SubtipoId == item.Id);
         return Ok(new SubtipoCatalogoResponse(item.Id, item.Name, count, item.Active, item.Type));
     }
 
@@ -194,7 +194,7 @@ public class CatalogoController : ControllerBase
         item.Type = request.Type ?? item.Type;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Subtipo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.SubtipoId == item.Id);
         return Ok(new SubtipoCatalogoResponse(item.Id, item.Name, count, item.Active, item.Type));
     }
 
@@ -224,7 +224,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CatalogoColecoes.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Colecao == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.ColecaoId == item.Id);
         return Ok(new ColecaoCatalogoResponse(item.Id, item.Name, count, item.Active, item.Period));
     }
 
@@ -237,7 +237,7 @@ public class CatalogoController : ControllerBase
         item.Period = request.Period ?? item.Period;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Colecao == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.ColecaoId == item.Id);
         return Ok(new ColecaoCatalogoResponse(item.Id, item.Name, count, item.Active, item.Period));
     }
 
@@ -267,7 +267,7 @@ public class CatalogoController : ControllerBase
     {
         var item = await _db.CatalogoModelos.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.Modelo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.ModeloId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 
@@ -279,7 +279,7 @@ public class CatalogoController : ControllerBase
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.Modelo == item.Name);
+        var count = await _db.Produtos.CountAsync(p => p.ModeloId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 

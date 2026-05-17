@@ -4,7 +4,9 @@ namespace SonoLeve.Domain.Entities;
 
 public class Conta : EntidadeBase
 {
-    public string Cliente { get; set; } = "";
+    public Guid ClienteId { get; set; }
+    public Cliente? Cliente { get; set; }
+
     public string Origem { get; set; } = "";
     public decimal Total { get; set; }
     public decimal Recebido { get; set; }

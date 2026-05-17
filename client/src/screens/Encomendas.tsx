@@ -96,7 +96,7 @@ export default function Encomendas() {
       .filter((e) => {
         const statusAtual = statusPorId[e.id] ?? normalizarStatus(e.status);
         if (aba !== "Histórico" && statusAtual !== aba) return false;
-        if (filtros.busca && !e.cliente.toLowerCase().includes(filtros.busca.toLowerCase()) && !e.id.toLowerCase().includes(filtros.busca.toLowerCase()))
+        if (filtros.busca && !e.clienteNome.toLowerCase().includes(filtros.busca.toLowerCase()) && !e.id.toLowerCase().includes(filtros.busca.toLowerCase()))
           return false;
         return true;
       })
@@ -108,7 +108,7 @@ export default function Encomendas() {
         if (filtros.ordenarPor === "criadoEm") valor = a.criadoEm.localeCompare(b.criadoEm);
         if (filtros.ordenarPor === "previsao") valor = a.previsao.localeCompare(b.previsao);
         if (filtros.ordenarPor === "total") valor = a.total - b.total;
-        if (filtros.ordenarPor === "cliente") valor = a.cliente.localeCompare(b.cliente);
+        if (filtros.ordenarPor === "cliente") valor = a.clienteNome.localeCompare(b.clienteNome);
         if (filtros.ordenarPor === "status") valor = ordemStatus.indexOf(statusA) - ordemStatus.indexOf(statusB);
 
         return filtros.direcaoOrdenacao === "asc" ? valor : -valor;
@@ -120,7 +120,7 @@ export default function Encomendas() {
   const colunas = useMemo<DataGridColumn<Order>[]>(
     () => [
       { id: "id", label: "Código", accessor: (e) => e.id },
-      { id: "cliente", label: "Cliente", accessor: (e) => e.cliente },
+      { id: "cliente", label: "Cliente", accessor: (e) => e.clienteNome },
       { id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm) },
       { id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao) },
       { id: "pecas", label: "Peças", accessor: (e) => e.pecas },
@@ -234,7 +234,7 @@ export default function Encomendas() {
                 <Card key={encomenda.id} className="space-y-3 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium">{encomenda.cliente}</div>
+                      <div className="font-medium">{encomenda.clienteNome}</div>
                       <div className="font-mono text-xs text-muted-foreground">{encomenda.id}</div>
                     </div>
                     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus[statusAtual]}`}>
@@ -371,7 +371,7 @@ function LinhaEncomenda({
         <BotaoAcaoEncomenda id={encomenda.id} status={status} aoMover={aoMover} propsAcao={propsAcao} />
       </td>
       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{encomenda.id}</td>
-      <td className="px-4 py-3 font-medium">{encomenda.cliente}</td>
+      <td className="px-4 py-3 font-medium">{encomenda.clienteNome}</td>
       <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
       <td className="px-4 py-3">
         <div className="text-muted-foreground">{formatDate(encomenda.previsao)}</div>
@@ -403,7 +403,7 @@ function DetalhesPecasEncomenda({ encomenda, triggerClassName }: { encomenda: Or
     <PiecesDetailsDialog
       pieces={encomenda.pecas}
       title={`Peças da encomenda ${encomenda.id}`}
-      description={`Detalhamento dos produtos e tamanhos reservados para ${encomenda.cliente}.`}
+      description={`Detalhamento dos produtos e tamanhos reservados para ${encomenda.clienteNome}.`}
       items={itens ?? []}
       triggerClassName={triggerClassName}
     />

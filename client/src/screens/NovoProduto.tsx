@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { api, useCatalogoProdutos, useProdutos } from "@/lib/api";
-import type { Product } from "@/lib/types";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Camera, X } from "lucide-react";
@@ -35,12 +34,12 @@ export default function NovoProduto() {
   const [form, setForm] = useState({
     nome: "",
     ref: "",
-    marca: "",
-    tipo: "",
-    subtipo: "",
-    categoria: "",
-    colecao: "",
-    modelo: "",
+    marcaId: "",
+    tipoId: "",
+    subtipoId: "",
+    categoriaId: "",
+    colecaoId: "",
+    modeloId: "",
     precoVarejo: "",
     precoAtacado: "",
   });
@@ -54,11 +53,15 @@ export default function NovoProduto() {
   const categorias = catalogo.categorias;
   const marcas = catalogo.marcas;
   const tipos = catalogo.tipos;
-  const subtiposDisponiveis = useMemo(
-    () => catalogo.subtipos.filter((item) => item.type === form.tipo),
-    [catalogo.subtipos, form.tipo],
+  const tipoSelecionado = useMemo(
+    () => tipos.find((item) => item.id === form.tipoId),
+    [tipos, form.tipoId],
   );
-  const categoriaSelecionada = categorias.find((item) => item.name === form.categoria);
+  const subtiposDisponiveis = useMemo(
+    () => catalogo.subtipos.filter((item) => item.type === tipoSelecionado?.name),
+    [catalogo.subtipos, tipoSelecionado],
+  );
+  const categoriaSelecionada = categorias.find((item) => item.id === form.categoriaId);
   const grade = categoriaSelecionada?.grade ?? [];
 
   useEffect(() => {
@@ -70,12 +73,12 @@ export default function NovoProduto() {
     setForm({
       nome: produto.nome,
       ref: produto.ref,
-      marca: produto.marca,
-      tipo: produto.tipo,
-      subtipo: produto.subtipo,
-      categoria: produto.categoria,
-      colecao: produto.colecao ?? "",
-      modelo: produto.modelo ?? "",
+      marcaId: produto.marcaId ?? "",
+      tipoId: produto.tipoId ?? "",
+      subtipoId: produto.subtipoId ?? "",
+      categoriaId: produto.categoriaId ?? "",
+      colecaoId: produto.colecaoId ?? "",
+      modeloId: produto.modeloId ?? "",
       precoVarejo: String(produto.precoVarejo),
       precoAtacado: String(produto.precoAtacado),
     });
@@ -83,24 +86,24 @@ export default function NovoProduto() {
   }, [produto]);
 
   useEffect(() => {
-    if (form.categoria || categorias.length === 0) return;
-    setForm((current) => ({ ...current, categoria: categorias[0].name }));
-  }, [categorias, form.categoria]);
+    if (form.categoriaId || categorias.length === 0) return;
+    setForm((current) => ({ ...current, categoriaId: categorias[0].id }));
+  }, [categorias, form.categoriaId]);
 
   useEffect(() => {
-    if (form.marca || marcas.length === 0) return;
-    setForm((current) => ({ ...current, marca: marcas[0].name }));
-  }, [form.marca, marcas]);
+    if (form.marcaId || marcas.length === 0) return;
+    setForm((current) => ({ ...current, marcaId: marcas[0].id }));
+  }, [form.marcaId, marcas]);
 
   useEffect(() => {
-    if (form.tipo || tipos.length === 0) return;
-    setForm((current) => ({ ...current, tipo: tipos[0].name }));
-  }, [form.tipo, tipos]);
+    if (form.tipoId || tipos.length === 0) return;
+    setForm((current) => ({ ...current, tipoId: tipos[0].id }));
+  }, [form.tipoId, tipos]);
 
   useEffect(() => {
-    if (subtiposDisponiveis.some((item) => item.name === form.subtipo)) return;
-    setForm((current) => ({ ...current, subtipo: subtiposDisponiveis[0]?.name ?? "" }));
-  }, [form.subtipo, subtiposDisponiveis]);
+    if (subtiposDisponiveis.some((item) => item.id === form.subtipoId)) return;
+    setForm((current) => ({ ...current, subtipoId: subtiposDisponiveis[0]?.id ?? "" }));
+  }, [form.subtipoId, subtiposDisponiveis]);
 
   const atualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -145,7 +148,7 @@ export default function NovoProduto() {
   };
 
   const handleSalvar = async () => {
-    if (!form.nome.trim() || !form.ref.trim() || !form.marca || !form.tipo || !form.subtipo || !form.categoria) {
+    if (!form.nome.trim() || !form.ref.trim() || !form.marcaId || !form.tipoId || !form.subtipoId || !form.categoriaId) {
       toast.error("Preencha nome, referência, marca, tipo, subtipo e categoria.");
       return;
     }
@@ -153,16 +156,16 @@ export default function NovoProduto() {
     setSalvando(true);
     try {
       const saldoInicial = Object.values(saldoPorTamanho).reduce((total, valor) => total + Number(valor || 0), 0);
-      const dadosProduto: Product = {
+      const dadosProduto = {
         id: produto?.id ?? "",
         nome: form.nome.trim(),
         ref: form.ref.trim(),
-        marca: form.marca,
-        tipo: form.tipo,
-        subtipo: form.subtipo,
-        categoria: form.categoria,
-        colecao: form.colecao || undefined,
-        modelo: form.modelo || undefined,
+        marcaId: form.marcaId || undefined,
+        tipoId: form.tipoId || undefined,
+        subtipoId: form.subtipoId || undefined,
+        categoriaId: form.categoriaId || undefined,
+        colecaoId: form.colecaoId || undefined,
+        modeloId: form.modeloId || undefined,
         precoVarejo: Number(form.precoVarejo || 0),
         precoAtacado: Number(form.precoAtacado || 0),
         ativo,
@@ -218,27 +221,27 @@ export default function NovoProduto() {
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Marca</span>
-                <AppSelect value={form.marca} onValueChange={(value) => atualizarCampo("marca", value)} placeholder="Selecione" options={marcas.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.marcaId} onValueChange={(value) => atualizarCampo("marcaId", value)} placeholder="Selecione" options={marcas.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Coleção</span>
-                <AppSelect value={form.colecao} onValueChange={(value) => atualizarCampo("colecao", value)} placeholder="Sem coleção" options={catalogo.colecoes.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.colecaoId} onValueChange={(value) => atualizarCampo("colecaoId", value)} placeholder="Sem coleção" options={catalogo.colecoes.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Tipo</span>
-                <AppSelect value={form.tipo} onValueChange={(value) => atualizarCampo("tipo", value)} options={tipos.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.tipoId} onValueChange={(value) => atualizarCampo("tipoId", value)} options={tipos.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Subtipo</span>
-                <AppSelect value={form.subtipo} onValueChange={(value) => atualizarCampo("subtipo", value)} options={subtiposDisponiveis.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.subtipoId} onValueChange={(value) => atualizarCampo("subtipoId", value)} options={subtiposDisponiveis.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Categoria</span>
-                <AppSelect value={form.categoria} onValueChange={(value) => atualizarCampo("categoria", value)} options={categorias.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.categoriaId} onValueChange={(value) => atualizarCampo("categoriaId", value)} options={categorias.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Modelo</span>
-                <AppSelect value={form.modelo} onValueChange={(value) => atualizarCampo("modelo", value)} placeholder="Sem modelo" options={catalogo.modelos.map((item) => ({ value: item.name, label: item.name }))} />
+                <AppSelect value={form.modeloId} onValueChange={(value) => atualizarCampo("modeloId", value)} placeholder="Sem modelo" options={catalogo.modelos.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
             </div>
           </Card>

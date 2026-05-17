@@ -1,26 +1,27 @@
 namespace SonoLeve.Api.DTOs;
 
 public record ItemVendaRequest(
-    string Product,
-    string Ref,
-    string Size,
-    int Quantity,
-    decimal UnitPrice
+    Guid ProdutoId,
+    string Tamanho,
+    int Quantidade,
+    decimal PrecoUnitario
 );
 
 public record ItemVendaResponse(
-    string Product,
-    string Ref,
-    string Size,
-    int Quantity,
-    decimal UnitPrice
+    Guid Id,
+    Guid ProdutoId,
+    string ProdutoNome,
+    string ProdutoRef,
+    string Tamanho,
+    int Quantidade,
+    decimal PrecoUnitario
 );
 
 public record VendaRequest(
-    string Cliente,
+    Guid ClienteId,
+    Guid? FormaPagamentoId,
     DateTime Data,
     int Pecas,
-    string Pagamento,
     decimal Total,
     string Status,
     string Origem,
@@ -29,10 +30,12 @@ public record VendaRequest(
 
 public record VendaResponse(
     Guid Id,
-    string Cliente,
+    Guid ClienteId,
+    string ClienteNome,
+    Guid? FormaPagamentoId,
+    string? FormaPagamentoNome,
     DateTime Data,
     int Pecas,
-    string Pagamento,
     decimal Total,
     string Status,
     string Origem,

@@ -131,13 +131,13 @@ export default function Vendas() {
     return vendas.filter((v) => {
       const f = filtrosPorAba.Histórico;
       if (!dentroDoPeriodo(v.data, f.periodo)) return false;
-      if (f.tipo !== "all" && tipoCliente(v.cliente) !== f.tipo) return false;
-      if (f.pagamento !== "all" && !v.pagamento.toLowerCase().includes(f.pagamento.toLowerCase())) return false;
+      if (f.tipo !== "all" && tipoCliente(v.clienteNome) !== f.tipo) return false;
+      if (f.pagamento !== "all" && !(v.formaPagamentoNome ?? "").toLowerCase().includes(f.pagamento.toLowerCase())) return false;
       if (f.status !== "all" && v.status !== f.status) return false;
       if (f.busca) {
         const q = f.busca.toLowerCase();
         const match =
-          v.cliente.toLowerCase().includes(q) ||
+          v.clienteNome.toLowerCase().includes(q) ||
           v.total.toString().includes(q) ||
           formatDate(v.data).includes(q);
         if (!match) return false;
@@ -150,11 +150,11 @@ export default function Vendas() {
     const f = filtrosPorAba["Faturar encomendas"];
     return todasEncomendas.filter((encomenda) => {
       if (!["Pronta", "Fabricado parcialmente"].includes(encomenda.status)) return false;
-      if (f.tipo !== "all" && tipoCliente(encomenda.cliente) !== f.tipo) return false;
+      if (f.tipo !== "all" && tipoCliente(encomenda.clienteNome) !== f.tipo) return false;
       if (f.busca) {
         const q = f.busca.toLowerCase();
         const match =
-          encomenda.cliente.toLowerCase().includes(q) ||
+          encomenda.clienteNome.toLowerCase().includes(q) ||
           encomenda.id.toLowerCase().includes(q) ||
           formatDate(encomenda.previsao).includes(q);
         if (!match) return false;
@@ -171,7 +171,7 @@ export default function Vendas() {
       if (f.busca) {
         const q = f.busca.toLowerCase();
         const match =
-          ficha.revendedora.toLowerCase().includes(q) ||
+          ficha.revendedoraNome.toLowerCase().includes(q) ||
           ficha.id.toLowerCase().includes(q) ||
           formatDate(ficha.dataAbertura).includes(q);
         if (!match) return false;
@@ -334,11 +334,11 @@ function VisualizacaoHistorico({
 }) {
   const colunas = useMemo<DataGridColumn<Sale>[]>(
     () => [
-      { id: "cliente", label: "Cliente", accessor: (v) => v.cliente },
+      { id: "clienteNome", label: "Cliente", accessor: (v) => v.clienteNome },
       { id: "origem", label: "Origem", accessor: (v) => v.origem },
       { id: "data", label: "Data", accessor: (v) => v.data, filterAccessor: (v) => formatDate(v.data) },
       { id: "pecas", label: "Peças", accessor: (v) => v.pecas },
-      { id: "pagamento", label: "Pagamento", accessor: (v) => v.pagamento },
+      { id: "formaPagamentoNome", label: "Pagamento", accessor: (v) => v.formaPagamentoNome },
       { id: "total", label: "Total", accessor: (v) => v.total },
       { id: "status", label: "Status", accessor: (v) => v.status },
     ],
@@ -364,7 +364,7 @@ function VisualizacaoHistorico({
             <Card key={venda.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{venda.cliente}</div>
+                  <div className="font-medium">{venda.clienteNome}</div>
                   <div className="text-xs text-muted-foreground">{formatDate(venda.data)}</div>
                 </div>
                 <StatusBadge status={venda.status} />
@@ -380,7 +380,7 @@ function VisualizacaoHistorico({
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Pagamento</div>
-                  <div>{venda.pagamento}</div>
+                  <div>{venda.formaPagamentoNome}</div>
                 </div>
                 <div>
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
@@ -430,13 +430,13 @@ function VisualizacaoHistorico({
                 </tr>
               ) : paginacao.items.map((venda) => (
                 <tr key={venda.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{venda.cliente}</td>
+                  <td className="px-4 py-3 font-medium">{venda.clienteNome}</td>
                   <td className="px-4 py-3 text-muted-foreground">{venda.origem}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(venda.data)}</td>
                   <td className="px-4 py-3 text-center">
                     <DetalhePecasVenda venda={venda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{venda.pagamento}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{venda.formaPagamentoNome}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatBRL(venda.total)}</td>
                   <td className="px-4 py-3"><StatusBadge status={venda.status} /></td>
                   <td className="px-4 py-3 text-right">
@@ -462,7 +462,7 @@ function DetalhePecasVenda({ venda, triggerClassName }: { venda: Sale; triggerCl
     <PiecesDetailsDialog
       pieces={venda.pecas}
       title={`Peças da venda ${venda.id}`}
-      description={`Detalhamento dos produtos e tamanhos da venda para ${venda.cliente}.`}
+      description={`Detalhamento dos produtos e tamanhos da venda para ${venda.clienteNome}.`}
       items={itens ?? []}
       triggerClassName={triggerClassName}
     />
@@ -483,7 +483,7 @@ function VisualizacaoFaturarEncomendas({
   const colunas = useMemo<DataGridColumn<Order>[]>(
     () => [
       { id: "id", label: "Encomenda", accessor: (e) => e.id },
-      { id: "cliente", label: "Cliente", accessor: (e) => e.cliente },
+      { id: "clienteNome", label: "Cliente", accessor: (e) => e.clienteNome },
       { id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm) },
       { id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao) },
       { id: "pecas", label: "Peças", accessor: (e) => pecasPorEncomenda(e.total) },
@@ -513,7 +513,7 @@ function VisualizacaoFaturarEncomendas({
             <Card key={encomenda.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{encomenda.cliente}</div>
+                  <div className="font-medium">{encomenda.clienteNome}</div>
                   <div className="font-mono text-xs text-muted-foreground">{encomenda.id}</div>
                 </div>
                 <StatusEncomendaFatura status={encomenda.status} />
@@ -585,7 +585,7 @@ function VisualizacaoFaturarEncomendas({
               ) : paginacao.items.map((encomenda) => (
                 <tr key={encomenda.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{encomenda.id}</td>
-                  <td className="px-4 py-3 font-medium">{encomenda.cliente}</td>
+                  <td className="px-4 py-3 font-medium">{encomenda.clienteNome}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.previsao)}</td>
                   <td className="px-4 py-3 text-center font-semibold">{pecasPorEncomenda(encomenda.total)}</td>
@@ -649,7 +649,7 @@ function VisualizacaoFaturarFichas({
   const colunas = useMemo<DataGridColumn<Ficha>[]>(
     () => [
       { id: "id", label: "Ficha", accessor: (f) => f.id },
-      { id: "revendedora", label: "Revendedora", accessor: (f) => f.revendedora },
+      { id: "revendedoraNome", label: "Revendedora", accessor: (f) => f.revendedoraNome },
       { id: "dataAbertura", label: "Abertura", accessor: (f) => f.dataAbertura, filterAccessor: (f) => formatDate(f.dataAbertura) },
       { id: "vendidas", label: "Vendidas", accessor: (f) => f.vendidas },
       { id: "enviadas", label: "Enviadas", accessor: (f) => f.enviadas },
@@ -679,7 +679,7 @@ function VisualizacaoFaturarFichas({
             <Card key={ficha.id} className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-medium">{ficha.revendedora}</div>
+                  <div className="font-medium">{ficha.revendedoraNome}</div>
                   <div className="font-mono text-xs text-muted-foreground">{ficha.id}</div>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
@@ -760,7 +760,7 @@ function VisualizacaoFaturarFichas({
               ) : paginacao.items.map((ficha) => (
                 <tr key={ficha.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{ficha.id}</td>
-                  <td className="px-4 py-3 font-medium">{ficha.revendedora}</td>
+                  <td className="px-4 py-3 font-medium">{ficha.revendedoraNome}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(ficha.dataAbertura)}</td>
                   <td className="px-4 py-3 text-center font-semibold text-primary">{ficha.vendidas}</td>
                   <td className="px-4 py-3 text-center">{ficha.enviadas}</td>

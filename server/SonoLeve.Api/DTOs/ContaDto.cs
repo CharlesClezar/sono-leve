@@ -1,7 +1,7 @@
 namespace SonoLeve.Api.DTOs;
 
 public record ContaRequest(
-    string Cliente,
+    Guid ClienteId,
     string Origem,
     decimal Total,
     decimal Recebido,
@@ -11,7 +11,8 @@ public record ContaRequest(
 
 public record ContaResponse(
     Guid Id,
-    string Cliente,
+    Guid ClienteId,
+    string ClienteNome,
     string Origem,
     decimal Total,
     decimal Recebido,

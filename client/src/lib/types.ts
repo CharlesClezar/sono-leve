@@ -18,12 +18,18 @@ export interface Product {
   id: string;
   nome: string;
   ref: string;
-  marca: string;
-  tipo: string;
-  subtipo: string;
-  categoria: string;
-  colecao?: string;
-  modelo?: string;
+  marcaId?: string;
+  marcaNome?: string;
+  tipoId?: string;
+  tipoNome?: string;
+  subtipoId?: string;
+  subtipoNome?: string;
+  categoriaId?: string;
+  categoriaNome?: string;
+  colecaoId?: string;
+  colecaoNome?: string;
+  modeloId?: string;
+  modeloNome?: string;
   precoVarejo: number;
   precoAtacado: number;
   ativo: boolean;
@@ -31,20 +37,24 @@ export interface Product {
   imagemUrl?: string;
 }
 
-export interface PieceDetailItem {
-  product: string;
-  ref: string;
-  size: string;
-  quantity: number;
-  unitPrice: number;
+export interface ItemVenda {
+  id: string;
+  produtoId: string;
+  produtoNome: string;
+  produtoRef: string;
+  tamanho: string;
+  quantidade: number;
+  precoUnitario: number;
 }
 
 export interface Sale {
   id: string;
-  cliente: string;
+  clienteId: string;
+  clienteNome: string;
+  formaPagamentoId?: string;
+  formaPagamentoNome?: string;
   data: string;
   pecas: number;
-  pagamento: string;
   total: number;
   status: SaleStatus;
   origem: "Balcão" | "Encomenda" | "Ficha";
@@ -52,7 +62,8 @@ export interface Sale {
 
 export interface Order {
   id: string;
-  cliente: string;
+  clienteId: string;
+  clienteNome: string;
   criadoEm: string;
   previsao: string;
   total: number;
@@ -63,7 +74,8 @@ export interface Order {
 
 export interface Ficha {
   id: string;
-  revendedora: string;
+  clienteId: string;
+  revendedoraNome: string;
   dataAbertura: string;
   enviadas: number;
   devolvidas: number;
@@ -74,7 +86,8 @@ export interface Ficha {
 
 export interface Account {
   id: string;
-  cliente: string;
+  clienteId: string;
+  clienteNome: string;
   origem: string;
   total: number;
   recebido: number;

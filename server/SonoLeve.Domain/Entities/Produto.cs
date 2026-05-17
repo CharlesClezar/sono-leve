@@ -4,12 +4,25 @@ public class Produto : EntidadeBase
 {
     public string Nome { get; set; } = "";
     public string Ref { get; set; } = "";
-    public string Marca { get; set; } = "";
-    public string Tipo { get; set; } = "";
-    public string Subtipo { get; set; } = "";
-    public string Categoria { get; set; } = "";
-    public string Colecao { get; set; } = "";
-    public string Modelo { get; set; } = "";
+
+    public Guid? MarcaId { get; set; }
+    public CatalogoMarca? Marca { get; set; }
+
+    public Guid? TipoId { get; set; }
+    public CatalogoTipo? Tipo { get; set; }
+
+    public Guid? SubtipoId { get; set; }
+    public CatalogoSubtipo? Subtipo { get; set; }
+
+    public Guid? CategoriaId { get; set; }
+    public CatalogoCategoria? Categoria { get; set; }
+
+    public Guid? ColecaoId { get; set; }
+    public CatalogoColecao? Colecao { get; set; }
+
+    public Guid? ModeloId { get; set; }
+    public CatalogoModelo? Modelo { get; set; }
+
     public decimal PrecoVarejo { get; set; }
     public decimal PrecoAtacado { get; set; }
     public bool Ativo { get; set; } = true;

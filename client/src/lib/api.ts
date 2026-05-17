@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Account, Customer, Ficha, Order, PieceDetailItem, Product, Sale } from "@/lib/types";
+import type { Account, Customer, Ficha, ItemVenda, Order, Product, Sale } from "@/lib/types";
 import { http, BASE_URL } from "@/lib/http";
 
 // Constantes estáveis para evitar que `?? []` crie nova referência a cada render
@@ -12,32 +12,39 @@ const CONTAS_VAZIAS: Account[] = [];
 
 // ─── Tipos de entrada (mutations) ────────────────────────────────────────────
 
+export type ItemVendaSalvar = {
+  produtoId: string;
+  tamanho: string;
+  quantidade: number;
+  precoUnitario: number;
+};
+
 export type VendaSalvar = {
   id?: string;
-  cliente: string;
+  clienteId: string;
+  formaPagamentoId?: string;
   data?: string;
   pecas: number;
-  pagamento: string;
   total: number;
   status: Sale["status"];
   origem: Sale["origem"];
-  items?: PieceDetailItem[];
+  items?: ItemVendaSalvar[];
 };
 
 export type EncomendaSalvar = {
   id?: string;
-  cliente: string;
+  clienteId: string;
   criadoEm?: string;
   previsao: string;
   total: number;
   entrada: number;
   status: Order["status"];
-  items?: PieceDetailItem[];
+  items?: ItemVendaSalvar[];
 };
 
 export type FichaSalvar = {
   id?: string;
-  revendedora: string;
+  clienteId: string;
   dataAbertura?: string;
   enviadas: number;
   devolvidas: number;
@@ -148,9 +155,9 @@ export const api = {
 
   catalogoProdutos: () => http.get<CatalogoProdutos>("/produtos/catalogo"),
 
-  itensVenda: (id: string) => http.get<PieceDetailItem[]>(`/vendas/${id}/itens`),
+  itensVenda: (id: string) => http.get<ItemVenda[]>(`/vendas/${id}/itens`),
 
-  itensEncomenda: (id: string) => http.get<PieceDetailItem[]>(`/encomendas/${id}/itens`),
+  itensEncomenda: (id: string) => http.get<ItemVenda[]>(`/encomendas/${id}/itens`),
 
   // ─── Clientes ──────────────────────────────────────────────────────────────
 
@@ -162,10 +169,10 @@ export const api = {
 
   // ─── Produtos ──────────────────────────────────────────────────────────────
 
-  salvarProduto: (produto: Omit<Product, "id">, idempotencyKey?: string) =>
+  salvarProduto: (produto: Omit<Product, "id" | "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome" | "modeloNome">, idempotencyKey?: string) =>
     http.post<Product>("/produtos", produto, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  atualizarProduto: (produto: Product) =>
+  atualizarProduto: (produto: Omit<Product, "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome" | "modeloNome">) =>
     http.put<Product>(`/produtos/${produto.id}`, produto),
 
   uploadImagemProduto: async (id: string, arquivo: File): Promise<{ imagemUrl: string }> => {

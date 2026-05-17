@@ -147,11 +147,11 @@ export default function Produtos() {
     () => [
       { id: "nome", label: "Nome", accessor: (p) => p.nome },
       { id: "ref", label: "Ref.", accessor: (p) => p.ref },
-      { id: "marca", label: "Marca", accessor: (p) => p.marca },
-      { id: "tipo", label: "Tipo", accessor: (p) => `${p.tipo} / ${p.subtipo}` },
-      { id: "categoria", label: "Categoria", accessor: (p) => p.categoria },
-      { id: "colecao", label: "Coleção", accessor: (p) => p.colecao ?? "" },
-      { id: "modelo", label: "Modelo", accessor: (p) => p.modelo ?? "" },
+      { id: "marcaNome", label: "Marca", accessor: (p) => p.marcaNome ?? "" },
+      { id: "tipo", label: "Tipo", accessor: (p) => `${p.tipoNome ?? ""} / ${p.subtipoNome ?? ""}` },
+      { id: "categoriaNome", label: "Categoria", accessor: (p) => p.categoriaNome ?? "" },
+      { id: "colecaoNome", label: "Coleção", accessor: (p) => p.colecaoNome ?? "" },
+      { id: "modeloNome", label: "Modelo", accessor: (p) => p.modeloNome ?? "" },
       { id: "precoVarejo", label: "Varejo", accessor: (p) => p.precoVarejo },
       { id: "precoAtacado", label: "Atacado", accessor: (p) => p.precoAtacado },
       { id: "estoque", label: "Saldo", accessor: (p) => p.estoque },
@@ -162,7 +162,7 @@ export default function Produtos() {
   const produtosFiltrados = useMemo(
     () =>
       produtos.filter((p) => {
-        if (marcaSelecionada !== "all" && p.marca !== marcaSelecionada) return false;
+        if (marcaSelecionada !== "all" && p.marcaNome !== marcaSelecionada) return false;
         if (filtroAtivo === "active" && !p.ativo) return false;
         if (filtroAtivo === "inactive" && p.ativo) return false;
         if (busca) {
@@ -170,12 +170,12 @@ export default function Produtos() {
           const coincide =
             p.nome.toLowerCase().includes(q) ||
             p.ref.toLowerCase().includes(q) ||
-            p.marca.toLowerCase().includes(q) ||
-            p.tipo.toLowerCase().includes(q) ||
-            p.subtipo.toLowerCase().includes(q) ||
-            p.categoria.toLowerCase().includes(q) ||
-            (p.colecao ?? "").toLowerCase().includes(q) ||
-            (p.modelo ?? "").toLowerCase().includes(q);
+            (p.marcaNome ?? "").toLowerCase().includes(q) ||
+            (p.tipoNome ?? "").toLowerCase().includes(q) ||
+            (p.subtipoNome ?? "").toLowerCase().includes(q) ||
+            (p.categoriaNome ?? "").toLowerCase().includes(q) ||
+            (p.colecaoNome ?? "").toLowerCase().includes(q) ||
+            (p.modeloNome ?? "").toLowerCase().includes(q);
 
           if (!coincide) return false;
         }
@@ -318,11 +318,11 @@ export default function Produtos() {
                       </td>
                       <td className="px-4 py-3 font-medium">{p.nome}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.ref}</td>
-                      <td className="px-4 py-3">{p.marca}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.tipo} / {p.subtipo}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.categoria}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.colecao}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.modelo}</td>
+                      <td className="px-4 py-3">{p.marcaNome}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.tipoNome} / {p.subtipoNome}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.categoriaNome}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.colecaoNome}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{p.modeloNome}</td>
                       <td className="px-4 py-3 text-right">{formatBRL(p.precoVarejo)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(p.precoAtacado)}</td>
                       <td className={`px-4 py-3 text-center font-semibold ${p.estoque === 0 ? "text-destructive" : ""}`}>{p.estoque}</td>

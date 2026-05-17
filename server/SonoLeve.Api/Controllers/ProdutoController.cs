@@ -47,12 +47,12 @@ public class ProdutoController : ControllerBase
             var existente = await _service.ObterPorIdAsync(id);
             existente.Nome = request.Nome;
             existente.Ref = request.Ref;
-            existente.Marca = request.Marca;
-            existente.Tipo = request.Tipo;
-            existente.Subtipo = request.Subtipo;
-            existente.Categoria = request.Categoria;
-            existente.Colecao = request.Colecao;
-            existente.Modelo = request.Modelo;
+            existente.MarcaId = request.MarcaId;
+            existente.TipoId = request.TipoId;
+            existente.SubtipoId = request.SubtipoId;
+            existente.CategoriaId = request.CategoriaId;
+            existente.ColecaoId = request.ColecaoId;
+            existente.ModeloId = request.ModeloId;
             existente.PrecoVarejo = request.PrecoVarejo;
             existente.PrecoAtacado = request.PrecoAtacado;
             existente.Ativo = request.Ativo;
@@ -125,14 +125,21 @@ public class ProdutoController : ControllerBase
 
     private static Produto MapearEntidade(ProdutoRequest r) => new()
     {
-        Nome = r.Nome, Ref = r.Ref, Marca = r.Marca, Tipo = r.Tipo,
-        Subtipo = r.Subtipo, Categoria = r.Categoria, Colecao = r.Colecao,
-        Modelo = r.Modelo, PrecoVarejo = r.PrecoVarejo, PrecoAtacado = r.PrecoAtacado,
+        Nome = r.Nome, Ref = r.Ref,
+        MarcaId = r.MarcaId, TipoId = r.TipoId, SubtipoId = r.SubtipoId,
+        CategoriaId = r.CategoriaId, ColecaoId = r.ColecaoId, ModeloId = r.ModeloId,
+        PrecoVarejo = r.PrecoVarejo, PrecoAtacado = r.PrecoAtacado,
         Ativo = r.Ativo, Estoque = r.Estoque,
     };
 
     private static ProdutoResponse Mapear(Produto p) => new(
-        p.Id, p.Nome, p.Ref, p.Marca, p.Tipo, p.Subtipo, p.Categoria,
-        p.Colecao, p.Modelo, p.PrecoVarejo, p.PrecoAtacado, p.Ativo, p.Estoque, p.CriadoEm, p.ImagemUrl
+        p.Id, p.Nome, p.Ref,
+        p.MarcaId, p.Marca?.Name,
+        p.TipoId, p.Tipo?.Name,
+        p.SubtipoId, p.Subtipo?.Name,
+        p.CategoriaId, p.Categoria?.Name,
+        p.ColecaoId, p.Colecao?.Name,
+        p.ModeloId, p.Modelo?.Name,
+        p.PrecoVarejo, p.PrecoAtacado, p.Ativo, p.Estoque, p.CriadoEm, p.ImagemUrl
     );
 }

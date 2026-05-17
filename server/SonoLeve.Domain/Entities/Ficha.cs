@@ -4,7 +4,9 @@ namespace SonoLeve.Domain.Entities;
 
 public class Ficha : EntidadeBase
 {
-    public string Revendedora { get; set; } = "";
+    public Guid ClienteId { get; set; }
+    public Cliente? Cliente { get; set; }
+
     public DateTime DataAbertura { get; set; }
     public int Enviadas { get; set; }
     public int Devolvidas { get; set; }

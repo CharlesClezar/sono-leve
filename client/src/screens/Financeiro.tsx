@@ -27,7 +27,7 @@ export default function Financeiro() {
   const [filtroStatus, setFiltroStatus] = useState("all");
   const colunas = useMemo<DataGridColumn<Account>[]>(
     () => [
-      { id: "cliente", label: "Cliente", accessor: (conta) => conta.cliente },
+      { id: "cliente", label: "Cliente", accessor: (conta) => conta.clienteNome },
       { id: "origem", label: "Origem", accessor: (conta) => conta.origem },
       { id: "total", label: "Total", accessor: (conta) => conta.total },
       { id: "recebido", label: "Recebido", accessor: (conta) => conta.recebido },
@@ -42,7 +42,7 @@ export default function Financeiro() {
     () =>
       contas.filter((c) => {
         if (filtroStatus !== "all" && c.status !== filtroStatus) return false;
-        if (busca && !c.cliente.toLowerCase().includes(busca.toLowerCase()) && !c.origem.toLowerCase().includes(busca.toLowerCase()))
+        if (busca && !c.clienteNome.toLowerCase().includes(busca.toLowerCase()) && !c.origem.toLowerCase().includes(busca.toLowerCase()))
           return false;
         return true;
       }),
@@ -149,7 +149,7 @@ export default function Financeiro() {
                       <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conta encontrada</td></tr>
                     ) : paginacao.items.map((a) => (
                       <tr key={a.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-medium">{a.cliente}</td>
+                        <td className="px-4 py-3 font-medium">{a.clienteNome}</td>
                         <td className="px-4 py-3 text-muted-foreground">{a.origem}</td>
                         <td className="px-4 py-3 text-right">{formatBRL(a.total)}</td>
                         <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(a.recebido)}</td>

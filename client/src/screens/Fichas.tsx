@@ -37,7 +37,7 @@ export default function Fichas() {
   const columns = useMemo<DataGridColumn<Ficha>[]>(
     () => [
       { id: "id", label: "Ficha", accessor: (ficha) => ficha.id },
-      { id: "revendedora", label: "Revendedora", accessor: (ficha) => ficha.revendedora },
+      { id: "revendedora", label: "Revendedora", accessor: (ficha) => ficha.revendedoraNome },
       { id: "dataAbertura", label: "Abertura", accessor: (ficha) => ficha.dataAbertura, filterAccessor: (ficha) => formatDate(ficha.dataAbertura) },
       { id: "enviadas", label: "Enviadas", accessor: (ficha) => ficha.enviadas },
       { id: "devolvidas", label: "Devolvidas", accessor: (ficha) => ficha.devolvidas },
@@ -52,7 +52,7 @@ export default function Fichas() {
     () =>
       fichas.filter((f) => {
         if (tab !== "Histórico" && f.status !== tab) return false;
-        if (query && !f.revendedora.toLowerCase().includes(query.toLowerCase()) && !f.id.toLowerCase().includes(query.toLowerCase()))
+        if (query && !f.revendedoraNome.toLowerCase().includes(query.toLowerCase()) && !f.id.toLowerCase().includes(query.toLowerCase()))
           return false;
         return true;
       }),
@@ -101,7 +101,7 @@ export default function Fichas() {
               <Card key={f.id} className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-medium">{f.revendedora}</div>
+                    <div className="font-medium">{f.revendedoraNome}</div>
                     <div className="font-mono text-xs text-muted-foreground">{f.id}</div>
                   </div>
                   <StatusBadge status={f.status} />
@@ -149,7 +149,7 @@ export default function Fichas() {
               ) : pagination.items.map((f) => (
                 <tr key={f.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
-                  <td className="px-4 py-3 font-medium">{f.revendedora}</td>
+                  <td className="px-4 py-3 font-medium">{f.revendedoraNome}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(f.dataAbertura)}</td>
                   <td className="px-4 py-3 text-center">{f.enviadas}</td>
                   <td className="px-4 py-3 text-center text-muted-foreground">{f.devolvidas}</td>

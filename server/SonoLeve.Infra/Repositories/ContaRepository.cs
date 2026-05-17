@@ -12,7 +12,7 @@ public class ContaRepository : IContaRepository
 
     public async Task<(IEnumerable<Conta> items, int total)> ListarAsync(int pagina, int tamanhoPagina)
     {
-        var query = _db.Contas.AsQueryable();
+        var query = _db.Contas.Include(c => c.Cliente);
         var total = await query.CountAsync();
         var items = await query.OrderByDescending(c => c.Vencimento)
             .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();
@@ -20,7 +20,8 @@ public class ContaRepository : IContaRepository
     }
 
     public async Task<Conta> ObterPorIdAsync(Guid id) =>
-        await _db.Contas.FindAsync(id) ?? throw new KeyNotFoundException("Conta não encontrada.");
+        await _db.Contas.Include(c => c.Cliente)
+            .FirstOrDefaultAsync(c => c.Id == id) ?? throw new KeyNotFoundException("Conta não encontrada.");
 
     public async Task<Conta> CriarAsync(Conta conta)
     {

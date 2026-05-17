@@ -10,9 +10,14 @@ public class ProdutoRepository : IProdutoRepository
     private readonly SonoLeveDbContext _db;
     public ProdutoRepository(SonoLeveDbContext db) => _db = db;
 
+    private IQueryable<Produto> ComIncludes() =>
+        _db.Produtos
+            .Include(p => p.Marca).Include(p => p.Tipo).Include(p => p.Subtipo)
+            .Include(p => p.Categoria).Include(p => p.Colecao).Include(p => p.Modelo);
+
     public async Task<(IEnumerable<Produto> items, int total)> ListarAsync(string? busca, int pagina, int tamanhoPagina)
     {
-        var query = _db.Produtos.AsQueryable();
+        var query = ComIncludes().AsQueryable();
         if (!string.IsNullOrWhiteSpace(busca))
             query = query.Where(p => p.Nome.Contains(busca) || p.Ref.Contains(busca));
         var total = await query.CountAsync();
@@ -22,7 +27,7 @@ public class ProdutoRepository : IProdutoRepository
     }
 
     public async Task<Produto> ObterPorIdAsync(Guid id) =>
-        await _db.Produtos.FindAsync(id) ?? throw new KeyNotFoundException("Produto não encontrado.");
+        await ComIncludes().FirstOrDefaultAsync(p => p.Id == id) ?? throw new KeyNotFoundException("Produto não encontrado.");
 
     public async Task<Produto> CriarAsync(Produto produto)
     {
