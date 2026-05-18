@@ -237,77 +237,9 @@ export default function NovaVenda() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="grid gap-6 p-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-6">
-            {/* Cliente */}
-            <Card className="p-5">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cliente</h3>
-              {cliente ? (
-                <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
-                  <div>
-                    <div className="font-medium">{cliente.nome}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar cliente..."
-                    className="pl-9"
-                    value={buscaCliente}
-                    onChange={(e) => setBuscaCliente(e.target.value)}
-                  />
-                  {clientesFiltrados.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                      {clientesFiltrados.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
-                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                        >
-                          <span>{c.nome}</span>
-                          <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
-                        </button>
-                      ))}
-                      <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
-                        <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
 
-            {encomendaOrigem && (
-              <Card className="border-primary/15 bg-primary/5 p-5">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Origem da venda</h3>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Encomenda</div>
-                    <div className="font-medium">{encomendaOrigem.id}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Status</div>
-                    <div className="font-medium">{encomendaOrigem.status}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo projetado</div>
-                    <div className="font-medium">{formatBRL(saldoRestante)}</div>
-                  </div>
-                </div>
-                {encomendaOrigem.status === "Fabricado parcialmente" && (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Ao faturar parcialmente esta encomenda, o sistema gera uma nova encomenda com o saldo restante.
-                  </p>
-                )}
-              </Card>
-            )}
-
-            {/* Produtos */}
-            <Card className="p-5">
+          {/* Coluna esquerda: apenas produtos */}
+          <Card className="p-5">
               <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Produtos</h3>
               <div className="relative mb-4">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -429,13 +361,67 @@ export default function NovaVenda() {
                 </div>
               )}
             </Card>
-          </div>
 
           {/* Coluna direita */}
           <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-            {/* Resumo */}
+            {/* Resumo (inclui cliente) */}
             <Card className="p-5">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resumo</h3>
+              {/* Cliente */}
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cliente</h3>
+              {cliente ? (
+                <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
+                  <div>
+                    <div className="font-medium">{cliente.nome}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar cliente..."
+                    className="pl-9"
+                    value={buscaCliente}
+                    onChange={(e) => setBuscaCliente(e.target.value)}
+                  />
+                  {clientesFiltrados.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
+                      {clientesFiltrados.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
+                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                        >
+                          <span>{c.nome}</span>
+                          <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
+                        </button>
+                      ))}
+                      <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
+                        <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Origem da venda (compacto) */}
+              {encomendaOrigem && (
+                <div className="mt-3 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs">
+                  <span className="font-medium text-primary">Encomenda</span>
+                  <span className="mx-1 text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">{encomendaOrigem.status}</span>
+                  {encomendaOrigem.status === "Fabricado parcialmente" && saldoRestante > 0 && (
+                    <span className="ml-1 text-warning">· saldo {formatBRL(saldoRestante)}</span>
+                  )}
+                </div>
+              )}
+
+              <div className="my-4 border-t" />
+
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resumo</h3>
               <div className="space-y-2.5 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Data da venda</span>
@@ -479,13 +465,10 @@ export default function NovaVenda() {
                     value={formaPagamentoId}
                     onValueChange={setFormaPagamentoId}
                     placeholder="Selecionar..."
-                    options={[
-                      { value: "", label: "Sem pagamento" },
-                      ...formasPagamentoAtivas.map((f) => ({
-                        value: f.id,
-                        label: `${f.nome}${f.condicao ? ` — ${f.condicao}` : ""}`,
-                      })),
-                    ]}
+                    options={formasPagamentoAtivas.map((f) => ({
+                      value: f.id,
+                      label: `${f.nome}${f.condicao ? ` — ${f.condicao}` : ""}`,
+                    }))}
                   />
                 </label>
                 <div className="flex items-center justify-between">

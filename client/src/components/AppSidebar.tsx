@@ -53,13 +53,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="h-20 shrink-0 justify-center border-b border-sidebar-border p-2">
         <div className={`flex h-full items-center gap-3 ${collapsed ? "justify-center" : "px-0"}`}>
-          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-sidebar-border bg-white shadow-sm">
+          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-sidebar-border bg-white shadow-sm">
             <Image
               src="/sono-leve-logo.svg"
               alt="Logo da Sono Leve"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-cover"
+              fill
+              className="object-cover"
               priority
             />
           </div>
