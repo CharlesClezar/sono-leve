@@ -230,6 +230,15 @@ namespace SonoLeve.Infra.Migrations
                 table: "Contas",
                 column: "ClienteId");
 
+            // Limpar dados com FKs inválidas (Guid.Empty) antes de aplicar as constraints.
+            // Esses dados serão re-semeados pelo DataSeeder no próximo startup.
+            migrationBuilder.Sql("DELETE FROM \"ItensVenda\"");
+            migrationBuilder.Sql("DELETE FROM \"ItensEncomenda\"");
+            migrationBuilder.Sql("DELETE FROM \"Contas\"");
+            migrationBuilder.Sql("DELETE FROM \"Fichas\"");
+            migrationBuilder.Sql("DELETE FROM \"Encomendas\"");
+            migrationBuilder.Sql("DELETE FROM \"Vendas\"");
+
             migrationBuilder.AddForeignKey(
                 name: "FK_Contas_Clientes_ClienteId",
                 table: "Contas",
