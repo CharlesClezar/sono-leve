@@ -15,10 +15,15 @@ public class VendaController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<VendaResponse>>> Listar(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
+        [FromQuery] string? tipoCliente,
+        [FromQuery] string? formaPagamento,
+        [FromQuery] string? periodo,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _service.ListarAsync(page, pageSize);
+        var (items, total) = await _service.ListarAsync(search, status, tipoCliente, formaPagamento, periodo, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Ok(new ListaResponse<VendaResponse>(items.Select(Mapear), total, page, pageSize, totalPages));
     }
@@ -89,6 +94,8 @@ public class VendaController : ControllerBase
             Tamanho = i.Tamanho,
             Quantidade = i.Quantidade,
             PrecoUnitario = i.PrecoUnitario,
+            DescontoPct = i.DescontoPct,
+            DescontoVal = i.DescontoVal,
         });
 
     private static Venda MapearEntidade(VendaRequest r) => new()
@@ -107,7 +114,7 @@ public class VendaController : ControllerBase
 
     private static ItemVendaResponse MapearItem(ItemVenda i) => new(
         i.Id, i.ProdutoId, i.Produto?.Nome ?? "", i.Produto?.Ref ?? "",
-        i.Tamanho, i.Quantidade, i.PrecoUnitario
+        i.Tamanho, i.Quantidade, i.PrecoUnitario, i.DescontoPct, i.DescontoVal
     );
 
     private static string OrigemPt(OrigemVenda origem) => origem switch

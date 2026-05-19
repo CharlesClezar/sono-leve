@@ -20,12 +20,11 @@ public class SonoLeveDbContext : DbContext
     public DbSet<Ficha> Fichas => Set<Ficha>();
     public DbSet<Conta> Contas => Set<Conta>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
-    public DbSet<CatalogoMarca> CatalogoMarcas => Set<CatalogoMarca>();
-    public DbSet<CatalogoCategoria> CategoriasBase => Set<CatalogoCategoria>();
-    public DbSet<CatalogoTipo> CatalogoTipos => Set<CatalogoTipo>();
-    public DbSet<CatalogoSubtipo> CatalogoSubtipos => Set<CatalogoSubtipo>();
-    public DbSet<CatalogoColecao> CatalogoColecoes => Set<CatalogoColecao>();
-    public DbSet<CatalogoModelo> CatalogoModelos => Set<CatalogoModelo>();
+    public DbSet<Marca> Marcas => Set<Marca>();
+    public DbSet<Categoria> Categorias => Set<Categoria>();
+    public DbSet<Tipo> Tipos => Set<Tipo>();
+    public DbSet<Subtipo> Subtipos => Set<Subtipo>();
+    public DbSet<Colecao> Colecoes => Set<Colecao>();
     public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -43,7 +42,7 @@ public class SonoLeveDbContext : DbContext
             v => new List<string>(v)
         );
 
-        modelBuilder.Entity<CatalogoCategoria>()
+        modelBuilder.Entity<Categoria>()
             .Property(e => e.Grade)
             .HasConversion(gradeConverter, gradeComparer);
     }

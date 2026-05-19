@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PiecesDetailsDialog } from "@/components/PiecesDetailsDialog";
 import { formatBRL, formatDate, type Order } from "@/lib/types";
-import { api, useEncomendas, useItensEncomenda } from "@/lib/api";
+import { api, useEncomendasPaginadas, useItensEncomenda } from "@/lib/api";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/usePagination";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { CircleCheck, Pencil, Play, Plus, Search, ShoppingCart } from "lucide-react";
 import Link from "next/link";
@@ -44,6 +44,12 @@ const filtrosPadraoAba: FiltroAba = {
 
 const normalizarStatus = (status: string): StatusListaEncomenda => (status === "Aberta" ? "Novo" : status as StatusListaEncomenda);
 
+const statusParaApi = (aba: AbaEncomenda): string | undefined => {
+  if (aba === "Histórico") return undefined;
+  if (aba === "Novo") return "Aberta";
+  return aba;
+};
+
 const classeStatus: Record<StatusListaEncomenda, string> = {
   Novo: "border-primary/20 bg-primary/10 text-primary",
   "Em produção": "border-amber-200 bg-amber-50 text-amber-600",
@@ -57,7 +63,6 @@ function rotuloStatus(status: StatusListaEncomenda) {
   return status === "Pronta" ? "Pronto" : status;
 }
 
-
 function estaAtrasada(previsao: string, status: StatusListaEncomenda) {
   if (status === "Pronta" || status === "Entregue" || status === "Cancelada") return false;
   const hoje = new Date();
@@ -67,22 +72,42 @@ function estaAtrasada(previsao: string, status: StatusListaEncomenda) {
 
 export default function Encomendas() {
   const queryClient = useQueryClient();
-  const { data: encomendas = [], isLoading } = useEncomendas();
-  const todasEncomendas = encomendas;
   const atalhoNova = useShortcutLabel("new_contextual");
   const [aba, setAba] = useState<AbaEncomenda>("Histórico");
   const [filtrosPorAba, setFiltrosPorAba] = useState<Record<AbaEncomenda, FiltroAba>>(
     () => Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaEncomenda, FiltroAba>,
   );
+  const [pageByTab, setPageByTab] = useState<Record<AbaEncomenda, number>>(
+    () => Object.fromEntries(abas.map((item) => [item, 1])) as Record<AbaEncomenda, number>,
+  );
   const filtros = filtrosPorAba[aba];
+  const page = pageByTab[aba];
+
   const atualizarFiltrosAba = (patch: Partial<FiltroAba>) => {
     setFiltrosPorAba((atual) => ({ ...atual, [aba]: { ...atual[aba], ...patch } }));
+    setPageByTab((atual) => ({ ...atual, [aba]: 1 }));
   };
+  const setTabPage = (p: number) => setPageByTab((atual) => ({ ...atual, [aba]: p }));
   const selecionarAba = (novaAba: AbaEncomenda) => setAba(novaAba);
   const indexedTabs = useIndexedTabs({ tabs: abas, onTabChange: selecionarAba });
-  const [statusPorId, setStatusPorId] = useState<Record<string, StatusListaEncomenda>>(
-    () => Object.fromEntries(todasEncomendas.map((encomenda) => [encomenda.id, normalizarStatus(encomenda.status)]))
-  );
+
+  const { data: response, isLoading } = useEncomendasPaginadas({
+    search: filtros.busca || undefined,
+    status: statusParaApi(aba),
+    page,
+    pageSize: 30,
+  });
+
+  const encomendas = response?.data ?? [];
+
+  const [statusPorId, setStatusPorId] = useState<Record<string, StatusListaEncomenda>>({});
+
+  useEffect(() => {
+    setStatusPorId((prev) => ({
+      ...Object.fromEntries(encomendas.map((e) => [e.id, normalizarStatus(e.status)])),
+      ...prev,
+    }));
+  }, [encomendas]);
 
   useEffect(() => {
     const filtroEncomenda = new URLSearchParams(window.location.search).get("encomenda");
@@ -91,31 +116,19 @@ export default function Encomendas() {
     setFiltrosPorAba((atual) => ({ ...atual, Histórico: { ...atual.Histórico, busca: filtroEncomenda } }));
   }, []);
 
-  const encomendasFiltradas = useMemo(() => {
-    const resultado = todasEncomendas
-      .filter((e) => {
-        const statusAtual = statusPorId[e.id] ?? normalizarStatus(e.status);
-        if (aba !== "Histórico" && statusAtual !== aba) return false;
-        if (filtros.busca && !e.clienteNome.toLowerCase().includes(filtros.busca.toLowerCase()) && !e.id.toLowerCase().includes(filtros.busca.toLowerCase()))
-          return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const statusA = statusPorId[a.id] ?? normalizarStatus(a.status);
-        const statusB = statusPorId[b.id] ?? normalizarStatus(b.status);
-        let valor = 0;
-
-        if (filtros.ordenarPor === "criadoEm") valor = a.criadoEm.localeCompare(b.criadoEm);
-        if (filtros.ordenarPor === "previsao") valor = a.previsao.localeCompare(b.previsao);
-        if (filtros.ordenarPor === "total") valor = a.total - b.total;
-        if (filtros.ordenarPor === "cliente") valor = a.clienteNome.localeCompare(b.clienteNome);
-        if (filtros.ordenarPor === "status") valor = ordemStatus.indexOf(statusA) - ordemStatus.indexOf(statusB);
-
-        return filtros.direcaoOrdenacao === "asc" ? valor : -valor;
-      });
-
-    return resultado;
-  }, [todasEncomendas, filtros.busca, filtros.ordenarPor, filtros.direcaoOrdenacao, statusPorId, aba]);
+  const encomendasOrdenadas = useMemo(() => {
+    return [...encomendas].sort((a, b) => {
+      const statusA = statusPorId[a.id] ?? normalizarStatus(a.status);
+      const statusB = statusPorId[b.id] ?? normalizarStatus(b.status);
+      let valor = 0;
+      if (filtros.ordenarPor === "criadoEm") valor = a.criadoEm.localeCompare(b.criadoEm);
+      if (filtros.ordenarPor === "previsao") valor = a.previsao.localeCompare(b.previsao);
+      if (filtros.ordenarPor === "total") valor = a.total - b.total;
+      if (filtros.ordenarPor === "cliente") valor = a.clienteNome.localeCompare(b.clienteNome);
+      if (filtros.ordenarPor === "status") valor = ordemStatus.indexOf(statusA) - ordemStatus.indexOf(statusB);
+      return filtros.direcaoOrdenacao === "asc" ? valor : -valor;
+    });
+  }, [encomendas, filtros.ordenarPor, filtros.direcaoOrdenacao, statusPorId]);
 
   const colunas = useMemo<DataGridColumn<Order>[]>(
     () => [
@@ -130,8 +143,8 @@ export default function Encomendas() {
     ],
     [statusPorId],
   );
-  const grid = useDataGrid(encomendasFiltradas, colunas);
-  const paginacao = usePagination(grid.rows);
+  const grid = useDataGrid(encomendasOrdenadas, colunas);
+  const paginacao = useServerPagination(response, setTabPage);
 
   const agrupadas = useMemo(
     () =>
@@ -155,6 +168,7 @@ export default function Encomendas() {
       <ClearFiltersShortcutDialog
         onConfirm={() => {
           setFiltrosPorAba(Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaEncomenda, FiltroAba>);
+          setPageByTab(Object.fromEntries(abas.map((item) => [item, 1])) as Record<AbaEncomenda, number>);
           grid.clearFilters();
         }}
       />
@@ -397,10 +411,13 @@ function LinhaEncomenda({
 }
 
 function DetalhesPecasEncomenda({ encomenda, triggerClassName }: { encomenda: Order; triggerClassName: string }) {
-  const { data: itens } = useItensEncomenda(encomenda.id);
+  const [open, setOpen] = useState(false);
+  const { data: itens } = useItensEncomenda(open ? encomenda.id : "");
 
   return (
     <PiecesDetailsDialog
+      open={open}
+      onOpenChange={setOpen}
       pieces={encomenda.pecas}
       title={`Peças da encomenda ${encomenda.id}`}
       description={`Detalhamento dos produtos e tamanhos reservados para ${encomenda.clienteNome}.`}

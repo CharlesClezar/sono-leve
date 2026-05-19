@@ -23,12 +23,16 @@ export function PiecesDetailsDialog({
   title,
   description,
   items,
+  open,
+  onOpenChange,
 }: {
   triggerClassName: string;
   pieces: number;
   title: string;
   description: string;
   items: ItemVenda[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const total = useMemo(() => items.reduce((sum, item) => sum + item.quantidade, 0), [items]);
   const totalValue = useMemo(
@@ -51,7 +55,7 @@ export function PiecesDetailsDialog({
   const hasItems = items.length > 0;
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <button type="button" className={triggerClassName}>
           {pieces}

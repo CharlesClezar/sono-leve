@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Domain.Entities;
+using SonoLeve.Domain.Enums;
 using SonoLeve.Infra.Data;
 
 namespace SonoLeve.Infra.Repositories;
@@ -10,12 +11,32 @@ public class EncomendaRepository : IEncomendaRepository
     private readonly SonoLeveDbContext _db;
     public EncomendaRepository(SonoLeveDbContext db) => _db = db;
 
-    public async Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(int pagina, int tamanhoPagina)
+    public async Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(
+        string? search, string? status, int pagina, int tamanhoPagina)
     {
-        var query = _db.Encomendas.Include(e => e.Cliente);
+        search = search?.Length > 100 ? search[..100] : search;
+        IQueryable<Encomenda> query = _db.Encomendas.Include(e => e.Cliente);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(e => e.Cliente != null && e.Cliente.Nome.Contains(search));
+
+        if (!string.IsNullOrWhiteSpace(status) && status != "all")
+        {
+            var statuses = status
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => ParseStatus(s.Trim()))
+                .OfType<StatusEncomenda>()
+                .ToList();
+            if (statuses.Count > 0)
+                query = query.Where(e => statuses.Contains(e.Status));
+        }
+
         var total = await query.CountAsync();
-        var items = await query.OrderByDescending(e => e.Previsao)
-            .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();
+        var items = await query
+            .OrderByDescending(e => e.Previsao)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
         return (items, total);
     }
 
@@ -52,4 +73,12 @@ public class EncomendaRepository : IEncomendaRepository
         }
         await _db.SaveChangesAsync();
     }
+
+    private static StatusEncomenda? ParseStatus(string s) => s switch
+    {
+        "Em produção"            => StatusEncomenda.EmProducao,
+        "Fabricado parcialmente" => StatusEncomenda.FabricadoParcialmente,
+        "Novo"                   => StatusEncomenda.Aberta,
+        _                        => Enum.TryParse<StatusEncomenda>(s, true, out var r) ? r : null
+    };
 }

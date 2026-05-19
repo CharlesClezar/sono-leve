@@ -4,7 +4,9 @@ namespace SonoLeve.Application.Interfaces;
 
 public interface IVendaRepository
 {
-    Task<(IEnumerable<Venda> items, int total)> ListarAsync(int pagina, int tamanhoPagina);
+    Task<(IEnumerable<Venda> items, int total)> ListarAsync(
+        string? search, string? status, string? tipoCliente,
+        string? formaPagamento, string? periodo, int pagina, int tamanhoPagina);
     Task<Venda> ObterPorIdAsync(Guid id);
     Task<Venda> CriarAsync(Venda venda);
     Task<Venda> AtualizarAsync(Venda venda);

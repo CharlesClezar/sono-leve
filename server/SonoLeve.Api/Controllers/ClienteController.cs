@@ -20,10 +20,12 @@ public class ClienteController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ListaResponse<ClienteResponse>>> Listar(
         [FromQuery] string? search,
+        [FromQuery] string? tipo,
+        [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _clienteService.ListarAsync(search, page, pageSize);
+        var (items, total) = await _clienteService.ListarAsync(search, tipo, status, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
 
         return Ok(new ListaResponse<ClienteResponse>(

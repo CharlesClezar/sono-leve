@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/types";
-import { api, useDadosOperacionais, useItensEncomenda } from "@/lib/api";
+import type { Product } from "@/lib/types";
+import { api, useClientes, useBuscarProdutos, useEncomendaPorId, useProdutoPorId, useItensEncomenda } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search } from "lucide-react";
@@ -19,13 +20,13 @@ import { toast } from "sonner";
 export default function NovaEncomenda() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { clientes, produtos, encomendas } = useDadosOperacionais();
+  const { data: clientes = [] } = useClientes();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
-  const encomenda = encomendas.find((item) => item.id === params.id);
-  const editando = Boolean(encomenda);
+  const { data: encomenda } = useEncomendaPorId(params.id);
+  const editando = Boolean(params.id);
   const vieuDoDashboard = searchParams.get("from") === "dashboard";
   const breadcrumb = vieuDoDashboard
     ? ["Dashboard", "Encomenda", editando ? "Editar encomenda" : "Nova encomenda"]
@@ -34,26 +35,19 @@ export default function NovaEncomenda() {
   const idempotencyKey = useRef(crypto.randomUUID());
   const itensPreenchidos = useRef(false);
   const [salvando, setSalvando] = useState(false);
-  const [produtoId, setProdutoId] = useState("");
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Product | null>(null);
   const [buscaProduto, setBuscaProduto] = useState("");
   const { data: itensExistentes } = useItensEncomenda(editando ? (params.id ?? "") : "");
+  const primeiroItemProdutoId = editando ? (itensExistentes?.[0]?.produtoId ?? undefined) : undefined;
+  const { data: produtoDoItem } = useProdutoPorId(primeiroItemProdutoId);
+  const { data: resultadosBusca = [] } = useBuscarProdutos(buscaProduto);
   const [clienteId, setClienteId] = useState(encomenda?.clienteId ?? clientes[0]?.id ?? "");
   const [previsao, setPrevisao] = useState(encomenda?.previsao ?? "");
   const [tamanho, setTamanho] = useState("P");
   const [quantidade, setQuantidade] = useState(1);
   const [entrada, setEntrada] = useState(encomenda?.entrada ?? 0);
 
-  const produtoSelecionado = produtos.find((p) => p.id === produtoId);
   const total = produtoSelecionado ? produtoSelecionado.precoVarejo * quantidade : encomenda?.total ?? 0;
-
-  const produtosFiltrados = buscaProduto
-    ? produtos.filter(
-        (p) =>
-          p.ativo &&
-          (p.nome.toLowerCase().includes(buscaProduto.toLowerCase()) ||
-            p.ref.toLowerCase().includes(buscaProduto.toLowerCase()))
-      )
-    : [];
 
   useEffect(() => {
     if (encomenda) {
@@ -67,16 +61,13 @@ export default function NovaEncomenda() {
   }, [clienteId, clientes, encomenda]);
 
   useEffect(() => {
-    if (!editando || itensPreenchidos.current || !itensExistentes?.length || !produtos.length) return;
+    if (!editando || itensPreenchidos.current || !itensExistentes?.length || !produtoDoItem) return;
     const primeiro = itensExistentes[0];
-    const produto = produtos.find((p) => p.id === primeiro.produtoId) ?? produtos.find((p) => p.ref === primeiro.produtoRef);
-    if (produto) {
-      setProdutoId(produto.id);
-      setTamanho(primeiro.tamanho);
-      setQuantidade(primeiro.quantidade);
-    }
+    setProdutoSelecionado(produtoDoItem);
+    setTamanho(primeiro.tamanho);
+    setQuantidade(primeiro.quantidade);
     itensPreenchidos.current = true;
-  }, [itensExistentes, editando, produtos]);
+  }, [itensExistentes, editando, produtoDoItem]);
 
   const handleSalvar = async () => {
     if (!clienteId) return toast.error("Selecione um cliente.");
@@ -93,7 +84,7 @@ export default function NovaEncomenda() {
         entrada,
         status: encomenda?.status ?? "Aberta" as const,
         items: [{
-          produtoId: produtoId,
+          produtoId: produtoSelecionado.id,
           tamanho,
           quantidade,
           precoUnitario: produtoSelecionado.precoVarejo,
@@ -168,7 +159,7 @@ export default function NovaEncomenda() {
                         <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>Trocar</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setProdutoSelecionado(null)}>Trocar</Button>
                   </div>
                 ) : (
                   <div className="relative">
@@ -179,12 +170,12 @@ export default function NovaEncomenda() {
                       value={buscaProduto}
                       onChange={(e) => setBuscaProduto(e.target.value)}
                     />
-                    {produtosFiltrados.length > 0 && (
+                    {resultadosBusca.length > 0 && (
                       <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                        {produtosFiltrados.map((p) => (
+                        {resultadosBusca.map((p) => (
                           <button
                             key={p.id}
-                            onClick={() => { setProdutoId(p.id); setBuscaProduto(""); }}
+                            onClick={() => { setProdutoSelecionado(p); setBuscaProduto(""); }}
                             className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
                           >
                             {p.imagemUrl ? (

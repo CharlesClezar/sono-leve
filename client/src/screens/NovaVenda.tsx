@@ -9,8 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { formatBRL, type ItemVenda, type Sale } from "@/lib/types";
-import { api, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
+import { formatBRL, type ItemVenda, type Product, type Sale } from "@/lib/types";
+import { api, useBuscarProdutos, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search, X, UserPlus, CreditCard } from "lucide-react";
@@ -23,7 +23,15 @@ interface Item {
   preco: number;
 }
 
-const tamanhos = ["P", "M", "G", "GG"];
+interface DescProduto { pct: number; val: number; }
+const ZERO_DESC: DescProduto = { pct: 0, val: 0 };
+const GRADE_PADRAO = ["P", "M", "G", "GG"];
+
+function calcPrecoEfetivo(preco: number, desc: DescProduto): number {
+  if (desc.pct > 0) return preco * (1 - desc.pct / 100);
+  if (desc.val > 0) return Math.max(0, preco - desc.val);
+  return preco;
+}
 
 function dataHoje() {
   const d = new Date();
@@ -63,13 +71,15 @@ export default function NovaVenda() {
   const [buscaCliente, setBuscaCliente] = useState("");
   const [clienteId, setClienteId] = useState<string | null>(clienteIdInicial);
   const [buscaProduto, setBuscaProduto] = useState("");
+  const [termoBusca, setTermoBusca] = useState("");
+  const [produtosAdicionados, setProdutosAdicionados] = useState<Record<string, Product>>({});
   const [itens, setItens] = useState<Item[]>(
     venda && primeiroProduto
       ? [{ produtoId: primeiroProduto.id, tamanho: "M", quantidade: venda.pecas, preco: primeiroProduto.precoVarejo }]
       : []
   );
   const [descontoGlobal, setDescontoGlobal] = useState(0);
-  const [descontosPorProduto, setDescontosPorProduto] = useState<Record<string, number>>({});
+  const [descontosPorProduto, setDescontosPorProduto] = useState<Record<string, DescProduto>>({});
   const [formaPagamentoId, setFormaPagamentoId] = useState(venda?.formaPagamentoId ?? "");
   const [valorPago, setValorPago] = useState(0);
   const [dataVenda, setDataVenda] = useState(venda?.data?.substring(0, 10) ?? dataHoje());
@@ -80,6 +90,14 @@ export default function NovaVenda() {
   const [gerando, setGerando] = useState(false);
   const { data: itensEncomendaOrigem } = useItensEncomenda(encomendaOrigemId ?? "");
   const itensPreenchidos = useRef(false);
+
+  useEffect(() => {
+    if (!buscaProduto.trim()) { setTermoBusca(""); return; }
+    const t = setTimeout(() => setTermoBusca(buscaProduto.trim()), 300);
+    return () => clearTimeout(t);
+  }, [buscaProduto]);
+
+  const { data: resultadoBusca = [], isLoading: buscando } = useBuscarProdutos(termoBusca);
 
   useEffect(() => {
     if (itensPreenchidos.current) return;
@@ -105,19 +123,18 @@ export default function NovaVenda() {
   const clientesFiltrados = buscaCliente
     ? clientes.filter((c) => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
     : [];
-  const produtosFiltrados = buscaProduto
-    ? produtos.filter(
-        (p) =>
-          p.ativo &&
-          (p.nome.toLowerCase().includes(buscaProduto.toLowerCase()) ||
-            p.ref.toLowerCase().includes(buscaProduto.toLowerCase()))
-      )
-    : [];
+  const produtosFiltrados = resultadoBusca.filter((p) => p.ativo);
 
-  const adicionarProduto = (produtoId: string) => {
-    const p = produtos.find((x) => x.id === produtoId)!;
-    const preco = tipoCliente === "atacado" ? p.precoAtacado : p.precoVarejo;
-    setItens((prev) => [...prev, ...tamanhos.map((t) => ({ produtoId, tamanho: t, quantidade: 0, preco }))]);
+  const adicionarProduto = (produto: Product) => {
+    if (itens.some((i) => i.produtoId === produto.id)) {
+      toast.info("Produto já adicionado. Ajuste as quantidades nos tamanhos.");
+      setBuscaProduto("");
+      return;
+    }
+    const preco = tipoCliente === "atacado" ? produto.precoAtacado : produto.precoVarejo;
+    const grade = produto.categoriaGrade?.length ? produto.categoriaGrade : GRADE_PADRAO;
+    setProdutosAdicionados((prev) => ({ ...prev, [produto.id]: produto }));
+    setItens((prev) => [...prev, ...grade.map((t) => ({ produtoId: produto.id, tamanho: t, quantidade: 0, preco }))]);
     setBuscaProduto("");
   };
 
@@ -129,8 +146,8 @@ export default function NovaVenda() {
   const subtotal = useMemo(
     () =>
       itensValidos.reduce((s, i) => {
-        const d = descontosPorProduto[i.produtoId] ?? 0;
-        return s + i.quantidade * (d > 0 ? i.preco * (1 - d / 100) : i.preco);
+        const d = descontosPorProduto[i.produtoId] ?? ZERO_DESC;
+        return s + i.quantidade * calcPrecoEfetivo(i.preco, d);
       }, 0),
     [itensValidos, descontosPorProduto]
   );
@@ -163,12 +180,14 @@ export default function NovaVenda() {
         status: venda?.status ?? "Gerada" as const,
         origem,
         items: itensValidos.map((item) => {
-          const d = descontosPorProduto[item.produtoId] ?? 0;
+          const desc = descontosPorProduto[item.produtoId] ?? ZERO_DESC;
           return {
             produtoId: item.produtoId,
             tamanho: item.tamanho,
             quantidade: item.quantidade,
-            precoUnitario: d > 0 ? item.preco * (1 - d / 100) : item.preco,
+            precoUnitario: calcPrecoEfetivo(item.preco, desc),
+            descontoPct: desc.pct > 0 ? desc.pct : undefined,
+            descontoVal: desc.val > 0 ? desc.val : undefined,
           };
         }),
       };
@@ -194,7 +213,7 @@ export default function NovaVenda() {
       await queryClient.invalidateQueries({ queryKey: ["vendas"] });
       await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
       if (!editando) {
-        setItens([]); setValorPago(0); setDescontoGlobal(0); setDescontosPorProduto({});
+        setItens([]); setValorPago(0); setDescontoGlobal(0); setDescontosPorProduto({} as Record<string, DescProduto>);
       }
       router.push("/vendas");
     } catch {
@@ -249,12 +268,17 @@ export default function NovaVenda() {
                   value={buscaProduto}
                   onChange={(e) => setBuscaProduto(e.target.value)}
                 />
-                {produtosFiltrados.length > 0 && (
+                {(buscando && termoBusca) && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg">
+                    Buscando...
+                  </div>
+                )}
+                {!buscando && produtosFiltrados.length > 0 && (
                   <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
                     {produtosFiltrados.map((p) => (
                       <button
                         key={p.id}
-                        onClick={() => adicionarProduto(p.id)}
+                        onClick={() => adicionarProduto(p)}
                         className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
                       >
                         {p.imagemUrl ? (
@@ -277,83 +301,95 @@ export default function NovaVenda() {
                   Busque um produto acima para começar
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {agrupados.map(([pid, grupo]) => {
-                    const p = produtos.find((x) => x.id === pid)!;
-                    const descProduto = descontosPorProduto[pid] ?? 0;
-                    const precoEfetivo = descProduto > 0 ? grupo[0].preco * (1 - descProduto / 100) : grupo[0].preco;
+                    const p = produtosAdicionados[pid] ?? produtos.find((x) => x.id === pid);
+                    if (!p) return null;
+                    const descProduto = descontosPorProduto[pid] ?? ZERO_DESC;
+                    const temDesconto = descProduto.pct > 0 || descProduto.val > 0;
+                    const precoEfetivo = calcPrecoEfetivo(grupo[0].preco, descProduto);
                     return (
-                      <div key={pid} className="rounded-md border p-4">
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {p.imagemUrl ? (
-                              <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-                            ) : (
-                              <div className="h-10 w-10 shrink-0 rounded bg-muted" />
-                            )}
-                            <div>
-                              <div className="font-medium">{p.nome}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {p.ref} ·{" "}
-                                {descProduto > 0 ? (
-                                  <>
-                                    <span className="line-through opacity-50">{formatBRL(grupo[0].preco)}</span>
-                                    {" "}
-                                    <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}</span>
-                                  </>
-                                ) : (
-                                  formatBRL(grupo[0].preco)
-                                )}
-                              </div>
+                      <div key={pid} className="rounded-md border p-2.5">
+                        {/* Cabeçalho compacto */}
+                        <div className="mb-2 flex items-center gap-2">
+                          {p.imagemUrl ? (
+                            <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
+                          ) : (
+                            <div className="h-8 w-8 shrink-0 rounded bg-muted" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-sm font-medium leading-tight">{p.nome}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {p.ref} ·{" "}
+                              {temDesconto ? (
+                                <>
+                                  <span className="line-through opacity-50">{formatBRL(grupo[0].preco)}</span>
+                                  {" "}
+                                  <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}</span>
+                                </>
+                              ) : (
+                                formatBRL(grupo[0].preco)
+                              )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-4 gap-3">
-                          {grupo.map((it) => {
-                            const idx = itens.indexOf(it);
-                            return (
-                              <div key={it.tamanho} className="rounded-md bg-muted/40 p-2 text-center">
-                                <div className="text-xs font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={it.quantidade}
-                                  onChange={(e) => atualizarQuantidade(idx, +e.target.value)}
-                                  className="mt-1 h-9 border-0 bg-card text-center font-semibold"
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-3 flex items-center gap-2 border-t pt-3">
-                          <span className="text-xs text-muted-foreground">Desconto</span>
-                          <div className="relative w-24">
+                          {/* Desconto R$ */}
+                          <div className="relative w-[62px] shrink-0">
+                            <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={descProduto.val || ""}
+                              onChange={(e) => {
+                                const v = Math.max(0, Number(e.target.value) || 0);
+                                setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } }));
+                              }}
+                              disabled={descProduto.pct > 0}
+                              placeholder="0"
+                              className="h-7 pl-7 pr-1 text-right text-xs disabled:opacity-40"
+                            />
+                          </div>
+                          {/* Desconto % */}
+                          <div className="relative w-[52px] shrink-0">
                             <Input
                               type="number"
                               min={0}
                               max={100}
                               step={1}
-                              value={descProduto || ""}
+                              value={descProduto.pct || ""}
                               onChange={(e) => {
                                 const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                setDescontosPorProduto((prev) => ({ ...prev, [pid]: v }));
+                                setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } }));
                               }}
+                              disabled={descProduto.val > 0}
                               placeholder="0"
-                              className="h-7 pr-6 text-right text-xs"
+                              className="h-7 pr-5 text-right text-xs disabled:opacity-40"
                             />
-                            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                           </div>
-                          {descProduto > 0 && (
-                            <span className="text-xs text-[hsl(var(--success))]">
-                              −{formatBRL(grupo[0].preco * (descProduto / 100))} por peça
-                            </span>
-                          )}
+                          <button
+                            onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))}
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {/* Tamanhos em linha única */}
+                        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                          {grupo.map((it) => {
+                            const idx = itens.indexOf(it);
+                            return (
+                              <div key={it.tamanho} className="shrink-0 w-12 text-center">
+                                <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={it.quantidade}
+                                  onChange={(e) => atualizarQuantidade(idx, +e.target.value)}
+                                  className="mt-0.5 h-8 border-muted/60 px-1 text-center text-sm font-semibold"
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );

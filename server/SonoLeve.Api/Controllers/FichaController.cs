@@ -15,10 +15,13 @@ public class FichaController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<FichaResponse>>> Listar(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
+        [FromQuery] int? minVendidas,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _service.ListarAsync(page, pageSize);
+        var (items, total) = await _service.ListarAsync(search, status, minVendidas, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Ok(new ListaResponse<FichaResponse>(items.Select(Mapear), total, page, pageSize, totalPages));
     }

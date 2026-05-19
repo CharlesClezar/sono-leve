@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
@@ -9,13 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { api, useCatalogoProdutos, useProdutos } from "@/lib/api";
+import { api, useCatalogoProdutos, useProdutoPorId } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Camera, X } from "lucide-react";
 import { toast } from "sonner";
 
-const catalogoPadrao = { categorias: [], marcas: [], tipos: [], subtipos: [], colecoes: [], modelos: [] } as const;
+const catalogoPadrao = { categorias: [], marcas: [], tipos: [], subtipos: [], colecoes: [] } as const;
 
 export default function NovoProduto() {
   const router = useRouter();
@@ -25,10 +25,9 @@ export default function NovoProduto() {
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
   const params = useParams<{ id?: string }>();
-  const { data: produtos = [] } = useProdutos();
+  const { data: produto } = useProdutoPorId(params.id);
   const { data: catalogo = catalogoPadrao } = useCatalogoProdutos();
-  const produto = produtos.find((item) => item.id === params.id);
-  const editando = Boolean(produto);
+  const editando = Boolean(params.id);
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
   const [form, setForm] = useState({
@@ -39,7 +38,6 @@ export default function NovoProduto() {
     subtipoId: "",
     categoriaId: "",
     colecaoId: "",
-    modeloId: "",
     precoVarejo: "",
     precoAtacado: "",
   });
@@ -53,14 +51,7 @@ export default function NovoProduto() {
   const categorias = catalogo.categorias;
   const marcas = catalogo.marcas;
   const tipos = catalogo.tipos;
-  const tipoSelecionado = useMemo(
-    () => tipos.find((item) => item.id === form.tipoId),
-    [tipos, form.tipoId],
-  );
-  const subtiposDisponiveis = useMemo(
-    () => catalogo.subtipos.filter((item) => item.type === tipoSelecionado?.name),
-    [catalogo.subtipos, tipoSelecionado],
-  );
+  const subtiposDisponiveis = catalogo.subtipos;
   const categoriaSelecionada = categorias.find((item) => item.id === form.categoriaId);
   const grade = categoriaSelecionada?.grade ?? [];
 
@@ -78,7 +69,6 @@ export default function NovoProduto() {
       subtipoId: produto.subtipoId ?? "",
       categoriaId: produto.categoriaId ?? "",
       colecaoId: produto.colecaoId ?? "",
-      modeloId: produto.modeloId ?? "",
       precoVarejo: String(produto.precoVarejo),
       precoAtacado: String(produto.precoAtacado),
     });
@@ -99,11 +89,6 @@ export default function NovoProduto() {
     if (form.tipoId || tipos.length === 0) return;
     setForm((current) => ({ ...current, tipoId: tipos[0].id }));
   }, [form.tipoId, tipos]);
-
-  useEffect(() => {
-    if (subtiposDisponiveis.some((item) => item.id === form.subtipoId)) return;
-    setForm((current) => ({ ...current, subtipoId: subtiposDisponiveis[0]?.id ?? "" }));
-  }, [form.subtipoId, subtiposDisponiveis]);
 
   const atualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -148,8 +133,8 @@ export default function NovoProduto() {
   };
 
   const handleSalvar = async () => {
-    if (!form.nome.trim() || !form.ref.trim() || !form.marcaId || !form.tipoId || !form.subtipoId || !form.categoriaId) {
-      toast.error("Preencha nome, referência, marca, tipo, subtipo e categoria.");
+    if (!form.nome.trim() || !form.ref.trim() || !form.marcaId || !form.tipoId || !form.categoriaId) {
+      toast.error("Preencha nome, referência, marca, tipo e categoria.");
       return;
     }
 
@@ -165,7 +150,6 @@ export default function NovoProduto() {
         subtipoId: form.subtipoId || undefined,
         categoriaId: form.categoriaId || undefined,
         colecaoId: form.colecaoId || undefined,
-        modeloId: form.modeloId || undefined,
         precoVarejo: Number(form.precoVarejo || 0),
         precoAtacado: Number(form.precoAtacado || 0),
         ativo,
@@ -238,10 +222,6 @@ export default function NovoProduto() {
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Categoria</span>
                 <AppSelect value={form.categoriaId} onValueChange={(value) => atualizarCampo("categoriaId", value)} options={categorias.map((item) => ({ value: item.id, label: item.name }))} />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-medium">Modelo</span>
-                <AppSelect value={form.modeloId} onValueChange={(value) => atualizarCampo("modeloId", value)} placeholder="Sem modelo" options={catalogo.modelos.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
             </div>
           </Card>

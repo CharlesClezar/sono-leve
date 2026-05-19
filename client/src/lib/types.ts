@@ -26,10 +26,9 @@ export interface Product {
   subtipoNome?: string;
   categoriaId?: string;
   categoriaNome?: string;
+  categoriaGrade?: string[];
   colecaoId?: string;
   colecaoNome?: string;
-  modeloId?: string;
-  modeloNome?: string;
   precoVarejo: number;
   precoAtacado: number;
   ativo: boolean;
@@ -45,6 +44,8 @@ export interface ItemVenda {
   tamanho: string;
   quantidade: number;
   precoUnitario: number;
+  descontoPct?: number;
+  descontoVal?: number;
 }
 
 export interface Sale {

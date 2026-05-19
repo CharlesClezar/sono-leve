@@ -34,5 +34,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "${FRONTEND_PORTA:-3000}:3000"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   postgres_prod:

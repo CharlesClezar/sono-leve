@@ -13,13 +13,23 @@ public class ProdutoRepository : IProdutoRepository
     private IQueryable<Produto> ComIncludes() =>
         _db.Produtos
             .Include(p => p.Marca).Include(p => p.Tipo).Include(p => p.Subtipo)
-            .Include(p => p.Categoria).Include(p => p.Colecao).Include(p => p.Modelo);
+            .Include(p => p.Categoria).Include(p => p.Colecao);
 
-    public async Task<(IEnumerable<Produto> items, int total)> ListarAsync(string? busca, int pagina, int tamanhoPagina)
+    public async Task<(IEnumerable<Produto> items, int total)> ListarAsync(string? busca, string? marca, bool? ativo, int pagina, int tamanhoPagina)
     {
+        busca = busca?.Length > 100 ? busca[..100] : busca;
         var query = ComIncludes().AsQueryable();
         if (!string.IsNullOrWhiteSpace(busca))
-            query = query.Where(p => p.Nome.Contains(busca) || p.Ref.Contains(busca));
+            query = query.Where(p => p.Nome.Contains(busca) || p.Ref.Contains(busca) ||
+                (p.Marca != null && p.Marca.Name.Contains(busca)) ||
+                (p.Tipo != null && p.Tipo.Name.Contains(busca)) ||
+                (p.Subtipo != null && p.Subtipo.Name.Contains(busca)) ||
+                (p.Categoria != null && p.Categoria.Name.Contains(busca)) ||
+                (p.Colecao != null && p.Colecao.Name.Contains(busca)));
+        if (!string.IsNullOrWhiteSpace(marca))
+            query = query.Where(p => p.Marca != null && p.Marca.Name == marca);
+        if (ativo.HasValue)
+            query = query.Where(p => p.Ativo == ativo.Value);
         var total = await query.CountAsync();
         var items = await query.OrderBy(p => p.Nome)
             .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();

@@ -17,6 +17,8 @@ export type ItemVendaSalvar = {
   tamanho: string;
   quantidade: number;
   precoUnitario: number;
+  descontoPct?: number;
+  descontoVal?: number;
 };
 
 export type VendaSalvar = {
@@ -69,8 +71,8 @@ export type CatalogoSimples = {
 };
 
 export type TipoCatalogo = CatalogoSimples & { subtypes: number };
-export type SubtipoCatalogo = CatalogoSimples & { type: string };
-export type ColecaoCatalogo = CatalogoSimples & { period: string };
+export type SubtipoCatalogo = CatalogoSimples;
+export type ColecaoCatalogo = CatalogoSimples & { dataInicio?: string; dataFim?: string };
 
 export type CatalogoProdutos = {
   categorias: CategoriaCatalogo[];
@@ -78,15 +80,14 @@ export type CatalogoProdutos = {
   tipos: TipoCatalogo[];
   subtipos: SubtipoCatalogo[];
   colecoes: ColecaoCatalogo[];
-  modelos: CatalogoSimples[];
 };
 
 export type CatalogoProdutoSalvar = {
   name: string;
   active: boolean;
   grade?: string[];
-  type?: string;
-  period?: string;
+  dataInicio?: string;
+  dataFim?: string;
 };
 
 export type CatalogoProdutoItem = {
@@ -94,13 +95,71 @@ export type CatalogoProdutoItem = {
   name: string;
   active: boolean;
   grade?: string[];
-  type?: string;
-  period?: string;
+  dataInicio?: string;
+  dataFim?: string;
   products?: number;
   subtypes?: number;
 };
 
-export type CatalogSlug = "categorias" | "grades" | "marcas" | "tipos" | "subtipos" | "colecoes" | "modelos";
+export type CatalogSlug = "categorias" | "marcas" | "tipos" | "subtipos" | "colecoes";
+
+// ─── Tipos de filtro para listagens paginadas ─────────────────────────────────
+
+export type VendasFiltros = {
+  search?: string;
+  status?: string;
+  tipoCliente?: string;
+  formaPagamento?: string;
+  periodo?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type EncomendasFiltros = {
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type FichasFiltros = {
+  search?: string;
+  status?: string;
+  minVendidas?: number;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ContasFiltros = {
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ClientesFiltros = {
+  search?: string;
+  tipo?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ProdutosFiltros = {
+  search?: string;
+  marca?: string;
+  ativo?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
+function buildQS(params: Record<string, string | number | boolean | undefined>): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") qs.set(key, String(value));
+  }
+  return qs.toString();
+}
 
 export type FormaPagamento = {
   id: string;
@@ -133,6 +192,11 @@ export const api = {
     return res.data;
   },
 
+  buscarProdutos: async (search: string) => {
+    const res = await http.get<ListaResponse<Product>>(`/produtos?search=${encodeURIComponent(search)}&pageSize=15`);
+    return res.data;
+  },
+
   vendas: async () => {
     const res = await http.get<ListaResponse<Sale>>("/vendas?pageSize=1000");
     return res.data;
@@ -153,7 +217,53 @@ export const api = {
     return res.data;
   },
 
+  // ─── Listagens paginadas com filtros server-side ──────────────────────────
+
+  listarVendas: (f: VendasFiltros) =>
+    http.get<ListaResponse<Sale>>(`/vendas?${buildQS({
+      search: f.search, status: f.status, tipoCliente: f.tipoCliente,
+      formaPagamento: f.formaPagamento, periodo: f.periodo,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
+  listarEncomendas: (f: EncomendasFiltros) =>
+    http.get<ListaResponse<Order>>(`/encomendas?${buildQS({
+      search: f.search, status: f.status,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
+  listarFichas: (f: FichasFiltros) =>
+    http.get<ListaResponse<Ficha>>(`/fichas?${buildQS({
+      search: f.search, status: f.status, minVendidas: f.minVendidas,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
+  listarContas: (f: ContasFiltros) =>
+    http.get<ListaResponse<Account>>(`/contas-receber?${buildQS({
+      search: f.search, status: f.status,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
+  listarClientes: (f: ClientesFiltros) =>
+    http.get<ListaResponse<Customer>>(`/clientes?${buildQS({
+      search: f.search, tipo: f.tipo, status: f.status,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
+  listarProdutos: (f: ProdutosFiltros) =>
+    http.get<ListaResponse<Product>>(`/produtos?${buildQS({
+      search: f.search, marca: f.marca, ativo: f.ativo, page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+
   catalogoProdutos: () => http.get<CatalogoProdutos>("/produtos/catalogo"),
+
+  obterCliente: (id: string) => http.get<Customer>(`/clientes/${id}`),
+
+  obterProduto: (id: string) => http.get<Product>(`/produtos/${id}`),
+
+  obterEncomenda: (id: string) => http.get<Order>(`/encomendas/${id}`),
+
+  obterFicha: (id: string) => http.get<Ficha>(`/fichas/${id}`),
 
   itensVenda: (id: string) => http.get<ItemVenda[]>(`/vendas/${id}/itens`),
 
@@ -233,17 +343,14 @@ export const api = {
   salvarColecaoProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
     http.post<ColecaoCatalogo>("/produtos/catalogo/colecoes", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  salvarModeloProduto: (entrada: CatalogoProdutoSalvar, idempotencyKey?: string) =>
-    http.post<CatalogoSimples>("/produtos/catalogo/modelos", entrada, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
-
   obterCatalogoProduto: (tipo: CatalogSlug, id: string) =>
-    http.get<CatalogoProdutoItem>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`),
+    http.get<CatalogoProdutoItem>(`/produtos/catalogo/${tipo}/${id}`),
 
   atualizarCatalogoProduto: (tipo: CatalogSlug, id: string, entrada: CatalogoProdutoSalvar) =>
-    http.put<CatalogoProdutoItem>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`, entrada),
+    http.put<CatalogoProdutoItem>(`/produtos/catalogo/${tipo}/${id}`, entrada),
 
   excluirCatalogoProduto: (tipo: CatalogSlug, id: string) =>
-    http.delete<void>(`/produtos/catalogo/${tipo === "grades" ? "categorias" : tipo}/${id}`),
+    http.delete<void>(`/produtos/catalogo/${tipo}/${id}`),
 
   // ─── Formas de Pagamento ───────────────────────────────────────────────────
 
@@ -269,20 +376,29 @@ export function useProdutos() {
   return useQuery({ queryKey: ["produtos"], queryFn: api.produtos });
 }
 
+export function useBuscarProdutos(search: string) {
+  return useQuery({
+    queryKey: ["produtos", "busca", search],
+    queryFn: () => api.buscarProdutos(search),
+    enabled: search.trim().length >= 2,
+    staleTime: 30_000,
+  });
+}
+
 export function useVendas() {
-  return useQuery({ queryKey: ["vendas"], queryFn: api.vendas });
+  return useQuery({ queryKey: ["vendas"], queryFn: api.vendas, staleTime: 2 * 60_000 });
 }
 
 export function useEncomendas() {
-  return useQuery({ queryKey: ["encomendas"], queryFn: api.encomendas });
+  return useQuery({ queryKey: ["encomendas"], queryFn: api.encomendas, staleTime: 2 * 60_000 });
 }
 
 export function useFichas() {
-  return useQuery({ queryKey: ["fichas"], queryFn: api.fichas });
+  return useQuery({ queryKey: ["fichas"], queryFn: api.fichas, staleTime: 2 * 60_000 });
 }
 
 export function useContasReceber() {
-  return useQuery({ queryKey: ["contas-receber"], queryFn: api.contasReceber });
+  return useQuery({ queryKey: ["contas-receber"], queryFn: api.contasReceber, staleTime: 2 * 60_000 });
 }
 
 export function useItensVenda(id: string) {
@@ -301,6 +417,38 @@ export function useItensEncomenda(id: string) {
   });
 }
 
+export function useClientePorId(id: string | undefined) {
+  return useQuery({
+    queryKey: ["clientes", id],
+    queryFn: () => api.obterCliente(id!),
+    enabled: !!id,
+  });
+}
+
+export function useProdutoPorId(id: string | undefined) {
+  return useQuery({
+    queryKey: ["produtos", id],
+    queryFn: () => api.obterProduto(id!),
+    enabled: !!id,
+  });
+}
+
+export function useEncomendaPorId(id: string | undefined) {
+  return useQuery({
+    queryKey: ["encomendas", id],
+    queryFn: () => api.obterEncomenda(id!),
+    enabled: !!id,
+  });
+}
+
+export function useFichaPorId(id: string | undefined) {
+  return useQuery({
+    queryKey: ["fichas", id],
+    queryFn: () => api.obterFicha(id!),
+    enabled: !!id,
+  });
+}
+
 export function useCatalogoProdutos() {
   return useQuery({ queryKey: ["catalogo-produtos"], queryFn: api.catalogoProdutos });
 }
@@ -315,6 +463,52 @@ export function useItemCatalogoProduto(tipo: CatalogSlug, id: string) {
 
 export function useFormasPagamento() {
   return useQuery({ queryKey: ["formas-pagamento"], queryFn: api.formasPagamento });
+}
+
+// ─── Hooks paginados com filtros server-side ──────────────────────────────────
+
+export function useVendasPaginadas(filtros: VendasFiltros) {
+  return useQuery({
+    queryKey: ["vendas", "paginadas", filtros],
+    queryFn: () => api.listarVendas(filtros),
+  });
+}
+
+export function useEncomendasPaginadas(filtros: EncomendasFiltros, enabled = true) {
+  return useQuery({
+    queryKey: ["encomendas", "paginadas", filtros],
+    queryFn: () => api.listarEncomendas(filtros),
+    enabled,
+  });
+}
+
+export function useFichasPaginadas(filtros: FichasFiltros, enabled = true) {
+  return useQuery({
+    queryKey: ["fichas", "paginadas", filtros],
+    queryFn: () => api.listarFichas(filtros),
+    enabled,
+  });
+}
+
+export function useContasPaginadas(filtros: ContasFiltros) {
+  return useQuery({
+    queryKey: ["contas-receber", "paginadas", filtros],
+    queryFn: () => api.listarContas(filtros),
+  });
+}
+
+export function useClientesPaginados(filtros: ClientesFiltros) {
+  return useQuery({
+    queryKey: ["clientes", "paginados", filtros],
+    queryFn: () => api.listarClientes(filtros),
+  });
+}
+
+export function useProdutosPaginados(filtros: ProdutosFiltros) {
+  return useQuery({
+    queryKey: ["produtos", "paginados", filtros],
+    queryFn: () => api.listarProdutos(filtros),
+  });
 }
 
 export function useDadosOperacionais() {

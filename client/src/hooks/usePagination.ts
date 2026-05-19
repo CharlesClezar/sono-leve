@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-export const DEFAULT_PAGE_SIZE = 50;
+export const DEFAULT_PAGE_SIZE = 30;
 
 export function usePagination<T>(items: T[], pageSize = DEFAULT_PAGE_SIZE) {
   const [page, setPage] = useState(1);
@@ -31,3 +31,36 @@ export function usePagination<T>(items: T[], pageSize = DEFAULT_PAGE_SIZE) {
 }
 
 export type PaginationState<T> = ReturnType<typeof usePagination<T>>;
+
+type ServerResponse<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+} | undefined;
+
+export function useServerPagination<T>(
+  response: ServerResponse<T>,
+  setPage: (page: number) => void,
+) {
+  const page = response?.page ?? 1;
+  const pageCount = response?.totalPages ?? 1;
+  const pageSize = response?.pageSize ?? DEFAULT_PAGE_SIZE;
+  const totalItems = response?.total ?? 0;
+  const items = (response?.data ?? []) as T[];
+
+  return {
+    items,
+    page,
+    pageCount,
+    pageSize,
+    totalItems,
+    startItem: totalItems === 0 ? 0 : (page - 1) * pageSize + 1,
+    endItem: Math.min(page * pageSize, totalItems),
+    canPrevious: page > 1,
+    canNext: page < pageCount,
+    previousPage: () => setPage(Math.max(1, page - 1)),
+    nextPage: () => setPage(Math.min(pageCount, page + 1)),
+  };
+}

@@ -1,18 +1,19 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SonoLeve.Api.DTOs;
 
 public record ProdutoRequest(
-    string Nome,
-    string Ref,
+    [Required, StringLength(200)] string Nome,
+    [Required, StringLength(50)] string Ref,
     Guid? MarcaId,
     Guid? TipoId,
     Guid? SubtipoId,
     Guid? CategoriaId,
     Guid? ColecaoId,
-    Guid? ModeloId,
-    decimal PrecoVarejo,
-    decimal PrecoAtacado,
+    [Range(0, 999999.99)] decimal PrecoVarejo,
+    [Range(0, 999999.99)] decimal PrecoAtacado,
     bool Ativo,
-    int Estoque
+    [Range(0, int.MaxValue)] int Estoque
 );
 
 public record ProdutoResponse(
@@ -27,10 +28,9 @@ public record ProdutoResponse(
     string? SubtipoNome,
     Guid? CategoriaId,
     string? CategoriaNome,
+    string[]? CategoriaGrade,
     Guid? ColecaoId,
     string? ColecaoNome,
-    Guid? ModeloId,
-    string? ModeloNome,
     decimal PrecoVarejo,
     decimal PrecoAtacado,
     bool Ativo,

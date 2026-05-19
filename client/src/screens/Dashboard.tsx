@@ -9,7 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, formatDate, type ItemVenda, type OrderStatus } from "@/lib/types";
-import { api, useDadosOperacionais } from "@/lib/api";
+import { api, useContasReceber, useEncomendas, useFichas, useVendas } from "@/lib/api";
+import type { Account, Ficha, Order, Sale } from "@/lib/types";
+
+const EMPTY_VENDAS: Sale[] = [];
+const EMPTY_ENCOMENDAS: Order[] = [];
+const EMPTY_FICHAS: Ficha[] = [];
+const EMPTY_CONTAS: Account[] = [];
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -85,7 +91,10 @@ const deslocarDias = (iso: string, quantidade: number) => {
 };
 
 export default function Dashboard() {
-  const { contas, fichas, encomendas, vendas } = useDadosOperacionais();
+  const { data: vendas = EMPTY_VENDAS } = useVendas();
+  const { data: encomendas = EMPTY_ENCOMENDAS } = useEncomendas();
+  const { data: fichas = EMPTY_FICHAS } = useFichas();
+  const { data: contas = EMPTY_CONTAS } = useContasReceber();
   const router = useRouter();
   const queryClient = useQueryClient();
   const atalhoNovaVenda = useShortcutLabel("dashboard_new_sale");

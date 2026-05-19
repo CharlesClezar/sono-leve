@@ -8,8 +8,10 @@ public class VendaService : IVendaService
     private readonly IVendaRepository _repo;
     public VendaService(IVendaRepository repo) => _repo = repo;
 
-    public Task<(IEnumerable<Venda> items, int total)> ListarAsync(int pagina, int tamanhoPagina) =>
-        _repo.ListarAsync(pagina, tamanhoPagina);
+    public Task<(IEnumerable<Venda> items, int total)> ListarAsync(
+        string? search, string? status, string? tipoCliente,
+        string? formaPagamento, string? periodo, int pagina, int tamanhoPagina) =>
+        _repo.ListarAsync(search, status, tipoCliente, formaPagamento, periodo, pagina, tamanhoPagina);
 
     public Task<Venda> ObterPorIdAsync(Guid id) => _repo.ObterPorIdAsync(id);
 

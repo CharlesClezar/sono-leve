@@ -8,8 +8,9 @@ public class EncomendaService : IEncomendaService
     private readonly IEncomendaRepository _repo;
     public EncomendaService(IEncomendaRepository repo) => _repo = repo;
 
-    public Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(int pagina, int tamanhoPagina) =>
-        _repo.ListarAsync(pagina, tamanhoPagina);
+    public Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(
+        string? search, string? status, int pagina, int tamanhoPagina) =>
+        _repo.ListarAsync(search, status, pagina, tamanhoPagina);
 
     public Task<Encomenda> ObterPorIdAsync(Guid id) => _repo.ObterPorIdAsync(id);
 

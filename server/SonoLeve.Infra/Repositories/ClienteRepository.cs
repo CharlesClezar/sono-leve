@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Domain.Entities;
+using SonoLeve.Domain.Enums;
 using SonoLeve.Infra.Data;
 
 namespace SonoLeve.Infra.Repositories;
@@ -14,8 +15,10 @@ public class ClienteRepository : IClienteRepository
         _db = db;
     }
 
-    public async Task<(IEnumerable<Cliente> items, int total)> ListarAsync(string? busca, int page, int pageSize)
+    public async Task<(IEnumerable<Cliente> items, int total)> ListarAsync(
+        string? busca, string? tipo, string? status, int page, int pageSize)
     {
+        busca = busca?.Length > 100 ? busca[..100] : busca;
         var query = _db.Clientes.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busca))
@@ -23,6 +26,13 @@ public class ClienteRepository : IClienteRepository
                 c.Nome.Contains(busca) ||
                 c.Telefone.Contains(busca) ||
                 c.Cpf.Contains(busca));
+
+        if (!string.IsNullOrWhiteSpace(tipo) && tipo != "all" &&
+            Enum.TryParse<TipoCliente>(tipo, true, out var tc))
+            query = query.Where(c => c.Tipo == tc);
+
+        if (!string.IsNullOrWhiteSpace(status) && status != "all")
+            query = query.Where(c => c.Status == status);
 
         var total = await query.CountAsync();
         var items = await query

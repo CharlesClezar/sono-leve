@@ -17,10 +17,12 @@ public class ProdutoController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<ListaResponse<ProdutoResponse>>> Listar(
         [FromQuery] string? search,
+        [FromQuery] string? marca,
+        [FromQuery] bool? ativo,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _service.ListarAsync(search, page, pageSize);
+        var (items, total) = await _service.ListarAsync(search, marca, ativo, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Ok(new ListaResponse<ProdutoResponse>(items.Select(Mapear), total, page, pageSize, totalPages));
     }
@@ -52,7 +54,6 @@ public class ProdutoController : ControllerBase
             existente.SubtipoId = request.SubtipoId;
             existente.CategoriaId = request.CategoriaId;
             existente.ColecaoId = request.ColecaoId;
-            existente.ModeloId = request.ModeloId;
             existente.PrecoVarejo = request.PrecoVarejo;
             existente.PrecoAtacado = request.PrecoAtacado;
             existente.Ativo = request.Ativo;
@@ -127,7 +128,7 @@ public class ProdutoController : ControllerBase
     {
         Nome = r.Nome, Ref = r.Ref,
         MarcaId = r.MarcaId, TipoId = r.TipoId, SubtipoId = r.SubtipoId,
-        CategoriaId = r.CategoriaId, ColecaoId = r.ColecaoId, ModeloId = r.ModeloId,
+        CategoriaId = r.CategoriaId, ColecaoId = r.ColecaoId,
         PrecoVarejo = r.PrecoVarejo, PrecoAtacado = r.PrecoAtacado,
         Ativo = r.Ativo, Estoque = r.Estoque,
     };
@@ -137,9 +138,8 @@ public class ProdutoController : ControllerBase
         p.MarcaId, p.Marca?.Name,
         p.TipoId, p.Tipo?.Name,
         p.SubtipoId, p.Subtipo?.Name,
-        p.CategoriaId, p.Categoria?.Name,
+        p.CategoriaId, p.Categoria?.Name, p.Categoria?.Grade?.ToArray(),
         p.ColecaoId, p.Colecao?.Name,
-        p.ModeloId, p.Modelo?.Name,
         p.PrecoVarejo, p.PrecoAtacado, p.Ativo, p.Estoque, p.CriadoEm, p.ImagemUrl
     );
 }

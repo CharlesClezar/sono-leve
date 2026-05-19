@@ -11,20 +11,28 @@ import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { formatBRL, formatDate, type Account } from "@/lib/types";
-import { useContasReceber } from "@/lib/api";
+import { useContasPaginadas } from "@/lib/api";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/usePagination";
 import { Search } from "lucide-react";
 
 const tabs = ["Contas a receber", "Recebimentos"] as const;
 
 export default function Financeiro() {
-  const { data: contas = [], isLoading } = useContasReceber();
   const [aba, setAba] = useState<(typeof tabs)[number]>("Contas a receber");
   const indexedTabs = useIndexedTabs({ tabs, onTabChange: setAba });
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("all");
+  const [page, setPage] = useState(1);
+
+  const { data: response, isLoading } = useContasPaginadas({
+    search: busca || undefined,
+    status: filtroStatus !== "all" ? filtroStatus : undefined,
+    page,
+    pageSize: 30,
+  });
+
   const colunas = useMemo<DataGridColumn<Account>[]>(
     () => [
       { id: "cliente", label: "Cliente", accessor: (conta) => conta.clienteNome },
@@ -38,21 +46,12 @@ export default function Financeiro() {
     [],
   );
 
-  const contasFiltradas = useMemo(
-    () =>
-      contas.filter((c) => {
-        if (filtroStatus !== "all" && c.status !== filtroStatus) return false;
-        if (busca && !c.clienteNome.toLowerCase().includes(busca.toLowerCase()) && !c.origem.toLowerCase().includes(busca.toLowerCase()))
-          return false;
-        return true;
-      }),
-    [busca, filtroStatus, contas]
-  );
-  const grid = useDataGrid(contasFiltradas, colunas);
-  const paginacao = usePagination(grid.rows);
+  const grid = useDataGrid(response?.data ?? [], colunas);
+  const paginacao = useServerPagination(response, setPage);
 
-  const totalFaturado = contas.reduce((s, c) => s + c.total, 0);
-  const totalRecebido = contas.reduce((s, c) => s + c.recebido, 0);
+  // Totais sobre a página atual — para totais globais seria necessário endpoint dedicado
+  const totalFaturado = (response?.data ?? []).reduce((s, c) => s + c.total, 0);
+  const totalRecebido = (response?.data ?? []).reduce((s, c) => s + c.recebido, 0);
   const emAberto = totalFaturado - totalRecebido;
 
   return (
@@ -61,6 +60,7 @@ export default function Financeiro() {
         onConfirm={() => {
           setBusca("");
           setFiltroStatus("all");
+          setPage(1);
           grid.clearFilters();
         }}
       />
@@ -73,7 +73,7 @@ export default function Financeiro() {
         <div className="shrink-0 space-y-4 border-b px-6 py-4">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              { label: "Total faturado", value: totalFaturado, tone: "primary" },
+              { label: "Total faturado (página)", value: totalFaturado, tone: "primary" },
               { label: "Recebido", value: totalRecebido, tone: "success" },
               { label: "Em aberto", value: emAberto, tone: "warning" },
             ].map((k) => (
@@ -104,12 +104,17 @@ export default function Financeiro() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[240px]">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Buscar por cliente ou origem" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <Input
+                    placeholder="Buscar por cliente"
+                    className="pl-9"
+                    value={busca}
+                    onChange={(e) => { setBusca(e.target.value); setPage(1); }}
+                  />
                 </div>
                 <AppSelect
                   className="w-[170px]"
                   value={filtroStatus}
-                  onValueChange={setFiltroStatus}
+                  onValueChange={(v) => { setFiltroStatus(v); setPage(1); }}
                   options={[
                     { value: "all", label: "Todos status" },
                     { value: "Aberto", label: "Aberto" },
@@ -145,9 +150,9 @@ export default function Financeiro() {
                   <tbody className="divide-y">
                     {isLoading ? (
                       <TableSkeleton cols={7} />
-                    ) : paginacao.items.length === 0 ? (
+                    ) : grid.rows.length === 0 ? (
                       <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conta encontrada</td></tr>
-                    ) : paginacao.items.map((a) => (
+                    ) : grid.rows.map((a) => (
                       <tr key={a.id} className="hover:bg-muted/30">
                         <td className="px-4 py-3 font-medium">{a.clienteNome}</td>
                         <td className="px-4 py-3 text-muted-foreground">{a.origem}</td>

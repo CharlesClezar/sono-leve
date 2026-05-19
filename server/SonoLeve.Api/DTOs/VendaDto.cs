@@ -1,10 +1,14 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SonoLeve.Api.DTOs;
 
 public record ItemVendaRequest(
     Guid ProdutoId,
-    string Tamanho,
-    int Quantidade,
-    decimal PrecoUnitario
+    [Required, StringLength(10)] string Tamanho,
+    [Range(1, 9999)] int Quantidade,
+    [Range(0, 999999.99)] decimal PrecoUnitario,
+    [Range(0, 100)] decimal? DescontoPct = null,
+    [Range(0, 999999.99)] decimal? DescontoVal = null
 );
 
 public record ItemVendaResponse(
@@ -14,17 +18,19 @@ public record ItemVendaResponse(
     string ProdutoRef,
     string Tamanho,
     int Quantidade,
-    decimal PrecoUnitario
+    decimal PrecoUnitario,
+    decimal? DescontoPct,
+    decimal? DescontoVal
 );
 
 public record VendaRequest(
     Guid ClienteId,
     Guid? FormaPagamentoId,
     DateTime? Data,
-    int Pecas,
-    decimal Total,
-    string Status,
-    string Origem,
+    [Range(1, 99999)] int Pecas,
+    [Range(0, 9999999.99)] decimal Total,
+    [Required, StringLength(20)] string Status,
+    [Required, StringLength(50)] string Origem,
     List<ItemVendaRequest>? Items = null
 );
 

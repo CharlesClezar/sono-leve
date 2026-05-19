@@ -13,4 +13,6 @@ public class ItemVenda
     public string Tamanho { get; set; } = "";
     public int Quantidade { get; set; }
     public decimal PrecoUnitario { get; set; }
+    public decimal? DescontoPct { get; set; }
+    public decimal? DescontoVal { get; set; }
 }

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 
 type Tone = "success" | "danger" | "warning" | "info" | "partial" | "neutral";
@@ -20,7 +21,7 @@ const map: Record<string, Tone> = {
   Inativo: "neutral",
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export const StatusBadge = memo(function StatusBadge({ status }: { status: string }) {
   const tone = map[status] ?? "neutral";
   return (
     <span className={cn("status-badge", `status-${tone}`)}>
@@ -28,4 +29,4 @@ export function StatusBadge({ status }: { status: string }) {
       {status}
     </span>
   );
-}
+});

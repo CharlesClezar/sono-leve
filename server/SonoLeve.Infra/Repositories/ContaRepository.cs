@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Domain.Entities;
+using SonoLeve.Domain.Enums;
 using SonoLeve.Infra.Data;
 
 namespace SonoLeve.Infra.Repositories;
@@ -10,12 +11,25 @@ public class ContaRepository : IContaRepository
     private readonly SonoLeveDbContext _db;
     public ContaRepository(SonoLeveDbContext db) => _db = db;
 
-    public async Task<(IEnumerable<Conta> items, int total)> ListarAsync(int pagina, int tamanhoPagina)
+    public async Task<(IEnumerable<Conta> items, int total)> ListarAsync(
+        string? search, string? status, int pagina, int tamanhoPagina)
     {
-        var query = _db.Contas.Include(c => c.Cliente);
+        search = search?.Length > 100 ? search[..100] : search;
+        IQueryable<Conta> query = _db.Contas.Include(c => c.Cliente);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(c => c.Cliente != null && c.Cliente.Nome.Contains(search));
+
+        if (!string.IsNullOrWhiteSpace(status) && status != "all" &&
+            Enum.TryParse<StatusConta>(status, true, out var sc))
+            query = query.Where(c => c.Status == sc);
+
         var total = await query.CountAsync();
-        var items = await query.OrderByDescending(c => c.Vencimento)
-            .Skip((pagina - 1) * tamanhoPagina).Take(tamanhoPagina).ToListAsync();
+        var items = await query
+            .OrderByDescending(c => c.Vencimento)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
         return (items, total);
     }
 

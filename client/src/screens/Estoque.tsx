@@ -9,25 +9,29 @@ import { Card } from "@/components/ui/card";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
-import { usePagination } from "@/hooks/usePagination";
-import { useProdutos } from "@/lib/api";
+import { useServerPagination } from "@/hooks/usePagination";
+import { useProdutosPaginados } from "@/lib/api";
 
 const tabs = ["Saldos", "Movimentações", "Ajuste manual"] as const;
 const tamanhos = ["P", "M", "G", "GG"];
 
 export default function Estoque() {
-  const { data: produtos = [], isLoading } = useProdutos();
   const [aba, setAba] = useState<(typeof tabs)[number]>("Saldos");
+  const [page, setPage] = useState(1);
   const indexedTabs = useIndexedTabs({ tabs, onTabChange: setAba });
+
+  const { data: response, isLoading } = useProdutosPaginados({ page, pageSize: 30 });
+
   const linhasEstoque = useMemo(
     () =>
-      produtos.map((produto, index) => ({
+      (response?.data ?? []).map((produto, index) => ({
         ...produto,
         estoquePorTamanho: Object.fromEntries(tamanhos.map((tamanho, i) => [tamanho, Math.max(0, Math.floor(produto.estoque / 4) + (i - 1) + index)])),
         emFichas: index * 2,
       })),
-    [produtos],
+    [response?.data],
   );
+
   const colunas = useMemo<DataGridColumn<(typeof linhasEstoque)[number]>[]>(
     () => [
       { id: "nome", label: "Produto", accessor: (p) => p.nome },
@@ -42,10 +46,11 @@ export default function Estoque() {
     [linhasEstoque],
   );
   const grid = useDataGrid(linhasEstoque, colunas);
-  const paginacao = usePagination(grid.rows);
+  const paginacao = useServerPagination(response, setPage);
+
   return (
     <AppShell>
-      <ClearFiltersShortcutDialog onConfirm={() => grid.clearFilters()} />
+      <ClearFiltersShortcutDialog onConfirm={() => { grid.clearFilters(); setPage(1); }} />
       <PageHeader
         breadcrumb={["Estoque", aba]}
         title="Estoque"
@@ -88,7 +93,7 @@ export default function Estoque() {
               <tbody className="divide-y">
                 {isLoading ? (
                   <TableSkeleton cols={7} />
-                ) : paginacao.items.map((p) => (
+                ) : linhasEstoque.map((p) => (
                   <tr key={p.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">{p.nome}</td>
                     {tamanhos.map((t) => {

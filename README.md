@@ -125,17 +125,17 @@ O frontend de produção é servido separadamente (build standalone Next.js).
 
 ### Paginação
 
-**Decisão: o frontend carrega tudo com `pageSize=1000`; o backend é paginado de verdade.**
+**Decisão: paginação server-side em todas as telas de listagem; lazy loading por ID nos formulários de edição.**
 
-O backend implementa paginação real em todos os endpoints de listagem (`?page=1&pageSize=N`) e retorna `{ data, total, page, pageSize, totalPages }`. O frontend, por decisão de projeto, faz uma única chamada com `?pageSize=1000` para cada recurso e armazena o resultado no cache do TanStack Query. A paginação visual das tabelas é feita localmente pelo hook `usePagination` (50 itens por página por padrão).
+Todas as telas de listagem (Clientes, Produtos, Vendas, Encomendas, Fichas, Estoque, Financeiro) usam paginação real via `useServerPagination`. O backend retorna `{ data, total, page, pageSize, totalPages }` e aplica filtros, busca e ordenação diretamente no banco. Cada aba de listagem mantém seu próprio `page` independente.
 
-**Por que assim:**
-- O contexto é uma confecção familiar com volume pequeno — menos de 1.000 registros por entidade no horizonte previsível
-- Filtros, busca e ordenação funcionam instantaneamente no cliente sem roundtrips adicionais
-- O backend já está preparado para paginação real; a migração futura não exige mudança no servidor
+Os formulários de edição (`NovoCliente`, `NovoProduto`, `NovaFicha`, `NovaEncomenda`) usam hooks `*PorId` com `enabled: !!id` — buscam apenas o registro necessário em vez de carregar toda a lista. Busca de produto em formulários usa `useBuscarProdutos` (lazy, ativado a partir de 2 caracteres, `staleTime: 30s`).
 
-**Quando migrar para paginação real no servidor:**
-Quando qualquer entidade ultrapassar ~1.000 registros ou quando o tempo de carregamento inicial se tornar perceptível. A mudança se resume a: remover o `?pageSize=1000` nas chamadas de `api.ts` e passar `page` + `pageSize` reais; mover filtros e buscas pesados para queries SQL no backend.
+O Dashboard carrega os dados de encomendas, vendas, fichas e contas a receber em bulk (sem paginação), pois precisa de todos os registros para KPIs e calendário. Esses hooks têm `staleTime: 2min` para reduzir refetches.
+
+### Validação e segurança de entrada
+
+Os DTOs do backend usam `DataAnnotations` (`[Required]`, `[StringLength]`, `[Range]`) para validação automática pelo ASP.NET Core — requisições com campos inválidos retornam `400 Bad Request` antes de chegar ao service. Strings de busca nos repositories são truncadas a 100 caracteres para prevenir abuso de queries longas.
 
 ### Layout de listagens
 
@@ -768,7 +768,7 @@ Resposta padrão:
 }
 ```
 
-O frontend atualmente usa `?pageSize=1000` para carregar tudo de uma vez (ver seção [Decisões Técnicas](#paginação)).
+O frontend passa `page` e `pageSize` reais em todas as chamadas de listagem. Formulários de edição usam o endpoint `GET /:id` diretamente.
 
 ---
 

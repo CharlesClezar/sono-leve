@@ -15,10 +15,12 @@ public class EncomendaController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<EncomendaResponse>>> Listar(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _service.ListarAsync(page, pageSize);
+        var (items, total) = await _service.ListarAsync(search, status, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Ok(new ListaResponse<EncomendaResponse>(items.Select(Mapear), total, page, pageSize, totalPages));
     }

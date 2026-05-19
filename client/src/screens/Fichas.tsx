@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatBRL, formatDate, type Ficha } from "@/lib/types";
-import { useFichas } from "@/lib/api";
+import { useFichasPaginadas } from "@/lib/api";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/usePagination";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
@@ -22,18 +22,32 @@ import Link from "next/link";
 const tabs = ["Histórico", "Aberta", "Parcial", "Finalizada", "Cancelada"] as const;
 
 export default function Fichas() {
-  const { data: fichas = [], isLoading } = useFichas();
   const newShortcutLabel = useShortcutLabel("new_contextual");
   const [tab, setTab] = useState<(typeof tabs)[number]>("Histórico");
   const [queryByTab, setQueryByTab] = useState<Record<(typeof tabs)[number], string>>(
     () => Object.fromEntries(tabs.map((item) => [item, ""])) as Record<(typeof tabs)[number], string>,
   );
+  const [pageByTab, setPageByTab] = useState<Record<(typeof tabs)[number], number>>(
+    () => Object.fromEntries(tabs.map((item) => [item, 1])) as Record<(typeof tabs)[number], number>,
+  );
   const selectTab = (nextTab: (typeof tabs)[number]) => setTab(nextTab);
   const indexedTabs = useIndexedTabs({ tabs, onTabChange: selectTab });
   const query = queryByTab[tab];
+  const page = pageByTab[tab];
+
   const setTabQuery = (nextQuery: string) => {
     setQueryByTab((current) => ({ ...current, [tab]: nextQuery }));
+    setPageByTab((current) => ({ ...current, [tab]: 1 }));
   };
+  const setTabPage = (p: number) => setPageByTab((current) => ({ ...current, [tab]: p }));
+
+  const { data: response, isLoading } = useFichasPaginadas({
+    search: query || undefined,
+    status: tab !== "Histórico" ? tab : undefined,
+    page,
+    pageSize: 30,
+  });
+
   const columns = useMemo<DataGridColumn<Ficha>[]>(
     () => [
       { id: "id", label: "Ficha", accessor: (ficha) => ficha.id },
@@ -48,24 +62,15 @@ export default function Fichas() {
     [],
   );
 
-  const filtered = useMemo(
-    () =>
-      fichas.filter((f) => {
-        if (tab !== "Histórico" && f.status !== tab) return false;
-        if (query && !f.revendedoraNome.toLowerCase().includes(query.toLowerCase()) && !f.id.toLowerCase().includes(query.toLowerCase()))
-          return false;
-        return true;
-      }),
-    [query, tab, fichas]
-  );
-  const grid = useDataGrid(filtered, columns);
-  const pagination = usePagination(grid.rows);
+  const grid = useDataGrid(response?.data ?? [], columns);
+  const pagination = useServerPagination(response, setTabPage);
 
   return (
     <AppShell>
       <ClearFiltersShortcutDialog
         onConfirm={() => {
           setQueryByTab(Object.fromEntries(tabs.map((item) => [item, ""])) as Record<(typeof tabs)[number], string>);
+          setPageByTab(Object.fromEntries(tabs.map((item) => [item, 1])) as Record<(typeof tabs)[number], number>);
           grid.clearFilters();
         }}
       />
@@ -144,9 +149,9 @@ export default function Fichas() {
             <tbody className="divide-y">
               {isLoading ? (
                 <TableSkeleton cols={9} />
-              ) : pagination.items.length === 0 ? (
+              ) : grid.rows.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</td></tr>
-              ) : pagination.items.map((f) => (
+              ) : grid.rows.map((f) => (
                 <tr key={f.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
                   <td className="px-4 py-3 font-medium">{f.revendedoraNome}</td>

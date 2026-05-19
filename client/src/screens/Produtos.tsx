@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
-import { usePagination } from "@/hooks/usePagination";
+import { usePagination, useServerPagination } from "@/hooks/usePagination";
 import { formatBRL, type Product } from "@/lib/types";
-import { api, useCatalogoProdutos, useProdutos, type CatalogSlug, type CategoriaCatalogo, type SubtipoCatalogo, type TipoCatalogo } from "@/lib/api";
+import { api, useCatalogoProdutos, useProdutosPaginados, type CatalogSlug, type CategoriaCatalogo, type ColecaoCatalogo, type SubtipoCatalogo } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TableSkeleton } from "@/components/TableSkeleton";
@@ -27,53 +27,45 @@ import { toast } from "sonner";
 const abas = [
   "Produtos",
   "Categorias",
-  "Grades",
   "Marcas",
   "Tipos",
   "Subtipos",
   "Coleções",
-  "Modelos",
 ] as const;
 type AbaProduto = (typeof abas)[number];
 
 const rotuloCriar: Record<AbaProduto, string> = {
   Produtos: "Novo produto",
   Categorias: "Nova categoria",
-  Grades: "Nova grade",
   Marcas: "Nova marca",
   Tipos: "Novo tipo",
   Subtipos: "Novo subtipo",
   Coleções: "Nova coleção",
-  Modelos: "Novo modelo",
 };
 
 const hrefCriarCatalogo: Record<AbaProduto, string> = {
   Produtos: "/produtos/novo",
   Categorias: "/produtos/catalogo/categorias/novo",
-  Grades: "/produtos/catalogo/grades/novo",
   Marcas: "/produtos/catalogo/marcas/novo",
   Tipos: "/produtos/catalogo/tipos/novo",
   Subtipos: "/produtos/catalogo/subtipos/novo",
   Coleções: "/produtos/catalogo/colecoes/novo",
-  Modelos: "/produtos/catalogo/modelos/novo",
 };
 
 const tooltipsPorAba: Record<AbaProduto, string> = {
   Produtos: "Peças vendidas pela loja. Cada produto pertence a uma marca, tipo, subtipo e categoria.",
   Categorias: "Define a grade de tamanhos dos produtos. Todo produto herda a grade da sua categoria.",
-  Grades: "Tamanhos disponíveis por categoria (ex: P, M, G, GG). Herdados automaticamente pelos produtos.",
   Marcas: "Identidade comercial do produto — quem assina a peça. Permite agrupar e filtrar por marca.",
-  Tipos: "Classificação macro do produto (ex: Curto, Longo). Serve como base para os subtipos.",
-  Subtipos: "Detalhamento do tipo (ex: Camisola de alça, Conjunto de regata). Deve estar vinculado a um tipo.",
+  Tipos: "Classificação macro do produto (ex: Camisola, Conjunto, Pantufa).",
+  Subtipos: "Detalhamento do tipo (ex: Alça, Regata, Manga Curta, Manga Longa).",
   Coleções: "Agrupamento comercial ou sazonal (ex: Verão 2026, Dia das Mães). Não impacta regras operacionais.",
-  Modelos: "Identificação base da peça — nome ou design (ex: Aurora, Luna). Facilita reconhecimento comercial.",
 };
 
 const categoriasFallback: CategoriaCatalogo[] = [
-  { id: "cat-adulto-masc", name: "Adulto Masculino", grade: ["P", "M", "G", "GG"],                products: 0, active: true },
-  { id: "cat-adulto-fem",  name: "Adulto Feminino",  grade: ["P", "M", "G", "GG"],                products: 0, active: true },
-  { id: "cat-infantil",    name: "Infantil",          grade: ["2", "4", "6", "8", "10", "12"],    products: 0, active: true },
-  { id: "cat-pantufas",    name: "Pantufas",          grade: ["34/35", "36/37", "38/39", "40/41"], products: 0, active: true },
+  { id: "cat-adulto-fem",  name: "Adulto Feminino",  grade: ["PP", "P", "M", "G", "GG", "50", "52", "54", "56"],          products: 0, active: true },
+  { id: "cat-adulto-masc", name: "Adulto Masculino", grade: ["40", "42", "44", "46", "48", "50", "52", "54", "56"],        products: 0, active: true },
+  { id: "cat-infantil",    name: "Infantil",          grade: ["RN", "1", "2", "3", "4", "6", "8", "10", "12", "14", "16"], products: 0, active: true },
+  { id: "cat-pantufa",     name: "Pantufa",           grade: ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"], products: 0, active: true },
 ];
 
 const marcasFallback = [
@@ -83,51 +75,56 @@ const marcasFallback = [
   { id: "marca-ronca",      name: "Ronca&Fuça",       products: 0, active: true },
 ];
 
-const tiposFallback: TipoCatalogo[] = [
-  { id: "tipo-curto", name: "Curto", subtypes: 3, products: 0, active: true },
-  { id: "tipo-longo", name: "Longo", subtypes: 2, products: 0, active: true },
+const tiposFallback = [
+  { id: "tipo-camisola",  name: "Camisola",  subtypes: 0, products: 0, active: true },
+  { id: "tipo-conjunto",  name: "Conjunto",  subtypes: 0, products: 0, active: true },
+  { id: "tipo-macacao",   name: "Macacão",   subtypes: 0, products: 0, active: true },
+  { id: "tipo-pantufa",   name: "Pantufa",   subtypes: 0, products: 0, active: true },
+  { id: "tipo-pescador",  name: "Pescador",  subtypes: 0, products: 0, active: true },
 ];
 
 const subtipsFallback: SubtipoCatalogo[] = [
-  { id: "sub-camisola-alca", name: "Camisola de alça", type: "Curto", products: 0, active: true },
-  { id: "sub-conjunto-regata", name: "Conjunto de regata", type: "Curto", products: 0, active: true },
-  { id: "sub-camisola-manga-longa", name: "Camisola de manga longa", type: "Longo", products: 0, active: true },
+  { id: "sub-alca",        name: "Alça",        products: 0, active: true },
+  { id: "sub-regata",      name: "Regata",      products: 0, active: true },
+  { id: "sub-manga-curta", name: "Manga Curta", products: 0, active: true },
+  { id: "sub-manga-longa", name: "Manga Longa", products: 0, active: true },
 ];
 
-const colecoesFallback = [
-  { id: "col-verao-2026", name: "Verão 2026", period: "Sazonal", products: 0, active: true },
-  { id: "col-basica", name: "Linha Básica", period: "Contínua", products: 0, active: true },
-  { id: "col-maes", name: "Dia das Mães", period: "Campanha", products: 0, active: false },
-];
-
-const modelosFallback = [
-  { id: "mod-aurora", name: "Aurora", products: 0, active: true },
-  { id: "mod-luna", name: "Luna", products: 0, active: true },
-  { id: "mod-soft", name: "Soft", products: 0, active: true },
+const colecoesFallback: ColecaoCatalogo[] = [
+  { id: "col-verao-2026", name: "Verão 2026",    products: 0, active: true },
+  { id: "col-inverno",    name: "Inverno 2026",  products: 0, active: true },
+  { id: "col-basica",     name: "Linha Básica",  products: 0, active: true },
 ];
 
 const abaParaTipo: Partial<Record<AbaProduto, CatalogSlug>> = {
   Categorias: "categorias",
-  Grades: "categorias",
   Marcas: "marcas",
   Tipos: "tipos",
   Subtipos: "subtipos",
   "Coleções": "colecoes",
-  Modelos: "modelos",
 };
+
+function formatarDataColecao(dataInicio?: string, dataFim?: string): string {
+  if (!dataInicio && !dataFim) return "—";
+  const fmt = (d: string) => {
+    const [ano, mes, dia] = d.split("-");
+    return `${dia}/${mes}/${ano}`;
+  };
+  if (dataInicio && dataFim) return `${fmt(dataInicio)} – ${fmt(dataFim)}`;
+  if (dataInicio) return `Início: ${fmt(dataInicio)}`;
+  return `Até: ${fmt(dataFim!)}`;
+}
 
 export default function Produtos() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const { data: produtos = [], isLoading: carregandoProdutos } = useProdutos();
-  const { data: catalogo = { categorias: [], marcas: [], tipos: [], subtipos: [], colecoes: [], modelos: [] }, isLoading: carregandoCatalogo } = useCatalogoProdutos();
+  const { data: catalogo = { categorias: [], marcas: [], tipos: [], subtipos: [], colecoes: [] }, isLoading: carregandoCatalogo } = useCatalogoProdutos();
   const categorias = catalogo.categorias.length > 0 ? catalogo.categorias : categoriasFallback;
   const marcas = catalogo.marcas.length > 0 ? catalogo.marcas : marcasFallback;
   const tipos = catalogo.tipos.length > 0 ? catalogo.tipos : tiposFallback;
   const subtipos = catalogo.subtipos.length > 0 ? catalogo.subtipos : subtipsFallback;
   const colecoes = catalogo.colecoes.length > 0 ? catalogo.colecoes : colecoesFallback;
-  const modelos = catalogo.modelos.length > 0 ? catalogo.modelos : modelosFallback;
   const [aba, setAba] = useState<AbaProduto>(() => {
     const tab = searchParams.get("tab");
     return (tab && (abas as readonly string[]).includes(tab)) ? tab as AbaProduto : "Produtos";
@@ -140,7 +137,16 @@ export default function Produtos() {
   const [busca, setBusca] = useState("");
   const [marcaSelecionada, setMarcaSelecionada] = useState("all");
   const [filtroAtivo, setFiltroAtivo] = useState("all");
+  const [page, setPage] = useState(1);
   const [sinalLimparFiltros, setSinalLimparFiltros] = useState(0);
+
+  const { data: responseProdutos, isLoading: carregandoProdutos } = useProdutosPaginados({
+    search: busca || undefined,
+    marca: marcaSelecionada !== "all" ? marcaSelecionada : undefined,
+    ativo: filtroAtivo === "active" ? true : filtroAtivo === "inactive" ? false : undefined,
+    page,
+    pageSize: 30,
+  });
 
   const nomesMarcas = useMemo(() => marcas.map((item) => item.name), [marcas]);
   const colunasProdutos = useMemo<DataGridColumn<Product>[]>(
@@ -151,7 +157,6 @@ export default function Produtos() {
       { id: "tipo", label: "Tipo", accessor: (p) => `${p.tipoNome ?? ""} / ${p.subtipoNome ?? ""}` },
       { id: "categoriaNome", label: "Categoria", accessor: (p) => p.categoriaNome ?? "" },
       { id: "colecaoNome", label: "Coleção", accessor: (p) => p.colecaoNome ?? "" },
-      { id: "modeloNome", label: "Modelo", accessor: (p) => p.modeloNome ?? "" },
       { id: "precoVarejo", label: "Varejo", accessor: (p) => p.precoVarejo },
       { id: "precoAtacado", label: "Atacado", accessor: (p) => p.precoAtacado },
       { id: "estoque", label: "Saldo", accessor: (p) => p.estoque },
@@ -159,30 +164,6 @@ export default function Produtos() {
     [],
   );
 
-  const produtosFiltrados = useMemo(
-    () =>
-      produtos.filter((p) => {
-        if (marcaSelecionada !== "all" && p.marcaNome !== marcaSelecionada) return false;
-        if (filtroAtivo === "active" && !p.ativo) return false;
-        if (filtroAtivo === "inactive" && p.ativo) return false;
-        if (busca) {
-          const q = busca.toLowerCase();
-          const coincide =
-            p.nome.toLowerCase().includes(q) ||
-            p.ref.toLowerCase().includes(q) ||
-            (p.marcaNome ?? "").toLowerCase().includes(q) ||
-            (p.tipoNome ?? "").toLowerCase().includes(q) ||
-            (p.subtipoNome ?? "").toLowerCase().includes(q) ||
-            (p.categoriaNome ?? "").toLowerCase().includes(q) ||
-            (p.colecaoNome ?? "").toLowerCase().includes(q) ||
-            (p.modeloNome ?? "").toLowerCase().includes(q);
-
-          if (!coincide) return false;
-        }
-        return true;
-      }),
-    [produtos, busca, marcaSelecionada, filtroAtivo]
-  );
   const handleExcluir = async (tipo: CatalogSlug, id: string) => {
     try {
       await api.excluirCatalogoProduto(tipo, id);
@@ -193,12 +174,12 @@ export default function Produtos() {
     }
   };
 
-  const gridProdutos = useDataGrid(produtosFiltrados, colunasProdutos);
-  const paginacaoProdutos = usePagination(gridProdutos.rows);
+  const gridProdutos = useDataGrid(responseProdutos?.data ?? [], colunasProdutos);
+  const paginacaoProdutos = useServerPagination(responseProdutos, setPage);
   const colunasCategoria = useMemo<DataGridColumn<CategoriaCatalogo>[]>(
     () => [
       { id: "name", label: "Categoria", accessor: (item) => item.name },
-      { id: "grade", label: "Grade herdada", accessor: (item) => item.grade.join(", ") },
+      { id: "grade", label: "Grade", accessor: (item) => item.grade.join(", ") },
       { id: "products", label: "Produtos", accessor: (item) => item.products },
     ],
     [],
@@ -218,6 +199,7 @@ export default function Produtos() {
           setBusca("");
           setMarcaSelecionada("all");
           setFiltroAtivo("all");
+          setPage(1);
           gridProdutos.clearFilters();
           gridCategoria.clearFilters();
           setSinalLimparFiltros((atual) => atual + 1);
@@ -226,7 +208,7 @@ export default function Produtos() {
       <PageHeader
         breadcrumb={["Produtos", aba]}
         title="Produtos"
-        infoTooltip="Organiza cadastro de produtos, categorias, grades, marcas e demais estruturas do catálogo."
+        infoTooltip="Organiza cadastro de produtos, categorias, marcas e demais estruturas do catálogo."
         actions={
           aba === "Produtos" ? (
             <Button asChild>
@@ -274,10 +256,10 @@ export default function Produtos() {
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[240px]">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Buscar por nome, referência, marca, tipo, subtipo ou categoria" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <Input placeholder="Buscar por nome, referência, marca, tipo, subtipo ou categoria" className="pl-9" value={busca} onChange={(e) => { setBusca(e.target.value); setPage(1); }} />
                 </div>
-                <AppSelect className="w-[170px]" value={marcaSelecionada} onValueChange={setMarcaSelecionada} options={[{ value: "all", label: "Todas marcas" }, ...nomesMarcas.map((nome) => ({ value: nome, label: nome }))]} />
-                <AppSelect className="w-[130px]" value={filtroAtivo} onValueChange={setFiltroAtivo} options={[{ value: "all", label: "Todos" }, { value: "active", label: "Ativos" }, { value: "inactive", label: "Inativos" }]} />
+                <AppSelect className="w-[170px]" value={marcaSelecionada} onValueChange={(v) => { setMarcaSelecionada(v); setPage(1); }} options={[{ value: "all", label: "Todas marcas" }, ...nomesMarcas.map((nome) => ({ value: nome, label: nome }))]} />
+                <AppSelect className="w-[130px]" value={filtroAtivo} onValueChange={(v) => { setFiltroAtivo(v); setPage(1); }} options={[{ value: "all", label: "Todos" }, { value: "active", label: "Ativos" }, { value: "inactive", label: "Inativos" }]} />
               </div>
             </Card>
           )}
@@ -304,9 +286,9 @@ export default function Produtos() {
                 </thead>
                 <tbody className="divide-y">
                   {carregandoProdutos ? (
-                    <TableSkeleton cols={12} />
+                    <TableSkeleton cols={11} />
                   ) : paginacaoProdutos.items.length === 0 ? (
-                    <tr><td colSpan={12} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum produto encontrado</td></tr>
+                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum produto encontrado</td></tr>
                   ) : paginacaoProdutos.items.map((p) => (
                     <tr key={p.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
@@ -322,7 +304,6 @@ export default function Produtos() {
                       <td className="px-4 py-3 text-muted-foreground">{p.tipoNome} / {p.subtipoNome}</td>
                       <td className="px-4 py-3 text-muted-foreground">{p.categoriaNome}</td>
                       <td className="px-4 py-3 text-muted-foreground">{p.colecaoNome}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.modeloNome}</td>
                       <td className="px-4 py-3 text-right">{formatBRL(p.precoVarejo)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(p.precoAtacado)}</td>
                       <td className={`px-4 py-3 text-center font-semibold ${p.estoque === 0 ? "text-destructive" : ""}`}>{p.estoque}</td>
@@ -358,7 +339,7 @@ export default function Produtos() {
                   ) : paginacaoCategoria.items.map((item) => (
                     <tr key={item.name} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">{item.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{item.grade.join(", ")}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{item.grade.join(", ")}</td>
                       <td className="px-4 py-3 text-center">{item.products}</td>
                       <td className="px-4 py-3 text-right">
                         <BotoesAcaoCatalogo item={item} tipo="categorias" aba={aba} onExcluir={handleExcluir} />
@@ -369,51 +350,43 @@ export default function Produtos() {
               </table>
               <PaginationFooter pagination={paginacaoCategoria} />
             </Card>
+
+            <Card className="p-5">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Grade por categoria</h3>
+              <div className="space-y-4">
+                {carregandoCatalogo ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="rounded-md border p-4 space-y-3">
+                      <Skeleton className="h-4 w-36" />
+                      <div className="flex gap-2">{Array.from({ length: 4 }).map((_, j) => <Skeleton key={j} className="h-7 w-14 rounded-md" />)}</div>
+                    </div>
+                  ))
+                ) : categorias.map((item) => (
+                  <div key={item.name} className="rounded-md border p-4">
+                    <div className="mb-3 font-medium">{item.name}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {item.grade.map((tamanho, index) => (
+                        <span key={tamanho} className="rounded-md bg-muted px-3 py-1 text-sm">{index + 1}. {tamanho}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </div>
         )}
 
-        {aba === "Grades" && renderizarPainel("Grades", (
-          <Card className="p-5">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Grade por categoria</h3>
-            <div className="space-y-4">
-              {carregandoCatalogo ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="rounded-md border p-4 space-y-3">
-                    <Skeleton className="h-4 w-36" />
-                    <div className="flex gap-2">{Array.from({ length: 4 }).map((_, j) => <Skeleton key={j} className="h-7 w-14 rounded-md" />)}</div>
-                  </div>
-                ))
-              ) : categorias.map((item) => (
-                <div key={item.name} className="rounded-md border p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="font-medium">{item.name}</div>
-                    {item.id && (
-                      <BotoesAcaoCatalogo item={item} tipo="categorias" aba={aba} onExcluir={handleExcluir} />
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {item.grade.map((tamanho, index) => (
-                      <span key={tamanho} className="rounded-md bg-muted px-3 py-1 text-sm">{index + 1}. {tamanho}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-
         {aba === "Marcas" && renderizarPainel("Marcas", <TabelaCatalogoSimples linhas={marcas} rotuloNome="Marca" sinalLimparFiltros={sinalLimparFiltros} tipo="marcas" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
-        {aba === "Tipos" && renderizarPainel("Tipos", <TabelaCatalogoSimples linhas={tipos} rotuloNome="Tipo" rotuloMeio="Subtipos" chaveMeio="subtypes" sinalLimparFiltros={sinalLimparFiltros} tipo="tipos" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
-        {aba === "Subtipos" && renderizarPainel("Subtipos", <TabelaSubtipos linhas={subtipos} sinalLimparFiltros={sinalLimparFiltros} aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
-        {aba === "Coleções" && renderizarPainel("Coleções", <TabelaCatalogoSimples linhas={colecoes} rotuloNome="Coleção" rotuloMeio="Período" chaveMeio="period" sinalLimparFiltros={sinalLimparFiltros} tipo="colecoes" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
-        {aba === "Modelos" && renderizarPainel("Modelos", <TabelaCatalogoSimples linhas={modelos} rotuloNome="Modelo" sinalLimparFiltros={sinalLimparFiltros} tipo="modelos" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
+        {aba === "Tipos" && renderizarPainel("Tipos", <TabelaCatalogoSimples linhas={tipos} rotuloNome="Tipo" rotuloMeio="Produtos" chaveMeio="products" sinalLimparFiltros={sinalLimparFiltros} tipo="tipos" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
+        {aba === "Subtipos" && renderizarPainel("Subtipos", <TabelaCatalogoSimples linhas={subtipos} rotuloNome="Subtipo" sinalLimparFiltros={sinalLimparFiltros} tipo="subtipos" aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
+        {aba === "Coleções" && renderizarPainel("Coleções", <TabelaColecoes linhas={colecoes} sinalLimparFiltros={sinalLimparFiltros} aba={aba} onExcluir={handleExcluir} carregando={carregandoCatalogo} />)}
         </div>
       </div>
     </AppShell>
   );
 }
 
-type ItemCatalogo = { id?: string; name: string; products: number; active: boolean; subtypes?: number; period?: string; grade?: string[] };
+type ItemCatalogo = { id?: string; name: string; products: number; active: boolean; subtypes?: number; grade?: string[] };
 type OnExcluir = (tipo: CatalogSlug, id: string) => Promise<void>;
 
 function BotoesAcaoCatalogo({ item, tipo, aba, onExcluir }: { item: ItemCatalogo; tipo: CatalogSlug; aba: AbaProduto; onExcluir: OnExcluir }) {
@@ -507,11 +480,11 @@ function TabelaCatalogoSimples({
   );
 }
 
-function TabelaSubtipos({ linhas, sinalLimparFiltros, aba, onExcluir, carregando = false }: { linhas: SubtipoCatalogo[]; sinalLimparFiltros: number; aba: AbaProduto; onExcluir: OnExcluir; carregando?: boolean }) {
-  const colunas = useMemo<DataGridColumn<SubtipoCatalogo>[]>(
+function TabelaColecoes({ linhas, sinalLimparFiltros, aba, onExcluir, carregando = false }: { linhas: ColecaoCatalogo[]; sinalLimparFiltros: number; aba: AbaProduto; onExcluir: OnExcluir; carregando?: boolean }) {
+  const colunas = useMemo<DataGridColumn<ColecaoCatalogo>[]>(
     () => [
-      { id: "name", label: "Subtipo", accessor: (item) => item.name },
-      { id: "type", label: "Tipo vinculado", accessor: (item) => item.type },
+      { id: "name", label: "Coleção", accessor: (item) => item.name },
+      { id: "periodo", label: "Período", accessor: (item) => formatarDataColecao(item.dataInicio, item.dataFim) },
       { id: "products", label: "Produtos", accessor: (item) => item.products },
     ],
     [],
@@ -537,10 +510,10 @@ function TabelaSubtipos({ linhas, sinalLimparFiltros, aba, onExcluir, carregando
           ) : paginacao.items.map((item) => (
             <tr key={item.name} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{item.type}</td>
+              <td className="px-4 py-3 text-muted-foreground">{formatarDataColecao(item.dataInicio, item.dataFim)}</td>
               <td className="px-4 py-3 text-center">{item.products}</td>
               <td className="px-4 py-3">
-                <BotoesAcaoCatalogo item={item} tipo="subtipos" aba={aba} onExcluir={onExcluir} />
+                <BotoesAcaoCatalogo item={item} tipo="colecoes" aba={aba} onExcluir={onExcluir} />
               </td>
             </tr>
           ))}

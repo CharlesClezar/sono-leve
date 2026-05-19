@@ -15,10 +15,12 @@ public class ContaController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<ContaResponse>>> Listar(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, total) = await _service.ListarAsync(page, pageSize);
+        var (items, total) = await _service.ListarAsync(search, status, page, pageSize);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Ok(new ListaResponse<ContaResponse>(items.Select(Mapear), total, page, pageSize, totalPages));
     }

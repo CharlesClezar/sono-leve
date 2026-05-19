@@ -12,8 +12,9 @@ public class ClienteService : IClienteService
         _clienteRepository = clienteRepository;
     }
 
-    public Task<(IEnumerable<Cliente> items, int total)> ListarAsync(string? busca, int page, int pageSize)
-        => _clienteRepository.ListarAsync(busca, page, pageSize);
+    public Task<(IEnumerable<Cliente> items, int total)> ListarAsync(
+        string? busca, string? tipo, string? status, int page, int pageSize)
+        => _clienteRepository.ListarAsync(busca, tipo, status, page, pageSize);
 
     public async Task<Cliente> ObterPorIdAsync(Guid id)
         => await _clienteRepository.ObterPorIdAsync(id)

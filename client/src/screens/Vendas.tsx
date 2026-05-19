@@ -13,11 +13,14 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { PiecesDetailsDialog } from "@/components/PiecesDetailsDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatBRL, formatDate, type Ficha, type Order, type Sale } from "@/lib/types";
-import { useDadosOperacionais, useItensVenda } from "@/lib/api";
+import {
+  useVendasPaginadas, useEncomendasPaginadas, useFichasPaginadas,
+  useItensVenda,
+} from "@/lib/api";
 import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/usePagination";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ClipboardList, FileClock, Info, Package2, Pencil, Plus, Receipt, Search } from "lucide-react";
@@ -43,43 +46,68 @@ const filtrosPadraoAba: FiltrosAba = {
   periodo: "30d",
 };
 
-function dentroDoPeriodo(dataIso: string, periodo: string) {
-  if (periodo === "todos") return true;
-  const d = new Date(dataIso.substring(0, 10) + "T00:00:00").getTime();
-  const now = Date.now();
-  const dia = 24 * 60 * 60 * 1000;
-  if (periodo === "hoje") {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    return d >= hoje.getTime();
-  }
-  if (periodo === "7d") return now - d <= 7 * dia;
-  if (periodo === "30d") return now - d <= 30 * dia;
-  return true;
-}
-
 function pecasPorEncomenda(total: number) {
   return Math.max(1, Math.round(total / 198));
 }
 
 export default function Vendas() {
-  const { clientes, fichas, encomendas, vendas, carregando } = useDadosOperacionais();
-  const todasEncomendas = encomendas;
   const searchParams = useSearchParams();
   const [aba, setAba] = useState<AbaVendas>("Histórico");
   const [filtrosPorAba, setFiltrosPorAba] = useState<Record<AbaVendas, FiltrosAba>>(
     () => Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaVendas, FiltrosAba>,
   );
   const [sinalLimparFiltros, setSinalLimparFiltros] = useState(0);
+  const [pageHistorico, setPageHistorico] = useState(1);
+  const [pageEncomendas, setPageEncomendas] = useState(1);
+  const [pageFichas, setPageFichas] = useState(1);
   const filtros = filtrosPorAba[aba];
   const atualizarFiltrosAba = (patch: Partial<FiltrosAba>) => {
     setFiltrosPorAba((current) => ({ ...current, [aba]: { ...current[aba], ...patch } }));
+    if (aba === "Histórico") setPageHistorico(1);
+    if (aba === "Faturar encomendas") setPageEncomendas(1);
+    if (aba === "Faturar fichas") setPageFichas(1);
   };
   const selecionarAba = (proximaAba: AbaVendas) => setAba(proximaAba);
   const abasIndexadas = useIndexedTabs({ tabs: abas, onTabChange: selecionarAba });
 
-  const tipoCliente = (nome: string) => clientes.find((c) => c.nome === nome)?.tipo;
   const ehAbaHistorico = aba === "Histórico";
+  const f = filtrosPorAba["Histórico"];
+
+  // ── Histórico ────────────────────────────────────────────────────────────────
+  const { data: resVendas, isLoading: carregandoVendas } = useVendasPaginadas({
+    search: f.busca || undefined,
+    status: f.status !== "all" ? f.status : undefined,
+    tipoCliente: f.tipo !== "all" ? f.tipo : undefined,
+    formaPagamento: f.pagamento !== "all" ? f.pagamento : undefined,
+    periodo: f.periodo !== "todos" ? f.periodo : undefined,
+    page: pageHistorico,
+    pageSize: 30,
+  });
+
+  // ── Faturar encomendas ───────────────────────────────────────────────────────
+  const fEncomendas = filtrosPorAba["Faturar encomendas"];
+  const { data: resEncomendas, isLoading: carregandoEncomendas } = useEncomendasPaginadas(
+    {
+      search: fEncomendas.busca || undefined,
+      status: "Pronta,Fabricado parcialmente",
+      page: pageEncomendas,
+      pageSize: 30,
+    },
+    aba === "Faturar encomendas",
+  );
+
+  // ── Faturar fichas ───────────────────────────────────────────────────────────
+  const fFichas = filtrosPorAba["Faturar fichas"];
+  const { data: resFichas, isLoading: carregandoFichas } = useFichasPaginadas(
+    {
+      search: fFichas.busca || undefined,
+      status: "Aberta,Parcial,Finalizada",
+      minVendidas: 1,
+      page: pageFichas,
+      pageSize: 30,
+    },
+    aba === "Faturar fichas",
+  );
 
   useEffect(() => {
     const from = searchParams.get("from");
@@ -103,82 +131,21 @@ export default function Vendas() {
 
       if (shortcut === "encomendas") {
         customEvent.preventDefault();
-        if (aba !== "Faturar encomendas") {
-          setAba("Faturar encomendas");
-          return;
-        }
+        if (aba !== "Faturar encomendas") { setAba("Faturar encomendas"); return; }
         abasIndexadas.focusFirstAction("Faturar encomendas");
         return;
       }
 
       if (shortcut === "fichas") {
         customEvent.preventDefault();
-        if (aba !== "Faturar fichas") {
-          setAba("Faturar fichas");
-          return;
-        }
+        if (aba !== "Faturar fichas") { setAba("Faturar fichas"); return; }
         abasIndexadas.focusFirstAction("Faturar fichas");
       }
     };
 
     window.addEventListener("app:vendas:shortcut", handleVendasShortcut as EventListener);
-    return () => {
-      window.removeEventListener("app:vendas:shortcut", handleVendasShortcut as EventListener);
-    };
+    return () => { window.removeEventListener("app:vendas:shortcut", handleVendasShortcut as EventListener); };
   }, [abasIndexadas, aba]);
-
-  const vendasHistorico = useMemo(() => {
-    return vendas.filter((v) => {
-      const f = filtrosPorAba.Histórico;
-      if (!dentroDoPeriodo(v.data, f.periodo)) return false;
-      if (f.tipo !== "all" && tipoCliente(v.clienteNome) !== f.tipo) return false;
-      if (f.pagamento !== "all" && !(v.formaPagamentoNome ?? "").toLowerCase().includes(f.pagamento.toLowerCase())) return false;
-      if (f.status !== "all" && v.status !== f.status) return false;
-      if (f.busca) {
-        const q = f.busca.toLowerCase();
-        const match =
-          v.clienteNome.toLowerCase().includes(q) ||
-          v.total.toString().includes(q) ||
-          formatDate(v.data).includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [filtrosPorAba]);
-
-  const encomendasParaFaturar = useMemo(() => {
-    const f = filtrosPorAba["Faturar encomendas"];
-    return todasEncomendas.filter((encomenda) => {
-      if (!["Pronta", "Fabricado parcialmente"].includes(encomenda.status)) return false;
-      if (f.tipo !== "all" && tipoCliente(encomenda.clienteNome) !== f.tipo) return false;
-      if (f.busca) {
-        const q = f.busca.toLowerCase();
-        const match =
-          encomenda.clienteNome.toLowerCase().includes(q) ||
-          encomenda.id.toLowerCase().includes(q) ||
-          formatDate(encomenda.previsao).includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [todasEncomendas, filtrosPorAba]);
-
-  const fichasParaFaturar = useMemo(() => {
-    const f = filtrosPorAba["Faturar fichas"];
-    return fichas.filter((ficha) => {
-      if (ficha.vendidas <= 0) return false;
-      if (ficha.status === "Cancelada") return false;
-      if (f.busca) {
-        const q = f.busca.toLowerCase();
-        const match =
-          ficha.revendedoraNome.toLowerCase().includes(q) ||
-          ficha.id.toLowerCase().includes(q) ||
-          formatDate(ficha.dataAbertura).includes(q);
-        if (!match) return false;
-      }
-      return true;
-    });
-  }, [filtrosPorAba]);
 
   return (
     <AppShell>
@@ -186,6 +153,9 @@ export default function Vendas() {
         onConfirm={() => {
           setFiltrosPorAba(Object.fromEntries(abas.map((item) => [item, filtrosPadraoAba])) as Record<AbaVendas, FiltrosAba>);
           setSinalLimparFiltros((current) => current + 1);
+          setPageHistorico(1);
+          setPageEncomendas(1);
+          setPageFichas(1);
         }}
       />
       <PageHeader
@@ -219,9 +189,7 @@ export default function Vendas() {
                         <Info className="h-3.5 w-3.5" />
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent className="text-xs">
-                      {dicasAba[abaAtual]}
-                    </TooltipContent>
+                    <TooltipContent className="text-xs">{dicasAba[abaAtual]}</TooltipContent>
                   </Tooltip>
                 ) : null
               }
@@ -235,10 +203,10 @@ export default function Vendas() {
               <Input
                 placeholder={
                   aba === "Histórico"
-                    ? "Buscar por cliente, valor ou data"
+                    ? "Buscar por cliente"
                     : aba === "Faturar encomendas"
-                      ? "Buscar por cliente, código ou entrega"
-                      : "Buscar por revendedora, ficha ou abertura"
+                      ? "Buscar por cliente"
+                      : "Buscar por revendedora"
                 }
                 className="pl-9"
                 value={filtros.busca}
@@ -302,17 +270,35 @@ export default function Vendas() {
         <div className="flex-1 overflow-y-auto p-6">
           {aba === "Histórico" && (
             <div {...abasIndexadas.getTabPanelProps("Histórico")}>
-              <VisualizacaoHistorico linhas={vendasHistorico} actionProps={abasIndexadas.getActionProps("Histórico")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+              <VisualizacaoHistorico
+                response={resVendas}
+                setPage={setPageHistorico}
+                actionProps={abasIndexadas.getActionProps("Histórico")}
+                sinalLimparFiltros={sinalLimparFiltros}
+                carregando={carregandoVendas}
+              />
             </div>
           )}
           {aba === "Faturar encomendas" && (
             <div {...abasIndexadas.getTabPanelProps("Faturar encomendas")}>
-              <VisualizacaoFaturarEncomendas linhas={encomendasParaFaturar} actionProps={abasIndexadas.getActionProps("Faturar encomendas")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+              <VisualizacaoFaturarEncomendas
+                response={resEncomendas}
+                setPage={setPageEncomendas}
+                actionProps={abasIndexadas.getActionProps("Faturar encomendas")}
+                sinalLimparFiltros={sinalLimparFiltros}
+                carregando={carregandoEncomendas}
+              />
             </div>
           )}
           {aba === "Faturar fichas" && (
             <div {...abasIndexadas.getTabPanelProps("Faturar fichas")}>
-              <VisualizacaoFaturarFichas linhas={fichasParaFaturar} actionProps={abasIndexadas.getActionProps("Faturar fichas")} sinalLimparFiltros={sinalLimparFiltros} carregando={carregando} />
+              <VisualizacaoFaturarFichas
+                response={resFichas}
+                setPage={setPageFichas}
+                actionProps={abasIndexadas.getActionProps("Faturar fichas")}
+                sinalLimparFiltros={sinalLimparFiltros}
+                carregando={carregandoFichas}
+              />
             </div>
           )}
         </div>
@@ -321,13 +307,17 @@ export default function Vendas() {
   );
 }
 
+type ListaResponse<T> = { data: T[]; total: number; page: number; pageSize: number; totalPages: number };
+
 function VisualizacaoHistorico({
-  linhas,
+  response,
+  setPage,
   actionProps,
   sinalLimparFiltros,
   carregando,
 }: {
-  linhas: Sale[];
+  response: ListaResponse<Sale> | undefined;
+  setPage: (p: number) => void;
   actionProps: Record<string, unknown>;
   sinalLimparFiltros: number;
   carregando: boolean;
@@ -344,11 +334,10 @@ function VisualizacaoHistorico({
     ],
     [],
   );
+  const linhas = response?.data ?? [];
   const grid = useDataGrid(linhas, colunas);
-  useEffect(() => {
-    grid.clearFilters();
-  }, [sinalLimparFiltros]);
-  const paginacao = usePagination(grid.rows);
+  useEffect(() => { grid.clearFilters(); }, [sinalLimparFiltros]);
+  const paginacao = useServerPagination(response, setPage);
 
   return (
     <>
@@ -422,13 +411,13 @@ function VisualizacaoHistorico({
             <tbody className="divide-y">
               {carregando ? (
                 <TableSkeleton cols={8} />
-              ) : paginacao.items.length === 0 ? (
+              ) : grid.rows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     Nenhuma venda encontrada com esses filtros
                   </td>
                 </tr>
-              ) : paginacao.items.map((venda) => (
+              ) : grid.rows.map((venda) => (
                 <tr key={venda.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">{venda.clienteNome}</td>
                   <td className="px-4 py-3 text-muted-foreground">{venda.origem}</td>
@@ -456,10 +445,13 @@ function VisualizacaoHistorico({
 }
 
 function DetalhePecasVenda({ venda, triggerClassName }: { venda: Sale; triggerClassName: string }) {
-  const { data: itens } = useItensVenda(venda.id);
+  const [open, setOpen] = useState(false);
+  const { data: itens } = useItensVenda(open ? venda.id : "");
 
   return (
     <PiecesDetailsDialog
+      open={open}
+      onOpenChange={setOpen}
       pieces={venda.pecas}
       title={`Peças da venda ${venda.id}`}
       description={`Detalhamento dos produtos e tamanhos da venda para ${venda.clienteNome}.`}
@@ -470,12 +462,14 @@ function DetalhePecasVenda({ venda, triggerClassName }: { venda: Sale; triggerCl
 }
 
 function VisualizacaoFaturarEncomendas({
-  linhas,
+  response,
+  setPage,
   actionProps,
   sinalLimparFiltros,
   carregando,
 }: {
-  linhas: Order[];
+  response: ListaResponse<Order> | undefined;
+  setPage: (p: number) => void;
   actionProps: Record<string, unknown>;
   sinalLimparFiltros: number;
   carregando: boolean;
@@ -493,11 +487,10 @@ function VisualizacaoFaturarEncomendas({
     ],
     [],
   );
+  const linhas = response?.data ?? [];
   const grid = useDataGrid(linhas, colunas);
-  useEffect(() => {
-    grid.clearFilters();
-  }, [sinalLimparFiltros]);
-  const paginacao = usePagination(grid.rows);
+  useEffect(() => { grid.clearFilters(); }, [sinalLimparFiltros]);
+  const paginacao = useServerPagination(response, setPage);
 
   return (
     <>
@@ -519,36 +512,14 @@ function VisualizacaoFaturarEncomendas({
                 <StatusEncomendaFatura status={encomenda.status} />
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Cadastro</div>
-                  <div>{formatDate(encomenda.criadoEm)}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</div>
-                  <div>{formatDate(encomenda.previsao)}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças</div>
-                  <div className="font-semibold">{pecasPorEncomenda(encomenda.total)}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo</div>
-                  <div>{formatBRL(encomenda.total - encomenda.entrada)}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div>
-                  <div className="font-semibold">{formatBRL(encomenda.total)}</div>
-                </div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Cadastro</div><div>{formatDate(encomenda.criadoEm)}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</div><div>{formatDate(encomenda.previsao)}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Peças</div><div className="font-semibold">{pecasPorEncomenda(encomenda.total)}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo</div><div>{formatBRL(encomenda.total - encomenda.entrada)}</div></div>
+                <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div><div className="font-semibold">{formatBRL(encomenda.total)}</div></div>
               </div>
-              <BotaoAcaoFatura
-                href={`/vendas/nova?from=encomenda&id=${encomenda.id}`}
-                className="w-full"
-                actionProps={actionProps}
-              >
-                <>
-                  <Receipt className="h-4 w-4" />
-                  Gerar venda
-                </>
+              <BotaoAcaoFatura href={`/vendas/nova?from=encomenda&id=${encomenda.id}`} className="w-full" actionProps={actionProps}>
+                <><Receipt className="h-4 w-4" />Gerar venda</>
               </BotaoAcaoFatura>
             </Card>
           ))
@@ -562,11 +533,7 @@ function VisualizacaoFaturarEncomendas({
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 {colunas.map((coluna) => (
-                  <DataGridColumnHeader
-                    key={coluna.id}
-                    grid={grid}
-                    columnId={coluna.id}
-                    label={coluna.label}
+                  <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label}
                     align={coluna.id === "pecas" ? "center" : ["total", "saldo"].includes(coluna.id) ? "right" : "left"}
                   />
                 ))}
@@ -576,13 +543,9 @@ function VisualizacaoFaturarEncomendas({
             <tbody className="divide-y">
               {carregando ? (
                 <TableSkeleton cols={9} />
-              ) : paginacao.items.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Nenhuma encomenda pronta para faturar
-                  </td>
-                </tr>
-              ) : paginacao.items.map((encomenda) => (
+              ) : grid.rows.length === 0 ? (
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma encomenda pronta para faturar</td></tr>
+              ) : grid.rows.map((encomenda) => (
                 <tr key={encomenda.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{encomenda.id}</td>
                   <td className="px-4 py-3 font-medium">{encomenda.clienteNome}</td>
@@ -591,19 +554,10 @@ function VisualizacaoFaturarEncomendas({
                   <td className="px-4 py-3 text-center font-semibold">{pecasPorEncomenda(encomenda.total)}</td>
                   <td className="px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
                   <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
-                  <td className="px-4 py-3">
-                    <StatusEncomendaFatura status={encomenda.status} />
-                  </td>
+                  <td className="px-4 py-3"><StatusEncomendaFatura status={encomenda.status} /></td>
                   <td className="px-4 py-3 text-right">
-                    <BotaoAcaoFatura
-                      href={`/vendas/nova?from=encomenda&id=${encomenda.id}`}
-                      size="sm"
-                      actionProps={actionProps}
-                    >
-                      <>
-                        <Receipt className="h-4 w-4" />
-                        Gerar venda
-                      </>
+                    <BotaoAcaoFatura href={`/vendas/nova?from=encomenda&id=${encomenda.id}`} size="sm" actionProps={actionProps}>
+                      <><Receipt className="h-4 w-4" />Gerar venda</>
                     </BotaoAcaoFatura>
                   </td>
                 </tr>
@@ -621,27 +575,26 @@ function StatusEncomendaFatura({ status }: { status: Order["status"] }) {
   if (status === "Pronta") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-        <Package2 className="h-3.5 w-3.5" />
-        Pronta
+        <Package2 className="h-3.5 w-3.5" />Pronta
       </span>
     );
   }
-
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-      <Package2 className="h-3.5 w-3.5" />
-      Fabricado parcialmente
+      <Package2 className="h-3.5 w-3.5" />Fabricado parcialmente
     </span>
   );
 }
 
 function VisualizacaoFaturarFichas({
-  linhas,
+  response,
+  setPage,
   actionProps,
   sinalLimparFiltros,
   carregando,
 }: {
-  linhas: Ficha[];
+  response: ListaResponse<Ficha> | undefined;
+  setPage: (p: number) => void;
   actionProps: Record<string, unknown>;
   sinalLimparFiltros: number;
   carregando: boolean;
@@ -659,11 +612,10 @@ function VisualizacaoFaturarFichas({
     ],
     [],
   );
+  const linhas = response?.data ?? [];
   const grid = useDataGrid(linhas, colunas);
-  useEffect(() => {
-    grid.clearFilters();
-  }, [sinalLimparFiltros]);
-  const paginacao = usePagination(grid.rows);
+  useEffect(() => { grid.clearFilters(); }, [sinalLimparFiltros]);
+  const paginacao = useServerPagination(response, setPage);
 
   return (
     <>
@@ -671,9 +623,7 @@ function VisualizacaoFaturarFichas({
         {carregando ? (
           <CardsSkeleton />
         ) : paginacao.items.length === 0 ? (
-          <Card className="p-6 text-center text-sm text-muted-foreground">
-            Nenhuma ficha com faturamento pendente
-          </Card>
+          <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma ficha com faturamento pendente</Card>
         ) : (
           paginacao.items.map((ficha) => (
             <Card key={ficha.id} className="space-y-3 p-4">
@@ -683,41 +633,18 @@ function VisualizacaoFaturarFichas({
                   <div className="font-mono text-xs text-muted-foreground">{ficha.id}</div>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  {ficha.status}
+                  <ClipboardList className="h-3.5 w-3.5" />{ficha.status}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Abertura</div>
-                  <div>{formatDate(ficha.dataAbertura)}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Peças vendidas</div>
-                  <div className="font-semibold text-primary">{ficha.vendidas}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Enviadas</div>
-                  <div>{ficha.enviadas}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div>
-                  <div>{ficha.devolvidas}</div>
-                </div>
-                <div className="col-span-2">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div>
-                  <div className="font-semibold">{formatBRL(ficha.totalVendido)}</div>
-                </div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Abertura</div><div>{formatDate(ficha.dataAbertura)}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Peças vendidas</div><div className="font-semibold text-primary">{ficha.vendidas}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Enviadas</div><div>{ficha.enviadas}</div></div>
+                <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div><div>{ficha.devolvidas}</div></div>
+                <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div><div className="font-semibold">{formatBRL(ficha.totalVendido)}</div></div>
               </div>
-              <BotaoAcaoFatura
-                href={`/vendas/nova?from=ficha&id=${ficha.id}`}
-                className="w-full"
-                actionProps={actionProps}
-              >
-                <>
-                  <Receipt className="h-4 w-4" />
-                  Gerar venda
-                </>
+              <BotaoAcaoFatura href={`/vendas/nova?from=ficha&id=${ficha.id}`} className="w-full" actionProps={actionProps}>
+                <><Receipt className="h-4 w-4" />Gerar venda</>
               </BotaoAcaoFatura>
             </Card>
           ))
@@ -731,18 +658,8 @@ function VisualizacaoFaturarFichas({
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 {colunas.map((coluna) => (
-                  <DataGridColumnHeader
-                    key={coluna.id}
-                    grid={grid}
-                    columnId={coluna.id}
-                    label={coluna.label}
-                    align={
-                      ["vendidas", "enviadas", "devolvidas"].includes(coluna.id)
-                        ? "center"
-                        : coluna.id === "totalVendido"
-                          ? "right"
-                          : "left"
-                    }
+                  <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label}
+                    align={["vendidas", "enviadas", "devolvidas"].includes(coluna.id) ? "center" : coluna.id === "totalVendido" ? "right" : "left"}
                   />
                 ))}
                 <th className="px-4 py-3 text-right">Ações</th>
@@ -751,13 +668,9 @@ function VisualizacaoFaturarFichas({
             <tbody className="divide-y">
               {carregando ? (
                 <TableSkeleton cols={9} />
-              ) : paginacao.items.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Nenhuma ficha com faturamento pendente
-                  </td>
-                </tr>
-              ) : paginacao.items.map((ficha) => (
+              ) : grid.rows.length === 0 ? (
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma ficha com faturamento pendente</td></tr>
+              ) : grid.rows.map((ficha) => (
                 <tr key={ficha.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-mono text-xs">{ficha.id}</td>
                   <td className="px-4 py-3 font-medium">{ficha.revendedoraNome}</td>
@@ -768,20 +681,12 @@ function VisualizacaoFaturarFichas({
                   <td className="px-4 py-3 text-right font-semibold">{formatBRL(ficha.totalVendido)}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                      <ClipboardList className="h-3.5 w-3.5" />
-                      {ficha.status}
+                      <ClipboardList className="h-3.5 w-3.5" />{ficha.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <BotaoAcaoFatura
-                      href={`/vendas/nova?from=ficha&id=${ficha.id}`}
-                      size="sm"
-                      actionProps={actionProps}
-                    >
-                      <>
-                        <Receipt className="h-4 w-4" />
-                        Gerar venda
-                      </>
+                    <BotaoAcaoFatura href={`/vendas/nova?from=ficha&id=${ficha.id}`} size="sm" actionProps={actionProps}>
+                      <><Receipt className="h-4 w-4" />Gerar venda</>
                     </BotaoAcaoFatura>
                   </td>
                 </tr>
@@ -807,12 +712,8 @@ const BotaoAcaoFatura = ({
   size?: "default" | "sm" | "lg" | "icon";
   children: React.ReactNode;
   actionProps: Record<string, unknown>;
-}) => {
-  return (
-    <Button asChild className={className} size={size}>
-      <Link {...actionProps} href={href}>
-        {children}
-      </Link>
-    </Button>
-  );
-};
+}) => (
+  <Button asChild className={className} size={size}>
+    <Link {...actionProps} href={href}>{children}</Link>
+  </Button>
+);

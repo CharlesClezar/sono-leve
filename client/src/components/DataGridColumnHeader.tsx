@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ArrowDown, ArrowUp, MoreVertical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ type DataGridColumnHeaderProps<T> = {
   align?: "left" | "center" | "right";
 };
 
-export function DataGridColumnHeader<T>({
+function DataGridColumnHeaderBase<T>({
   grid,
   columnId,
   label,
@@ -103,3 +104,5 @@ export function DataGridColumnHeader<T>({
     </th>
   );
 }
+
+export const DataGridColumnHeader = memo(DataGridColumnHeaderBase) as typeof DataGridColumnHeaderBase;

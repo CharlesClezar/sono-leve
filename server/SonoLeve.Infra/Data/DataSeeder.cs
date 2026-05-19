@@ -10,68 +10,58 @@ public static class DataSeeder
         var agora = DateTime.UtcNow;
 
         // 1. Catálogo (deve vir antes de Produtos)
-        if (!db.CatalogoMarcas.Any())
+        if (!db.Marcas.Any())
         {
-            db.CatalogoMarcas.AddRange(
-                new CatalogoMarca { Name = "Sono Leve",        Active = true },
-                new CatalogoMarca { Name = "Clelia Anastácio", Active = true },
-                new CatalogoMarca { Name = "Thainá Reichen",   Active = true },
-                new CatalogoMarca { Name = "Ronca&Fuça",       Active = true }
+            db.Marcas.AddRange(
+                new Marca { Name = "Sono Leve",        Active = true },
+                new Marca { Name = "Clelia Anastácio", Active = true },
+                new Marca { Name = "Thainá Reichen",   Active = true },
+                new Marca { Name = "Ronca&Fuça",       Active = true }
             );
             await db.SaveChangesAsync();
         }
 
-        if (!db.CategoriasBase.Any())
+        if (!db.Categorias.Any())
         {
-            db.CategoriasBase.AddRange(
-                new CatalogoCategoria { Name = "Adulto Masculino", Grade = ["P", "M", "G", "GG"],                Active = true },
-                new CatalogoCategoria { Name = "Adulto Feminino",  Grade = ["P", "M", "G", "GG"],                Active = true },
-                new CatalogoCategoria { Name = "Infantil",         Grade = ["2", "4", "6", "8", "10", "12"],     Active = true },
-                new CatalogoCategoria { Name = "Pantufas",         Grade = ["34/35", "36/37", "38/39", "40/41"], Active = true }
+            db.Categorias.AddRange(
+                new Categoria { Name = "Adulto Feminino",  Grade = ["PP", "P", "M", "G", "GG", "50", "52", "54", "56"],                    Active = true },
+                new Categoria { Name = "Adulto Masculino", Grade = ["40", "42", "44", "46", "48", "50", "52", "54", "56"],                  Active = true },
+                new Categoria { Name = "Infantil",         Grade = ["RN", "1", "2", "3", "4", "6", "8", "10", "12", "14", "16"],            Active = true },
+                new Categoria { Name = "Pantufa",          Grade = ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"],            Active = true }
             );
             await db.SaveChangesAsync();
         }
 
-        if (!db.CatalogoTipos.Any())
+        if (!db.Tipos.Any())
         {
-            db.CatalogoTipos.AddRange(
-                new CatalogoTipo { Name = "Pijama",     Active = true },
-                new CatalogoTipo { Name = "Camisola",   Active = true },
-                new CatalogoTipo { Name = "Short Doll", Active = true },
-                new CatalogoTipo { Name = "Pantufa",    Active = true }
+            db.Tipos.AddRange(
+                new Tipo { Name = "Camisola",  Active = true },
+                new Tipo { Name = "Conjunto",  Active = true },
+                new Tipo { Name = "Macacão",   Active = true },
+                new Tipo { Name = "Pantufa",   Active = true },
+                new Tipo { Name = "Pescador",  Active = true }
             );
             await db.SaveChangesAsync();
         }
 
-        if (!db.CatalogoSubtipos.Any())
+        if (!db.Subtipos.Any())
         {
-            db.CatalogoSubtipos.AddRange(
-                new CatalogoSubtipo { Name = "Manga Longa", Type = "Pijama",     Active = true },
-                new CatalogoSubtipo { Name = "Manga Curta", Type = "Pijama",     Active = true },
-                new CatalogoSubtipo { Name = "Regata",      Type = "Camisola",   Active = true },
-                new CatalogoSubtipo { Name = "Regata",      Type = "Short Doll", Active = true },
-                new CatalogoSubtipo { Name = "Fechado",     Type = "Pantufa",    Active = true }
+            db.Subtipos.AddRange(
+                new Subtipo { Name = "Alça",        Active = true },
+                new Subtipo { Name = "Regata",      Active = true },
+                new Subtipo { Name = "Manga Curta", Active = true },
+                new Subtipo { Name = "Manga Longa", Active = true }
             );
             await db.SaveChangesAsync();
         }
 
-        if (!db.CatalogoColecoes.Any())
+        if (!db.Colecoes.Any())
         {
-            db.CatalogoColecoes.AddRange(
-                new CatalogoColecao { Name = "Inverno 2025", Period = "Sazonal",  Active = true },
-                new CatalogoColecao { Name = "Outono 2025",  Period = "Sazonal",  Active = true },
-                new CatalogoColecao { Name = "Verão 2025",   Period = "Sazonal",  Active = true },
-                new CatalogoColecao { Name = "Básico",       Period = "Contínua", Active = true }
-            );
-            await db.SaveChangesAsync();
-        }
-
-        if (!db.CatalogoModelos.Any())
-        {
-            db.CatalogoModelos.AddRange(
-                new CatalogoModelo { Name = "Aurora", Active = true },
-                new CatalogoModelo { Name = "Luna",   Active = true },
-                new CatalogoModelo { Name = "Soft",   Active = true }
+            db.Colecoes.AddRange(
+                new Colecao { Name = "Inverno 2025", DataInicio = new DateOnly(2025, 6, 1),  DataFim = new DateOnly(2025, 8, 31),  Active = true },
+                new Colecao { Name = "Outono 2025",  DataInicio = new DateOnly(2025, 3, 1),  DataFim = new DateOnly(2025, 5, 31),  Active = true },
+                new Colecao { Name = "Verão 2025",   DataInicio = new DateOnly(2024, 12, 1), DataFim = new DateOnly(2025, 2, 28),  Active = true },
+                new Colecao { Name = "Básico",       DataInicio = null,                      DataFim = null,                       Active = true }
             );
             await db.SaveChangesAsync();
         }
@@ -115,27 +105,26 @@ public static class DataSeeder
         // 4. Produtos (com FKs para catálogo)
         if (!db.Produtos.Any())
         {
-            var marcas   = db.CatalogoMarcas.ToDictionary(m => m.Name, m => m.Id);
-            var tipos    = db.CatalogoTipos.ToDictionary(t => t.Name, t => t.Id);
-            var subtipos = db.CatalogoSubtipos.ToDictionary(s => s.Name + "|" + s.Type, s => s.Id);
-            var cats     = db.CategoriasBase.ToDictionary(c => c.Name, c => c.Id);
-            var colecoes = db.CatalogoColecoes.ToDictionary(c => c.Name, c => c.Id);
-            var modelos  = db.CatalogoModelos.ToDictionary(m => m.Name, m => m.Id);
+            var marcas   = db.Marcas.ToDictionary(m => m.Name, m => m.Id);
+            var tipos    = db.Tipos.ToDictionary(t => t.Name, t => t.Id);
+            var subtipos = db.Subtipos.ToDictionary(s => s.Name, s => s.Id);
+            var cats     = db.Categorias.ToDictionary(c => c.Name, c => c.Id);
+            var colecoes = db.Colecoes.ToDictionary(c => c.Name, c => c.Id);
 
-            Guid? SubtipoId(string nome, string tipo) =>
-                subtipos.TryGetValue(nome + "|" + tipo, out var id) ? id : (Guid?)null;
+            Guid? Sub(string nome) =>
+                subtipos.TryGetValue(nome, out var id) ? id : (Guid?)null;
 
             db.Produtos.AddRange(
-                P("Pijama Adulto Liso Azul",       "PJ-001", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Longa","Pijama"),  cats["Adulto Feminino"],  colecoes["Inverno 2025"], modelos["Aurora"], 89.90m, 65.00m, true, 42, agora),
-                P("Pijama Adulto Liso Rosa",        "PJ-002", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Longa","Pijama"),  cats["Adulto Feminino"],  colecoes["Inverno 2025"], modelos["Aurora"], 89.90m, 65.00m, true, 38, agora),
-                P("Pijama Adulto Estampado Lua",    "PJ-003", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Curta","Pijama"),  cats["Adulto Feminino"],  colecoes["Inverno 2025"], modelos["Luna"],   79.90m, 58.00m, true, 25, agora),
-                P("Pijama Infantil Ursinhos",       "PJ-004", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Longa","Pijama"),  cats["Infantil"],         colecoes["Outono 2025"],  modelos["Soft"],   59.90m, 42.00m, true, 60, agora),
-                P("Pijama Infantil Estrelas",       "PJ-005", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Longa","Pijama"),  cats["Infantil"],         colecoes["Outono 2025"],  modelos["Soft"],   59.90m, 42.00m, true, 55, agora),
-                P("Pijama Adulto Masculino Azul",   "PJ-006", marcas["Sono Leve"], tipos["Pijama"],     SubtipoId("Manga Longa","Pijama"),  cats["Adulto Masculino"], colecoes["Inverno 2025"], modelos["Aurora"], 85.00m, 62.00m, true, 30, agora),
-                P("Camisola Adulto Renda",          "CM-001", marcas["Sono Leve"], tipos["Camisola"],   SubtipoId("Regata","Camisola"),     cats["Adulto Feminino"],  colecoes["Verão 2025"],   modelos["Luna"],   95.00m, 70.00m, true, 20, agora),
-                P("Conjunto Short Doll Floral",     "SD-001", marcas["Sono Leve"], tipos["Short Doll"], SubtipoId("Regata","Short Doll"),   cats["Adulto Feminino"],  colecoes["Verão 2025"],   modelos["Luna"],   75.00m, 55.00m, true, 18, agora),
-                P("Pantufa Adulto Soft",            "PT-001", marcas["Sono Leve"], tipos["Pantufa"],    SubtipoId("Fechado","Pantufa"),     cats["Pantufas"],         colecoes["Básico"],       modelos["Soft"],   45.00m, 32.00m, true, 80, agora),
-                P("Pantufa Infantil Bichinhos",     "PT-002", marcas["Sono Leve"], tipos["Pantufa"],    SubtipoId("Fechado","Pantufa"),     cats["Pantufas"],         colecoes["Outono 2025"],  modelos["Soft"],   49.90m, 35.00m, true, 65, agora)
+                P("Camisola Adulto Liso Azul",    "CM-001", marcas["Sono Leve"], tipos["Camisola"], Sub("Alça"),        cats["Adulto Feminino"],  colecoes["Inverno 2025"], 89.90m, 65.00m, true, 42, agora),
+                P("Camisola Adulto Liso Rosa",    "CM-002", marcas["Sono Leve"], tipos["Camisola"], Sub("Manga Longa"), cats["Adulto Feminino"],  colecoes["Inverno 2025"], 89.90m, 65.00m, true, 38, agora),
+                P("Camisola Adulto Estampada",    "CM-003", marcas["Sono Leve"], tipos["Camisola"], Sub("Manga Curta"), cats["Adulto Feminino"],  colecoes["Inverno 2025"], 79.90m, 58.00m, true, 25, agora),
+                P("Conjunto Infantil Ursinhos",   "CJ-001", marcas["Sono Leve"], tipos["Conjunto"], Sub("Manga Longa"), cats["Infantil"],         colecoes["Outono 2025"],  59.90m, 42.00m, true, 60, agora),
+                P("Conjunto Infantil Estrelas",   "CJ-002", marcas["Sono Leve"], tipos["Conjunto"], Sub("Manga Longa"), cats["Infantil"],         colecoes["Outono 2025"],  59.90m, 42.00m, true, 55, agora),
+                P("Conjunto Adulto Masculino",    "CJ-003", marcas["Sono Leve"], tipos["Conjunto"], Sub("Manga Longa"), cats["Adulto Masculino"], colecoes["Inverno 2025"], 85.00m, 62.00m, true, 30, agora),
+                P("Camisola Adulto Regata Renda", "CM-004", marcas["Sono Leve"], tipos["Camisola"], Sub("Regata"),      cats["Adulto Feminino"],  colecoes["Verão 2025"],   95.00m, 70.00m, true, 20, agora),
+                P("Conjunto Floral Regata",       "CJ-004", marcas["Sono Leve"], tipos["Conjunto"], Sub("Regata"),      cats["Adulto Feminino"],  colecoes["Verão 2025"],   75.00m, 55.00m, true, 18, agora),
+                P("Pantufa Adulto Soft",          "PT-001", marcas["Sono Leve"], tipos["Pantufa"],  Sub("Alça"),        cats["Pantufa"],          colecoes["Básico"],       45.00m, 32.00m, true, 80, agora),
+                P("Pantufa Infantil Bichinhos",   "PT-002", marcas["Sono Leve"], tipos["Pantufa"],  Sub("Alça"),        cats["Pantufa"],          colecoes["Outono 2025"],  49.90m, 35.00m, true, 65, agora)
             );
             await db.SaveChangesAsync();
         }
@@ -253,20 +242,20 @@ public static class DataSeeder
         if (!db.ItensEncomenda.Any() && db.Encomendas.Any())
         {
             var produtosSeed = db.Produtos
-                .Where(p => new[] { "PJ-001","PJ-002","PJ-003","PJ-004","PJ-005","PJ-006","CM-001","SD-001" }.Contains(p.Ref))
+                .Where(p => new[] { "CM-001","CM-002","CM-003","CJ-001","CJ-002","CJ-003","CM-004","CJ-004" }.Contains(p.Ref))
                 .Select(p => new { p.Id, p.Ref })
                 .ToList();
             var tamanhosPorRef = new Dictionary<string, string[]>
             {
-                ["PJ-001"] = ["P","M","G","GG"], ["PJ-002"] = ["P","M","G","GG"],
-                ["PJ-003"] = ["P","M","G"],      ["PJ-004"] = ["4","6","8","10"],
-                ["PJ-005"] = ["4","6","8","10"], ["PJ-006"] = ["M","G","GG"],
-                ["CM-001"] = ["P","M","G"],      ["SD-001"] = ["P","M","G"],
+                ["CM-001"] = ["PP","P","M","G","GG"], ["CM-002"] = ["PP","P","M","G","GG"],
+                ["CM-003"] = ["P","M","G"],            ["CJ-001"] = ["4","6","8","10"],
+                ["CJ-002"] = ["4","6","8","10"],       ["CJ-003"] = ["M","G","GG"],
+                ["CM-004"] = ["P","M","G"],            ["CJ-004"] = ["P","M","G"],
             };
             var precoPorRef = new Dictionary<string, decimal>
             {
-                ["PJ-001"]=89.90m,["PJ-002"]=89.90m,["PJ-003"]=79.90m,["PJ-004"]=59.90m,
-                ["PJ-005"]=59.90m,["PJ-006"]=85.00m,["CM-001"]=95.00m,["SD-001"]=75.00m,
+                ["CM-001"]=89.90m,["CM-002"]=89.90m,["CM-003"]=79.90m,["CJ-001"]=59.90m,
+                ["CJ-002"]=59.90m,["CJ-003"]=85.00m,["CM-004"]=95.00m,["CJ-004"]=75.00m,
             };
             var rngItens = new Random(17);
             foreach (var encomenda in db.Encomendas.ToList())
@@ -287,7 +276,6 @@ public static class DataSeeder
                     });
                 }
             }
-            // Atualiza Pecas de cada encomenda com a soma dos itens
             var itensPorEncomenda = db.ItensEncomenda
                 .GroupBy(i => i.EncomendaId)
                 .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantidade));
@@ -307,16 +295,16 @@ public static class DataSeeder
                 .ToList();
             var tamanhosPorRef = new Dictionary<string, string[]>
             {
-                ["PJ-001"]=["P","M","G","GG"],["PJ-002"]=["P","M","G","GG"],
-                ["PJ-003"]=["P","M","G"],     ["PJ-004"]=["4","6","8","10"],
-                ["PJ-005"]=["4","6","8","10"],["PJ-006"]=["M","G","GG"],
-                ["CM-001"]=["P","M","G"],     ["SD-001"]=["P","M","G"],
-                ["PT-001"]=["38/39","40/41"], ["PT-002"]=["34/35","36/37"],
+                ["CM-001"]=["PP","P","M","G","GG"], ["CM-002"]=["PP","P","M","G","GG"],
+                ["CM-003"]=["P","M","G"],            ["CJ-001"]=["4","6","8","10"],
+                ["CJ-002"]=["4","6","8","10"],       ["CJ-003"]=["M","G","GG"],
+                ["CM-004"]=["P","M","G"],            ["CJ-004"]=["P","M","G"],
+                ["PT-001"]=["38","39","40","41"],    ["PT-002"]=["35","36","37"],
             };
             var precoPorRef = new Dictionary<string, decimal>
             {
-                ["PJ-001"]=89.90m,["PJ-002"]=89.90m,["PJ-003"]=79.90m,["PJ-004"]=59.90m,
-                ["PJ-005"]=59.90m,["PJ-006"]=85.00m,["CM-001"]=95.00m,["SD-001"]=75.00m,
+                ["CM-001"]=89.90m,["CM-002"]=89.90m,["CM-003"]=79.90m,["CJ-001"]=59.90m,
+                ["CJ-002"]=59.90m,["CJ-003"]=85.00m,["CM-004"]=95.00m,["CJ-004"]=75.00m,
                 ["PT-001"]=45.00m,["PT-002"]=49.90m,
             };
             var rngItens = new Random(23);
@@ -423,6 +411,6 @@ public static class DataSeeder
     private static Cliente C(string nome, string tel, string cpf, TipoCliente tipo, string status, decimal credito, DateTime agora) =>
         new() { Id = Guid.NewGuid(), Nome = nome, Telefone = tel, Cpf = cpf, Tipo = tipo, Status = status, Credito = credito, CriadoEm = agora, AtualizadoEm = agora };
 
-    private static Produto P(string nome, string refP, Guid? marcaId, Guid? tipoId, Guid? subtipoId, Guid? categoriaId, Guid? colecaoId, Guid? modeloId, decimal varejo, decimal atacado, bool ativo, int estoque, DateTime agora) =>
-        new() { Id = Guid.NewGuid(), Nome = nome, Ref = refP, MarcaId = marcaId, TipoId = tipoId, SubtipoId = subtipoId, CategoriaId = categoriaId, ColecaoId = colecaoId, ModeloId = modeloId, PrecoVarejo = varejo, PrecoAtacado = atacado, Ativo = ativo, Estoque = estoque, CriadoEm = agora, AtualizadoEm = agora };
+    private static Produto P(string nome, string refP, Guid? marcaId, Guid? tipoId, Guid? subtipoId, Guid? categoriaId, Guid? colecaoId, decimal varejo, decimal atacado, bool ativo, int estoque, DateTime agora) =>
+        new() { Id = Guid.NewGuid(), Nome = nome, Ref = refP, MarcaId = marcaId, TipoId = tipoId, SubtipoId = subtipoId, CategoriaId = categoriaId, ColecaoId = colecaoId, PrecoVarejo = varejo, PrecoAtacado = atacado, Ativo = ativo, Estoque = estoque, CriadoEm = agora, AtualizadoEm = agora };
 }

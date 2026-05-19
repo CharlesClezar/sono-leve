@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/types";
-import { api, useDadosOperacionais } from "@/lib/api";
+import { api, useClientes, useBuscarProdutos, useFichaPorId } from "@/lib/api";
+import type { Product } from "@/lib/types";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search } from "lucide-react";
@@ -19,13 +20,13 @@ import { toast } from "sonner";
 export default function NovaFicha() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { clientes, produtos, fichas } = useDadosOperacionais();
+  const { data: clientes = [] } = useClientes();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
-  const ficha = fichas.find((item) => item.id === params.id);
-  const editando = Boolean(ficha);
+  const { data: ficha } = useFichaPorId(params.id);
+  const editando = Boolean(params.id);
   const vieuDoDashboard = searchParams.get("from") === "dashboard";
   const breadcrumb = vieuDoDashboard
     ? ["Dashboard", "Ficha", editando ? "Editar ficha" : "Nova ficha"]
@@ -34,21 +35,12 @@ export default function NovaFicha() {
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
   const [clienteId, setClienteId] = useState(ficha?.clienteId ?? "");
-  const [produtoId, setProdutoId] = useState("");
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Product | null>(null);
   const [buscaProduto, setBuscaProduto] = useState("");
   const [tamanho, setTamanho] = useState("P");
   const [quantidade, setQuantidade] = useState(ficha?.enviadas ?? 1);
 
-  const produtoSelecionado = produtos.find((p) => p.id === produtoId);
-
-  const produtosFiltrados = buscaProduto
-    ? produtos.filter(
-        (p) =>
-          p.ativo &&
-          (p.nome.toLowerCase().includes(buscaProduto.toLowerCase()) ||
-            p.ref.toLowerCase().includes(buscaProduto.toLowerCase()))
-      )
-    : [];
+  const { data: resultadosBusca = [] } = useBuscarProdutos(buscaProduto);
 
   useEffect(() => {
     if (ficha) {
@@ -140,7 +132,7 @@ export default function NovaFicha() {
                         <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setProdutoId("")}>Trocar</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setProdutoSelecionado(null)}>Trocar</Button>
                   </div>
                 ) : (
                   <div className="relative">
@@ -151,12 +143,12 @@ export default function NovaFicha() {
                       value={buscaProduto}
                       onChange={(e) => setBuscaProduto(e.target.value)}
                     />
-                    {produtosFiltrados.length > 0 && (
+                    {resultadosBusca.length > 0 && (
                       <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                        {produtosFiltrados.map((p) => (
+                        {resultadosBusca.map((p) => (
                           <button
                             key={p.id}
-                            onClick={() => { setProdutoId(p.id); setBuscaProduto(""); }}
+                            onClick={() => { setProdutoSelecionado(p); setBuscaProduto(""); }}
                             className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
                           >
                             {p.imagemUrl ? (

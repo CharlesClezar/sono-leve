@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { api, useClientes } from "@/lib/api";
+import { api, useClientePorId } from "@/lib/api";
 import type { Customer } from "@/lib/types";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { toast } from "sonner";
@@ -21,9 +21,8 @@ export default function NovoCliente() {
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
   const params = useParams<{ id?: string }>();
-  const { data: clientes = [] } = useClientes();
-  const cliente = clientes.find((item) => item.id === params.id);
-  const editando = Boolean(cliente);
+  const { data: cliente } = useClientePorId(params.id);
+  const editando = Boolean(params.id);
   const [form, setForm] = useState({
     nome: "",
     telefone: "",

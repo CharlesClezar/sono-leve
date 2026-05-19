@@ -8,8 +8,9 @@ public class FichaService : IFichaService
     private readonly IFichaRepository _repo;
     public FichaService(IFichaRepository repo) => _repo = repo;
 
-    public Task<(IEnumerable<Ficha> items, int total)> ListarAsync(int pagina, int tamanhoPagina) =>
-        _repo.ListarAsync(pagina, tamanhoPagina);
+    public Task<(IEnumerable<Ficha> items, int total)> ListarAsync(
+        string? search, string? status, int? minVendidas, int pagina, int tamanhoPagina) =>
+        _repo.ListarAsync(search, status, minVendidas, pagina, tamanhoPagina);
 
     public Task<Ficha> ObterPorIdAsync(Guid id) => _repo.ObterPorIdAsync(id);
     public Task<Ficha> CriarAsync(Ficha ficha) => _repo.CriarAsync(ficha);
