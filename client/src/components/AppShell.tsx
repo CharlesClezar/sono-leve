@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, type ReactNode } from "react";
+import { useState, useEffect, Suspense, type ReactNode } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
@@ -11,14 +11,15 @@ function ShortcutsBridge() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const [defaultOpen] = useState(() => {
-    if (typeof document === "undefined") return true;
-    const cookie = document.cookie.split(";").find((c) => c.trim().startsWith("sidebar:state="));
-    return cookie ? cookie.trim().split("=")[1] === "true" : true;
-  });
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;\s*)sidebar:state=([^;]*)/);
+    if (match) setOpen(match[1] === "true");
+  }, []);
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider open={open} onOpenChange={setOpen}>
       <Suspense fallback={null}>
         <ShortcutsBridge />
       </Suspense>
