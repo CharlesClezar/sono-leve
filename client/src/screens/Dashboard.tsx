@@ -9,16 +9,16 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, formatDate, type ItemVenda, type OrderStatus } from "@/lib/types";
-import { api, useContasReceber, useEncomendas, useFichas, useVendas } from "@/lib/api";
-import type { Account, Ficha, Order, Sale } from "@/lib/types";
-
-const EMPTY_VENDAS: Sale[] = [];
-const EMPTY_ENCOMENDAS: Order[] = [];
-const EMPTY_FICHAS: Ficha[] = [];
-const EMPTY_CONTAS: Account[] = [];
+import { api, useDashboard } from "@/lib/api";
+import type { VendaDashboard, EncomendaDashboard, FichaDashboard, ContaDashboard } from "@/lib/api";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+type Sale = VendaDashboard;
+type Order = EncomendaDashboard;
+type Ficha = FichaDashboard;
+type Account = ContaDashboard;
 import {
   TrendingUp,
   Wallet,
@@ -90,11 +90,14 @@ const deslocarDias = (iso: string, quantidade: number) => {
   return formatarDataIso(data);
 };
 
+const DASHBOARD_VAZIO = { vendas: [] as Sale[], encomendas: [] as EncomendaDashboard[], fichas: [] as Ficha[], contas: [] as Account[] };
+
 export default function Dashboard() {
-  const { data: vendas = EMPTY_VENDAS } = useVendas();
-  const { data: encomendas = EMPTY_ENCOMENDAS } = useEncomendas();
-  const { data: fichas = EMPTY_FICHAS } = useFichas();
-  const { data: contas = EMPTY_CONTAS } = useContasReceber();
+  const { data: dashboard = DASHBOARD_VAZIO } = useDashboard();
+  const vendas = dashboard.vendas;
+  const encomendas = dashboard.encomendas;
+  const fichas = dashboard.fichas;
+  const contas = dashboard.contas;
   const router = useRouter();
   const queryClient = useQueryClient();
   const atalhoNovaVenda = useShortcutLabel("dashboard_new_sale");
@@ -103,7 +106,7 @@ export default function Dashboard() {
   const [periodoSelecionado, setPeriodoSelecionado] = useState<PeriodoDashboard>("today");
   const [dataBaseCalendario, setDataBaseCalendario] = useState(() => new Date());
   const [statusPorId, setStatusPorId] = useState<Record<string, OrderStatus>>(
-    () => Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status])),
+    () => Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status as OrderStatus])),
   );
   const [confirmacaoPendente, setConfirmacaoPendente] = useState<ConfirmacaoPendente>(null);
   const [modalItens, setModalItens] = useState<ModalItensPendente>(null);
@@ -111,7 +114,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     setStatusPorId((atual) => ({
-      ...Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status])),
+      ...Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status as OrderStatus])),
       ...atual,
     }));
   }, [encomendas]);
@@ -247,7 +250,7 @@ export default function Dashboard() {
   const moverStatus = async (id: string, novoStatus: OrderStatus) => {
     setStatusPorId((atual) => ({ ...atual, [id]: novoStatus }));
     await api.atualizarStatusEncomenda(id, novoStatus);
-    await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
+    await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
   };
 
   const abrirConfirmacaoIniciar = (id: string) =>

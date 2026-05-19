@@ -10,6 +10,22 @@ const ENCOMENDAS_VAZIAS: Order[] = [];
 const FICHAS_VAZIAS: Ficha[] = [];
 const CONTAS_VAZIAS: Account[] = [];
 
+// ─── Tipos do Dashboard (slim) ───────────────────────────────────────────────
+
+export type VendaDashboard = { id: string; data: string; total: number; status: string };
+export type EncomendaDashboard = { id: string; clienteNome: string; previsao: string; total: number; status: string };
+export type FichaDashboard = { id: string; dataAbertura: string; status: string };
+export type ContaDashboard = { id: string; vencimento: string; total: number; recebido: number };
+
+export type DashboardDados = {
+  vendas: VendaDashboard[];
+  encomendas: EncomendaDashboard[];
+  fichas: FichaDashboard[];
+  contas: ContaDashboard[];
+};
+
+const DASHBOARD_VAZIO: DashboardDados = { vendas: [], encomendas: [], fichas: [], contas: [] };
+
 // ─── Tipos de entrada (mutations) ────────────────────────────────────────────
 
 export type ItemVendaSalvar = {
@@ -536,6 +552,15 @@ export function useDadosOperacionais() {
   };
 }
 
+export function useDashboard() {
+  return useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => http.get<DashboardDados>("/dashboard"),
+    staleTime: 2 * 60_000,
+    placeholderData: DASHBOARD_VAZIO,
+  });
+}
+
 export function useInvalidarConsultas() {
   const queryClient = useQueryClient();
   return {
@@ -547,5 +572,6 @@ export function useInvalidarConsultas() {
     contasReceber: () => queryClient.invalidateQueries({ queryKey: ["contas-receber"] }),
     catalogo: () => queryClient.invalidateQueries({ queryKey: ["catalogo-produtos"] }),
     formasPagamento: () => queryClient.invalidateQueries({ queryKey: ["formas-pagamento"] }),
+    dashboard: () => queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
   };
 }
