@@ -16,7 +16,7 @@ public class VendaRepository : IVendaRepository
         string? formaPagamento, string? periodo, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Venda> query = _db.Vendas
+        IQueryable<Venda> query = _db.Vendas.AsNoTracking()
             .Include(v => v.Cliente)
             .Include(v => v.FormaPagamento);
 

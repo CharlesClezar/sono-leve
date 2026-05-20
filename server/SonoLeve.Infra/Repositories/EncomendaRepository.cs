@@ -15,7 +15,7 @@ public class EncomendaRepository : IEncomendaRepository
         string? search, string? status, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Encomenda> query = _db.Encomendas.Include(e => e.Cliente);
+        IQueryable<Encomenda> query = _db.Encomendas.AsNoTracking().Include(e => e.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e => e.Cliente != null && e.Cliente.Nome.Contains(search));

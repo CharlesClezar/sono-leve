@@ -11,7 +11,7 @@ public class ProdutoRepository : IProdutoRepository
     public ProdutoRepository(SonoLeveDbContext db) => _db = db;
 
     private IQueryable<Produto> ComIncludes() =>
-        _db.Produtos
+        _db.Produtos.AsNoTracking()
             .Include(p => p.Marca).Include(p => p.Tipo).Include(p => p.Subtipo)
             .Include(p => p.Categoria).Include(p => p.Colecao);
 

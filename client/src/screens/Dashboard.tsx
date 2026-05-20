@@ -119,6 +119,7 @@ export default function Dashboard() {
     }));
   }, [encomendas]);
 
+  const celulas = useMemo(() => {
   const ano = dataBaseCalendario.getFullYear();
   const mes = dataBaseCalendario.getMonth();
   const primeiroDia = new Date(ano, mes, 1).getDay();
@@ -128,7 +129,7 @@ export default function Dashboard() {
   const anoProximoMes = mes === 11 ? ano + 1 : ano;
   const proximoMes = mes === 11 ? 0 : mes + 1;
   const diasMesAnterior = new Date(ano, mes, 0).getDate();
-  const celulas = Array.from({ length: 42 }, (_, index) => {
+  return Array.from({ length: 42 }, (_, index) => {
     const numeroDia = index - primeiroDia + 1;
 
     if (numeroDia <= 0) {
@@ -155,6 +156,7 @@ export default function Dashboard() {
       iso: `${ano}-${String(mes + 1).padStart(2, "0")}-${String(numeroDia).padStart(2, "0")}`,
     };
   });
+  }, [dataBaseCalendario]);
 
   const entregasPorData = useMemo(() => {
     const agrupadas = new Map<string, typeof encomendas>();

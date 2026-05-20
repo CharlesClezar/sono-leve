@@ -15,7 +15,7 @@ public class FichaRepository : IFichaRepository
         string? search, string? status, int? minVendidas, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Ficha> query = _db.Fichas.Include(f => f.Cliente);
+        IQueryable<Ficha> query = _db.Fichas.AsNoTracking().Include(f => f.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(f => f.Cliente != null && f.Cliente.Nome.Contains(search));

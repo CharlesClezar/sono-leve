@@ -19,7 +19,7 @@ public class ClienteRepository : IClienteRepository
         string? busca, string? tipo, string? status, int page, int pageSize)
     {
         busca = busca?.Length > 100 ? busca[..100] : busca;
-        var query = _db.Clientes.AsQueryable();
+        var query = _db.Clientes.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busca))
             query = query.Where(c =>

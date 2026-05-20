@@ -15,7 +15,7 @@ public class ContaRepository : IContaRepository
         string? search, string? status, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Conta> query = _db.Contas.Include(c => c.Cliente);
+        IQueryable<Conta> query = _db.Contas.AsNoTracking().Include(c => c.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(c => c.Cliente != null && c.Cliente.Nome.Contains(search));
