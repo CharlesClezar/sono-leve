@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+cd "${PROJECT_DIR}"
+
 echo "╔══════════════════════════════════════╗"
 echo "║   Sono Leve — Setup do Servidor      ║"
 echo "║   (execute apenas uma vez)           ║"
@@ -52,5 +56,9 @@ fi
 echo ""
 echo "✅ Setup concluído! Para fazer deploy agora (e toda vez):"
 echo ""
-echo "   git pull && docker compose -f docker-compose.prod.yml up -d --build && docker image prune -f"
+echo "   ./infra/update.sh"
+echo ""
+echo "Para agendar backup diário, rode: crontab -e"
+echo "E adicione a linha (backup às 03:00):"
+echo "   0 3 * * * ${PROJECT_DIR}/infra/backup.sh"
 echo ""

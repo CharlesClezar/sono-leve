@@ -2,17 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 BACKUP_DIR="${HOME}/backups/sono-leve"
 RETENTION_DAYS=7
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="${BACKUP_DIR}/backup.log"
 
 # Carregar variáveis do .env
-if [ ! -f "${SCRIPT_DIR}/.env" ]; then
-  echo "❌ .env não encontrado em ${SCRIPT_DIR}"
+if [ ! -f "${PROJECT_DIR}/.env" ]; then
+  echo "❌ .env não encontrado em ${PROJECT_DIR}"
   exit 1
 fi
-set -a; source "${SCRIPT_DIR}/.env"; set +a
+set -a; source "${PROJECT_DIR}/.env"; set +a
 
 BACKUP_FILE="${BACKUP_DIR}/sono_leve_${TIMESTAMP}.sql.gz"
 
