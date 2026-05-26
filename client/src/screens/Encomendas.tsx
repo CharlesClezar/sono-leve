@@ -17,7 +17,7 @@ import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
-import { TableSkeleton } from "@/components/TableSkeleton";
+import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { CircleCheck, Pencil, Play, Plus, Search, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 
@@ -32,6 +32,8 @@ type FiltroAba = {
   ordenarPor: ChaveOrdenacao;
   direcaoOrdenacao: DirecaoOrdenacao;
 };
+
+const ENCOMENDAS_VAZIAS: Order[] = [];
 
 const ordemStatus: StatusListaEncomenda[] = ["Novo", "Em produção", "Fabricado parcialmente", "Pronta", "Entregue", "Cancelada"];
 const abas: AbaEncomenda[] = ["Histórico", ...ordemStatus];
@@ -98,11 +100,14 @@ export default function Encomendas() {
     pageSize: 30,
   });
 
-  const encomendas = response?.data ?? [];
+  // Referência estável: evita novo array a cada render quando não há dados
+  const encomendas = response?.data ?? ENCOMENDAS_VAZIAS;
 
   const [statusPorId, setStatusPorId] = useState<Record<string, StatusListaEncomenda>>({});
 
   useEffect(() => {
+    // Sem dados, não há nada para sincronizar — sai cedo evitando loop
+    if (encomendas.length === 0) return;
     setStatusPorId((prev) => ({
       ...Object.fromEntries(encomendas.map((e) => [e.id, normalizarStatus(e.status)])),
       ...prev,
@@ -173,7 +178,7 @@ export default function Encomendas() {
         }}
       />
       <PageHeader
-        breadcrumb={["Encomendas"]}
+        breadcrumb={["Encomendas", aba]}
         title="Encomendas"
         infoTooltip="Acompanha pedidos sob encomenda desde a abertura até produção, entrega e faturamento."
         actions={
@@ -235,7 +240,9 @@ export default function Encomendas() {
         <div {...indexedTabs.getTabPanelProps(aba)} className="flex-1 overflow-y-auto p-6">
 
         <div className="grid gap-3 lg:hidden">
-          {paginacao.items.length === 0 ? (
+          {isLoading ? (
+            <CardsSkeleton />
+          ) : paginacao.items.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
               Nenhuma encomenda encontrada
             </Card>
@@ -294,7 +301,7 @@ export default function Encomendas() {
             })
           )}
         </div>
-        <PaginationFooter pagination={paginacao} className="rounded-md border lg:hidden" />
+        <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
         <Card className="hidden overflow-hidden lg:block">
           <div className="overflow-x-auto">

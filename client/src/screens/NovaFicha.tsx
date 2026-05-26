@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/types";
 import { api, useClientes, useBuscarProdutos, useFichaPorId } from "@/lib/api";
 import type { Product } from "@/lib/types";
@@ -34,6 +33,7 @@ export default function NovaFicha() {
   const cancelHref = vieuDoDashboard ? "/" : "/fichas";
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
+  const [tentouSalvar, setTentouSalvar] = useState(false);
   const [clienteId, setClienteId] = useState(ficha?.clienteId ?? "");
   const [produtoSelecionado, setProdutoSelecionado] = useState<Product | null>(null);
   const [buscaProduto, setBuscaProduto] = useState("");
@@ -54,6 +54,7 @@ export default function NovaFicha() {
   }, [clientes, ficha, clienteId]);
 
   const handleSalvar = async () => {
+    setTentouSalvar(true);
     if (!clienteId) return toast.error("Selecione uma revendedora.");
 
     setSalvando(true);
@@ -97,19 +98,21 @@ export default function NovaFicha() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto">
-      <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
           <Card className="p-5">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Revendedora</h3>
             <label className="space-y-1.5">
-              <span className="text-sm font-medium">Cliente</span>
+              <span className="text-sm font-medium">Revendedora <span className="text-destructive">*</span></span>
               <AppSelect
                 value={clienteId}
                 onValueChange={setClienteId}
+                placeholder="Informe a revendedora"
                 options={clientes
                   .filter((c) => c.tipo === "atacado")
                   .map((c) => ({ value: c.id, label: c.nome }))}
+                className={tentouSalvar && !clienteId ? "border-destructive" : ""}
               />
             </label>
           </Card>
@@ -185,11 +188,12 @@ export default function NovaFicha() {
           </Card>
         </div>
 
-        <Card className="h-fit p-5">
+        <div className="overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
+        <Card className="p-5">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações</h3>
-          <Textarea placeholder="Condições combinadas com a revendedora" />
           <p className="mt-3 text-xs text-muted-foreground">A ficha inicia aberta para registrar devoluções, vendas e acertos.</p>
         </Card>
+        </div>
       </div>
       </div>
     </AppShell>

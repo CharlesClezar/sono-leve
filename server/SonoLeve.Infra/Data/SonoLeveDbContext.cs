@@ -26,6 +26,9 @@ public class SonoLeveDbContext : DbContext
     public DbSet<Subtipo> Subtipos => Set<Subtipo>();
     public DbSet<Colecao> Colecoes => Set<Colecao>();
     public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
+    public DbSet<BandeiraCartao> BandeirasCartao => Set<BandeiraCartao>();
+    public DbSet<ConfiguracaoTaxaCartao> ConfiguracoesTaxaCartao => Set<ConfiguracaoTaxaCartao>();
+    public DbSet<ConfiguracaoTaxaCartaoParcela> ConfiguracoesTaxaCartaoParcelas => Set<ConfiguracaoTaxaCartaoParcela>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,5 +48,20 @@ public class SonoLeveDbContext : DbContext
         modelBuilder.Entity<Categoria>()
             .Property(e => e.Grade)
             .HasConversion(gradeConverter, gradeComparer);
+
+        // ConfiguracaoTaxaCartao: cascade delete para parcelas
+        modelBuilder.Entity<ConfiguracaoTaxaCartao>()
+            .HasMany(c => c.Parcelas)
+            .WithOne(p => p.ConfiguracaoTaxaCartao)
+            .HasForeignKey(p => p.ConfiguracaoTaxaCartaoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Conta → Venda: sem cascade (venda tem vida própria)
+        modelBuilder.Entity<Conta>()
+            .HasOne(c => c.Venda)
+            .WithMany()
+            .HasForeignKey(c => c.VendaId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

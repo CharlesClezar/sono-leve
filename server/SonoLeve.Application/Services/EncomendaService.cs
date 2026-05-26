@@ -16,9 +16,7 @@ public class EncomendaService : IEncomendaService
 
     public async Task<Encomenda> CriarAsync(Encomenda encomenda, IEnumerable<ItemEncomenda>? itens = null)
     {
-        var listaItens = itens?.ToList();
-        if (listaItens != null)
-            encomenda.Pecas = listaItens.Sum(i => i.Quantidade);
+        var listaItens = PrepararItens(itens, encomenda);
         var criado = await _repo.CriarAsync(encomenda);
         if (listaItens != null)
             await _repo.SalvarItensAsync(criado.Id, listaItens);
@@ -27,13 +25,19 @@ public class EncomendaService : IEncomendaService
 
     public async Task<Encomenda> AtualizarAsync(Encomenda encomenda, IEnumerable<ItemEncomenda>? itens = null)
     {
-        var listaItens = itens?.ToList();
-        if (listaItens != null)
-            encomenda.Pecas = listaItens.Sum(i => i.Quantidade);
+        var listaItens = PrepararItens(itens, encomenda);
         var atualizado = await _repo.AtualizarAsync(encomenda);
         if (listaItens != null)
             await _repo.SalvarItensAsync(atualizado.Id, listaItens);
         return atualizado;
+    }
+
+    private static List<ItemEncomenda>? PrepararItens(IEnumerable<ItemEncomenda>? itens, Encomenda encomenda)
+    {
+        var lista = itens?.ToList();
+        if (lista != null)
+            encomenda.Pecas = lista.Sum(i => i.Quantidade);
+        return lista;
     }
 
     public Task<IEnumerable<ItemEncomenda>> ObterItensAsync(Guid id) => _repo.ObterItensAsync(id);

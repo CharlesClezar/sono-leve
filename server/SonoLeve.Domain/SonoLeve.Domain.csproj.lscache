@@ -55,13 +55,9 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 
 [sourceFiles]
 Entities/
- CatalogoCategoria.cs
- CatalogoColecao.cs
- CatalogoMarca.cs
- CatalogoModelo.cs
- CatalogoSubtipo.cs
- CatalogoTipo.cs
+ Categoria.cs
  Cliente.cs
+ Colecao.cs
  Conta.cs
  Encomenda.cs
  EntidadeBase.cs
@@ -70,7 +66,10 @@ Entities/
  IdempotencyRecord.cs
  ItemEncomenda.cs
  ItemVenda.cs
+ Marca.cs
  Produto.cs
+ Subtipo.cs
+ Tipo.cs
  Usuario.cs
  Venda.cs
 Enums/

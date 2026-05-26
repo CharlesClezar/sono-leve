@@ -45,12 +45,17 @@ public class ContaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.ClienteId = request.ClienteId;
-            existente.Origem = request.Origem;
-            existente.Total = request.Total;
-            existente.Recebido = request.Recebido;
-            existente.Vencimento = request.Vencimento;
-            existente.Status = Enum.Parse<StatusConta>(request.Status, true);
+            existente.ClienteId            = request.ClienteId;
+            existente.Origem               = request.Origem;
+            existente.Descricao            = request.Descricao;
+            existente.Total                = request.Total;
+            existente.Recebido             = request.Recebido;
+            existente.Vencimento           = request.Vencimento;
+            existente.Status               = Enum.Parse<StatusConta>(request.Status, true);
+            existente.NumeroParcelas       = request.NumeroParcelas;
+            existente.PercentualTaxaCartao = request.PercentualTaxaCartao;
+            existente.TaxaFixaCartao       = request.TaxaFixaCartao;
+            existente.ValorTaxaCartao      = request.ValorTaxaCartao;
             return Ok(Mapear(await _service.AtualizarAsync(existente)));
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -58,13 +63,38 @@ public class ContaController : ControllerBase
 
     private static Conta MapearEntidade(ContaRequest r) => new()
     {
-        ClienteId = r.ClienteId, Origem = r.Origem, Total = r.Total,
-        Recebido = r.Recebido, Vencimento = r.Vencimento,
-        Status = Enum.Parse<StatusConta>(r.Status, true),
+        ClienteId            = r.ClienteId,
+        EhManual             = r.EhManual,
+        Origem               = r.Origem,
+        Descricao            = r.Descricao,
+        VendaId              = r.VendaId,
+        Total                = r.Total,
+        Recebido             = r.Recebido,
+        Vencimento           = r.Vencimento,
+        Status               = Enum.Parse<StatusConta>(r.Status, true),
+        NumeroParcelas       = r.NumeroParcelas,
+        PercentualTaxaCartao = r.PercentualTaxaCartao,
+        TaxaFixaCartao       = r.TaxaFixaCartao,
+        ValorTaxaCartao      = r.ValorTaxaCartao,
     };
 
     private static ContaResponse Mapear(Conta c) => new(
-        c.Id, c.ClienteId, c.Cliente?.Nome ?? "", c.Origem, c.Total,
-        c.Recebido, c.Vencimento, c.Status.ToString(), c.CriadoEm
+        c.Id,
+        c.ClienteId,
+        c.Cliente?.Nome ?? "",
+        c.EhManual,
+        c.Origem,
+        c.Descricao,
+        c.VendaId,
+        c.Total,
+        c.Recebido,
+        c.Total - (c.ValorTaxaCartao ?? 0),   // ValorLiquido
+        c.Vencimento,
+        c.Status.ToString(),
+        c.NumeroParcelas,
+        c.PercentualTaxaCartao,
+        c.TaxaFixaCartao,
+        c.ValorTaxaCartao,
+        c.CriadoEm
     );
 }

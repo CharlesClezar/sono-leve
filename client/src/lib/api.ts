@@ -17,14 +17,16 @@ export type EncomendaDashboard = { id: string; clienteNome: string; previsao: st
 export type FichaDashboard = { id: string; dataAbertura: string; status: string };
 export type ContaDashboard = { id: string; vencimento: string; total: number; recebido: number };
 
-export type DashboardDados = {
+export type DashboardKpis = {
   vendas: VendaDashboard[];
-  encomendas: EncomendaDashboard[];
   fichas: FichaDashboard[];
   contas: ContaDashboard[];
 };
 
-const DASHBOARD_VAZIO: DashboardDados = { vendas: [], encomendas: [], fichas: [], contas: [] };
+const FETCH_ALL_PAGE_SIZE = 1000;
+
+export const DASHBOARD_KPIS_VAZIO: DashboardKpis = { vendas: [], fichas: [], contas: [] };
+export const ENCOMENDAS_CALENDARIO_VAZIAS: EncomendaDashboard[] = [];
 
 // ─── Tipos de entrada (mutations) ────────────────────────────────────────────
 
@@ -47,6 +49,30 @@ export type VendaSalvar = {
   status: Sale["status"];
   origem: Sale["origem"];
   items?: ItemVendaSalvar[];
+  // ── Pagamento / taxa (snapshot na Conta) ──────────────────────────────────
+  bandeiraId?: string;
+  numeroParcelas?: number;
+  percentualTaxaCartao?: number;
+  taxaFixaCartao?: number;
+  valorTaxaCartao?: number;
+  prazoRecebimentoDias?: number;
+  valorPago?: number;
+};
+
+export type ContaSalvar = {
+  clienteId: string;
+  origem: string;
+  descricao?: string;
+  total: number;
+  recebido: number;
+  vencimento: string;
+  status: Account["status"];
+  ehManual?: boolean;
+  vendaId?: string;
+  numeroParcelas?: number;
+  percentualTaxaCartao?: number;
+  taxaFixaCartao?: number;
+  valorTaxaCartao?: number;
 };
 
 export type EncomendaSalvar = {
@@ -180,12 +206,48 @@ function buildQS(params: Record<string, string | number | boolean | undefined>):
 export type FormaPagamento = {
   id: string;
   nome: string;
-  condicao: string;
-  taxa: string;
+  tipo: string;
+  permiteParcelamento: boolean;
+  exigeBandeira: boolean;
   ativo: boolean;
 };
 
 export type FormaPagamentoSalvar = Omit<FormaPagamento, "id">;
+
+export type BandeiraCartao = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+};
+
+export type BandeiraCartaoSalvar = Omit<BandeiraCartao, "id">;
+
+export type ConfiguracaoTaxaCartaoParcela = {
+  id: string;
+  numeroParcelas: number;
+  percentualTaxa: number;
+  prazoRecebimentoDias: number;
+  taxaFixa: number | null;
+};
+
+export type ConfiguracaoTaxaCartao = {
+  id: string;
+  formaPagamentoId: string;
+  formaPagamentoNome: string;
+  bandeiraId: string;
+  bandeiraNome: string;
+  tipoCartao: string;
+  ativo: boolean;
+  parcelas: ConfiguracaoTaxaCartaoParcela[];
+};
+
+export type ConfiguracaoTaxaCartaoSalvar = {
+  formaPagamentoId: string;
+  bandeiraId: string;
+  tipoCartao: string;
+  ativo: boolean;
+  parcelas: Omit<ConfiguracaoTaxaCartaoParcela, "id">[];
+};
 
 type ListaResponse<T> = {
   data: T[];
@@ -199,12 +261,12 @@ type ListaResponse<T> = {
 
 export const api = {
   clientes: async () => {
-    const res = await http.get<ListaResponse<Customer>>("/clientes?pageSize=1000");
+    const res = await http.get<ListaResponse<Customer>>(`/clientes?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
   produtos: async () => {
-    const res = await http.get<ListaResponse<Product>>("/produtos?pageSize=1000");
+    const res = await http.get<ListaResponse<Product>>(`/produtos?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
@@ -213,23 +275,28 @@ export const api = {
     return res.data;
   },
 
+  buscarClientes: async (search: string) => {
+    const res = await http.get<ListaResponse<Customer>>(`/clientes?search=${encodeURIComponent(search)}&pageSize=15`);
+    return res.data;
+  },
+
   vendas: async () => {
-    const res = await http.get<ListaResponse<Sale>>("/vendas?pageSize=1000");
+    const res = await http.get<ListaResponse<Sale>>(`/vendas?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
   encomendas: async () => {
-    const res = await http.get<ListaResponse<Order>>("/encomendas?pageSize=1000");
+    const res = await http.get<ListaResponse<Order>>(`/encomendas?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
   fichas: async () => {
-    const res = await http.get<ListaResponse<Ficha>>("/fichas?pageSize=1000");
+    const res = await http.get<ListaResponse<Ficha>>(`/fichas?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
   contasReceber: async () => {
-    const res = await http.get<ListaResponse<Account>>("/contas-receber?pageSize=1000");
+    const res = await http.get<ListaResponse<Account>>(`/contas-receber?pageSize=${FETCH_ALL_PAGE_SIZE}`);
     return res.data;
   },
 
@@ -259,6 +326,12 @@ export const api = {
       search: f.search, status: f.status,
       page: f.page ?? 1, pageSize: f.pageSize ?? 30,
     })}`),
+
+  criarConta: (entrada: ContaSalvar) =>
+    http.post<Account>("/contas-receber", { ...entrada, ehManual: entrada.ehManual ?? true }),
+
+  atualizarConta: (id: string, entrada: ContaSalvar) =>
+    http.put<Account>(`/contas-receber/${id}`, { ...entrada, ehManual: entrada.ehManual ?? true }),
 
   listarClientes: (f: ClientesFiltros) =>
     http.get<ListaResponse<Customer>>(`/clientes?${buildQS({
@@ -295,10 +368,10 @@ export const api = {
 
   // ─── Produtos ──────────────────────────────────────────────────────────────
 
-  salvarProduto: (produto: Omit<Product, "id" | "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome" | "modeloNome">, idempotencyKey?: string) =>
+  salvarProduto: (produto: Omit<Product, "id" | "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome">, idempotencyKey?: string) =>
     http.post<Product>("/produtos", produto, idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined),
 
-  atualizarProduto: (produto: Omit<Product, "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome" | "modeloNome">) =>
+  atualizarProduto: (produto: Omit<Product, "marcaNome" | "tipoNome" | "subtipoNome" | "categoriaNome" | "colecaoNome">) =>
     http.put<Product>(`/produtos/${produto.id}`, produto),
 
   uploadImagemProduto: async (id: string, arquivo: File): Promise<{ imagemUrl: string }> => {
@@ -380,6 +453,33 @@ export const api = {
 
   excluirFormaPagamento: (id: string) =>
     http.delete<void>(`/formas-pagamento/${id}`),
+
+  // ─── Bandeiras de Cartão ──────────────────────────────────────────────────
+
+  bandeirasCartao: () => http.get<BandeiraCartao[]>("/bandeiras-cartao"),
+
+  salvarBandeiraCartao: (entrada: BandeiraCartaoSalvar) =>
+    http.post<BandeiraCartao>("/bandeiras-cartao", entrada),
+
+  atualizarBandeiraCartao: (id: string, entrada: BandeiraCartaoSalvar) =>
+    http.put<BandeiraCartao>(`/bandeiras-cartao/${id}`, entrada),
+
+  excluirBandeiraCartao: (id: string) =>
+    http.delete<void>(`/bandeiras-cartao/${id}`),
+
+  // ─── Configurações de Taxa de Cartão ─────────────────────────────────────
+
+  configuracoesTaxaCartao: () =>
+    http.get<ConfiguracaoTaxaCartao[]>("/configuracoes-taxa-cartao"),
+
+  salvarConfiguracaoTaxaCartao: (entrada: ConfiguracaoTaxaCartaoSalvar) =>
+    http.post<ConfiguracaoTaxaCartao>("/configuracoes-taxa-cartao", entrada),
+
+  atualizarConfiguracaoTaxaCartao: (id: string, entrada: ConfiguracaoTaxaCartaoSalvar) =>
+    http.put<ConfiguracaoTaxaCartao>(`/configuracoes-taxa-cartao/${id}`, entrada),
+
+  excluirConfiguracaoTaxaCartao: (id: string) =>
+    http.delete<void>(`/configuracoes-taxa-cartao/${id}`),
 };
 
 // ─── React Query Hooks ────────────────────────────────────────────────────────
@@ -396,6 +496,15 @@ export function useBuscarProdutos(search: string) {
   return useQuery({
     queryKey: ["produtos", "busca", search],
     queryFn: () => api.buscarProdutos(search),
+    enabled: search.trim().length >= 2,
+    staleTime: 30_000,
+  });
+}
+
+export function useBuscarClientes(search: string) {
+  return useQuery({
+    queryKey: ["clientes", "busca", search],
+    queryFn: () => api.buscarClientes(search),
     enabled: search.trim().length >= 2,
     staleTime: 30_000,
   });
@@ -481,6 +590,14 @@ export function useFormasPagamento() {
   return useQuery({ queryKey: ["formas-pagamento"], queryFn: api.formasPagamento });
 }
 
+export function useBandeirasCartao() {
+  return useQuery({ queryKey: ["bandeiras-cartao"], queryFn: api.bandeirasCartao });
+}
+
+export function useConfiguracoesTaxaCartao() {
+  return useQuery({ queryKey: ["configuracoes-taxa-cartao"], queryFn: api.configuracoesTaxaCartao });
+}
+
 // ─── Hooks paginados com filtros server-side ──────────────────────────────────
 
 export function useVendasPaginadas(filtros: VendasFiltros) {
@@ -554,10 +671,19 @@ export function useDadosOperacionais() {
 
 export function useDashboard() {
   return useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => http.get<DashboardDados>("/dashboard"),
+    queryKey: ["dashboard", "kpis"],
+    queryFn: () => http.get<DashboardKpis>("/dashboard"),
+    staleTime: 5 * 60_000,
+    placeholderData: DASHBOARD_KPIS_VAZIO,
+  });
+}
+
+export function useEncomendasCalendario(inicio: string, fim: string) {
+  return useQuery({
+    queryKey: ["dashboard", "encomendas", inicio, fim],
+    queryFn: () => http.get<EncomendaDashboard[]>(`/dashboard/encomendas?inicio=${inicio}&fim=${fim}`),
     staleTime: 2 * 60_000,
-    placeholderData: DASHBOARD_VAZIO,
+    placeholderData: ENCOMENDAS_CALENDARIO_VAZIAS,
   });
 }
 
@@ -572,6 +698,8 @@ export function useInvalidarConsultas() {
     contasReceber: () => queryClient.invalidateQueries({ queryKey: ["contas-receber"] }),
     catalogo: () => queryClient.invalidateQueries({ queryKey: ["catalogo-produtos"] }),
     formasPagamento: () => queryClient.invalidateQueries({ queryKey: ["formas-pagamento"] }),
+    bandeirasCartao: () => queryClient.invalidateQueries({ queryKey: ["bandeiras-cartao"] }),
+    configuracoesTaxaCartao: () => queryClient.invalidateQueries({ queryKey: ["configuracoes-taxa-cartao"] }),
     dashboard: () => queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
   };
 }

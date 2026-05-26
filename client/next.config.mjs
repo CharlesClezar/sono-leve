@@ -9,6 +9,11 @@ const nextConfig = {
         source: "/api/:path*",
         destination: `${backendUrl}/api/:path*`,
       },
+      {
+        // Imagens de produtos servidas pelo backend via UseStaticFiles
+        source: "/imagens/:path*",
+        destination: `${backendUrl}/imagens/:path*`,
+      },
     ];
   },
 };

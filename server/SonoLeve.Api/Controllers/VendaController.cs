@@ -11,7 +11,13 @@ namespace SonoLeve.Api.Controllers;
 public class VendaController : ControllerBase
 {
     private readonly IVendaService _service;
-    public VendaController(IVendaService service) => _service = service;
+    private readonly IContaService _contaService;
+
+    public VendaController(IVendaService service, IContaService contaService)
+    {
+        _service      = service;
+        _contaService = contaService;
+    }
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<VendaResponse>>> Listar(
@@ -51,8 +57,22 @@ public class VendaController : ControllerBase
     public async Task<ActionResult<VendaResponse>> Criar([FromBody] VendaRequest request)
     {
         var entidade = MapearEntidade(request);
-        var itens = MapearItensRequest(request.Items);
-        var criado = await _service.CriarAsync(entidade, itens);
+        var itens    = MapearItensRequest(request.Items);
+        var criado   = await _service.CriarAsync(entidade, itens);
+
+        // ── Auto-criar Conta a Receber com taxa snapshotada ─────────────────
+        await _contaService.SincronizarContaDeVendaAsync(
+            vendaId:               criado.Id,
+            clienteId:             criado.ClienteId,
+            total:                 criado.Total,
+            recebido:              request.ValorPago ?? 0,
+            dataVenda:             criado.Data,
+            numeroParcelas:        request.NumeroParcelas,
+            percentualTaxaCartao:  request.PercentualTaxaCartao,
+            taxaFixaCartao:        request.TaxaFixaCartao,
+            valorTaxaCartao:       request.ValorTaxaCartao,
+            prazoRecebimentoDias:  request.PrazoRecebimentoDias ?? 0);
+
         return CreatedAtAction(nameof(ObterPorId), new { id = criado.Id }, Mapear(criado));
     }
 
@@ -62,15 +82,30 @@ public class VendaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.ClienteId = request.ClienteId;
+            existente.ClienteId       = request.ClienteId;
             existente.FormaPagamentoId = request.FormaPagamentoId;
-            existente.Data = request.Data ?? existente.Data;
-            existente.Pecas = request.Pecas;
-            existente.Total = request.Total;
-            existente.Status = Enum.Parse<StatusVenda>(request.Status, true);
-            existente.Origem = ParseOrigem(request.Origem);
-            var itens = MapearItensRequest(request.Items);
-            return Ok(Mapear(await _service.AtualizarAsync(existente, itens)));
+            existente.Data            = request.Data ?? existente.Data;
+            existente.Pecas           = request.Pecas;
+            existente.Total           = request.Total;
+            existente.Status          = Enum.Parse<StatusVenda>(request.Status, true);
+            existente.Origem          = ParseOrigem(request.Origem);
+            var itens      = MapearItensRequest(request.Items);
+            var atualizado = await _service.AtualizarAsync(existente, itens);
+
+            // ── Sincronizar Conta (atualiza total/recebido/vencimento) ───────
+            await _contaService.SincronizarContaDeVendaAsync(
+                vendaId:              atualizado.Id,
+                clienteId:            atualizado.ClienteId,
+                total:                atualizado.Total,
+                recebido:             request.ValorPago ?? 0,
+                dataVenda:            atualizado.Data,
+                numeroParcelas:       request.NumeroParcelas,
+                percentualTaxaCartao: request.PercentualTaxaCartao,
+                taxaFixaCartao:       request.TaxaFixaCartao,
+                valorTaxaCartao:      request.ValorTaxaCartao,
+                prazoRecebimentoDias: request.PrazoRecebimentoDias ?? 0);
+
+            return Ok(Mapear(atualizado));
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
@@ -90,20 +125,23 @@ public class VendaController : ControllerBase
     private static IEnumerable<ItemVenda>? MapearItensRequest(List<ItemVendaRequest>? items) =>
         items?.Select(i => new ItemVenda
         {
-            ProdutoId = i.ProdutoId,
-            Tamanho = i.Tamanho,
-            Quantidade = i.Quantidade,
-            PrecoUnitario = i.PrecoUnitario,
-            DescontoPct = i.DescontoPct,
-            DescontoVal = i.DescontoVal,
+            ProdutoId      = i.ProdutoId,
+            Tamanho        = i.Tamanho,
+            Quantidade     = i.Quantidade,
+            PrecoUnitario  = i.PrecoUnitario,
+            DescontoPct    = i.DescontoPct,
+            DescontoVal    = i.DescontoVal,
         });
 
     private static Venda MapearEntidade(VendaRequest r) => new()
     {
-        ClienteId = r.ClienteId, FormaPagamentoId = r.FormaPagamentoId,
-        Data = r.Data ?? DateTime.UtcNow, Pecas = r.Pecas, Total = r.Total,
-        Status = Enum.Parse<StatusVenda>(r.Status, true),
-        Origem = ParseOrigem(r.Origem),
+        ClienteId       = r.ClienteId,
+        FormaPagamentoId = r.FormaPagamentoId,
+        Data            = r.Data ?? DateTime.UtcNow,
+        Pecas           = r.Pecas,
+        Total           = r.Total,
+        Status          = Enum.Parse<StatusVenda>(r.Status, true),
+        Origem          = ParseOrigem(r.Origem),
     };
 
     private static VendaResponse Mapear(Venda v) => new(
@@ -119,18 +157,18 @@ public class VendaController : ControllerBase
 
     private static string OrigemPt(OrigemVenda origem) => origem switch
     {
-        OrigemVenda.Balcao => "Balcão",
+        OrigemVenda.Balcao    => "Balcão",
         OrigemVenda.Encomenda => "Encomenda",
-        OrigemVenda.Ficha => "Ficha",
-        _ => origem.ToString()
+        OrigemVenda.Ficha     => "Ficha",
+        _                     => origem.ToString()
     };
 
     private static OrigemVenda ParseOrigem(string s) => s switch
     {
-        "Balcão" => OrigemVenda.Balcao,
+        "Balcão"    => OrigemVenda.Balcao,
         "Encomenda" => OrigemVenda.Encomenda,
-        "Ficha" => OrigemVenda.Ficha,
-        _ => Enum.Parse<OrigemVenda>(s, true)
+        "Ficha"     => OrigemVenda.Ficha,
+        _           => Enum.Parse<OrigemVenda>(s, true)
     };
 }
 

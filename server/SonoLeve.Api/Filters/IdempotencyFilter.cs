@@ -8,6 +8,8 @@ namespace SonoLeve.Api.Filters;
 
 public class IdempotencyFilter : IAsyncActionFilter
 {
+    private const int HorasExpiracao = 24;
+
     private readonly IIdempotencyService _service;
 
     public IdempotencyFilter(IIdempotencyService service) => _service = service;
@@ -56,7 +58,7 @@ public class IdempotencyFilter : IAsyncActionFilter
                 StatusCode = resultado.StatusCode ?? 200,
                 ResponseBody = JsonSerializer.Serialize(resultado.Value),
                 ContentType = "application/json",
-                ExpiraEm = DateTime.UtcNow.AddHours(24),
+                ExpiraEm = DateTime.UtcNow.AddHours(HorasExpiracao),
             });
         }
     }

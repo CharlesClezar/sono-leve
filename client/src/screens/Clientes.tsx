@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { AppSelect } from "@/components/AppSelect";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
 import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { IndexedTabsNav } from "@/components/IndexedTabsNav";
+import { AppSelect } from "@/components/AppSelect";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
@@ -11,20 +12,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, type Customer } from "@/lib/types";
 import { useClientesPaginados } from "@/lib/api";
+import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
+const tabs = ["Todos", "Varejo", "Atacado"] as const;
+type AbaCliente = (typeof tabs)[number];
+
+const abaParaTipo = (aba: AbaCliente): string | undefined => {
+  if (aba === "Varejo") return "varejo";
+  if (aba === "Atacado") return "atacado";
+  return undefined;
+};
+
 export default function Clientes() {
+  const [aba, setAba] = useState<AbaCliente>("Todos");
   const [busca, setBusca] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("all");
   const [filtroStatus, setFiltroStatus] = useState("all");
   const [page, setPage] = useState(1);
+  const indexedTabs = useIndexedTabs({ tabs, onTabChange: (novaAba) => { setAba(novaAba); setPage(1); } });
 
   const { data: response, isLoading } = useClientesPaginados({
     search: busca || undefined,
-    tipo: filtroTipo !== "all" ? filtroTipo : undefined,
+    tipo: abaParaTipo(aba),
     status: filtroStatus !== "all" ? filtroStatus : undefined,
     page,
     pageSize: 30,
@@ -46,8 +58,8 @@ export default function Clientes() {
 
   const resetFiltros = () => {
     setBusca("");
-    setFiltroTipo("all");
     setFiltroStatus("all");
+    setAba("Todos");
     setPage(1);
     grid.clearFilters();
   };
@@ -56,7 +68,7 @@ export default function Clientes() {
     <AppShell>
       <ClearFiltersShortcutDialog onConfirm={resetFiltros} />
       <PageHeader
-        breadcrumb={["Clientes"]}
+        breadcrumb={["Clientes", aba]}
         title="Clientes"
         infoTooltip="Gerencia cadastro de clientes, perfis de varejo e atacado, status e crédito disponível."
         actions={
@@ -66,43 +78,41 @@ export default function Clientes() {
         }
       />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="shrink-0 border-b px-6 py-4">
-        <Card className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, telefone ou CPF"
-                className="pl-9"
-                value={busca}
-                onChange={(e) => { setBusca(e.target.value); setPage(1); }}
+        <div className="shrink-0 space-y-4 border-b px-6 py-4">
+          <IndexedTabsNav
+            tabs={tabs}
+            activeTab={aba}
+            onSelect={(novaAba) => { setAba(novaAba); setPage(1); }}
+            getTabButtonProps={indexedTabs.getTabButtonProps}
+            getShortcutLabel={indexedTabs.getShortcutLabel}
+          />
+
+          <Card className="p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, telefone ou CPF"
+                  className="pl-9"
+                  value={busca}
+                  onChange={(e) => { setBusca(e.target.value); setPage(1); }}
+                />
+              </div>
+              <AppSelect
+                className="w-full lg:w-[150px]"
+                value={filtroStatus}
+                onValueChange={(v) => { setFiltroStatus(v); setPage(1); }}
+                options={[
+                  { value: "all", label: "Todos status" },
+                  { value: "Ativo", label: "Ativos" },
+                  { value: "Inativo", label: "Inativos" },
+                ]}
               />
             </div>
-            <AppSelect
-              className="w-[150px]"
-              value={filtroTipo}
-              onValueChange={(v) => { setFiltroTipo(v); setPage(1); }}
-              options={[
-                { value: "all", label: "Todos tipos" },
-                { value: "varejo", label: "Varejo" },
-                { value: "atacado", label: "Atacado" },
-              ]}
-            />
-            <AppSelect
-              className="w-[130px]"
-              value={filtroStatus}
-              onValueChange={(v) => { setFiltroStatus(v); setPage(1); }}
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "Ativo", label: "Ativos" },
-                { value: "Inativo", label: "Inativos" },
-              ]}
-            />
-          </div>
-        </Card>
+          </Card>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div {...indexedTabs.getTabPanelProps(aba)} className="flex-1 overflow-y-auto p-6">
           <div className="grid gap-3 lg:hidden">
             {isLoading ? (
               <CardsSkeleton />
@@ -117,7 +127,9 @@ export default function Clientes() {
                 <div className="text-sm text-muted-foreground">{c.telefone} · {c.cpf}</div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{formatBRL(c.credito)}</span>
-                  <Button variant="ghost" size="icon" asChild><Link href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link></Button>
+                  <Button variant="ghost" size="icon" asChild>
+                    <Link {...indexedTabs.getActionProps(aba)} href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                  </Button>
                 </div>
               </Card>
             ))}
@@ -156,7 +168,7 @@ export default function Clientes() {
                     <td className="px-4 py-3 text-right">{formatBRL(c.credito)}</td>
                     <td className="px-4 py-3 text-right">
                       <Button variant="ghost" size="icon" asChild aria-label={`Editar ${c.nome}`}>
-                        <Link href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                        <Link {...indexedTabs.getActionProps(aba)} href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link>
                       </Button>
                     </td>
                   </tr>

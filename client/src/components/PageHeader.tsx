@@ -35,9 +35,8 @@ const rootRoutes: Record<string, string> = {
 export function PageHeader({ breadcrumb, title, status, description, infoTooltip, actions }: PageHeaderProps) {
   const pathname = usePathname() ?? "/";
 
-  const getBreadcrumbHref = (label: string, index: number) => {
+  const getBreadcrumbHref = (label: string) => {
     if (rootRoutes[label]) return rootRoutes[label];
-    if (index === breadcrumb.length - 1) return pathname;
     return pathname;
   };
 
@@ -51,7 +50,7 @@ export function PageHeader({ breadcrumb, title, status, description, infoTooltip
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight className="h-3 w-3" />}
                 <Link
-                  href={getBreadcrumbHref(b, i)}
+                  href={getBreadcrumbHref(b)}
                   aria-current={i === breadcrumb.length - 1 ? "page" : undefined}
                   className={i === breadcrumb.length - 1 ? "font-medium text-foreground hover:text-primary" : "hover:text-foreground"}
                 >

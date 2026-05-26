@@ -37,6 +37,10 @@ public class ContaRepository : IContaRepository
         await _db.Contas.Include(c => c.Cliente)
             .FirstOrDefaultAsync(c => c.Id == id) ?? throw new KeyNotFoundException("Conta não encontrada.");
 
+    public async Task<Conta?> ObterPorVendaIdAsync(Guid vendaId) =>
+        await _db.Contas.Include(c => c.Cliente)
+            .FirstOrDefaultAsync(c => c.VendaId == vendaId);
+
     public async Task<Conta> CriarAsync(Conta conta)
     {
         _db.Contas.Add(conta);

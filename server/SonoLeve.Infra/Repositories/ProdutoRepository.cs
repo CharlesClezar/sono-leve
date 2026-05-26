@@ -20,12 +20,20 @@ public class ProdutoRepository : IProdutoRepository
         busca = busca?.Length > 100 ? busca[..100] : busca;
         var query = ComIncludes().AsQueryable();
         if (!string.IsNullOrWhiteSpace(busca))
-            query = query.Where(p => p.Nome.Contains(busca) || p.Ref.Contains(busca) ||
-                (p.Marca != null && p.Marca.Name.Contains(busca)) ||
-                (p.Tipo != null && p.Tipo.Name.Contains(busca)) ||
-                (p.Subtipo != null && p.Subtipo.Name.Contains(busca)) ||
-                (p.Categoria != null && p.Categoria.Name.Contains(busca)) ||
-                (p.Colecao != null && p.Colecao.Name.Contains(busca)));
+        {
+            foreach (var termo in busca.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var padrao = $"%{termo}%";
+                query = query.Where(p =>
+                    EF.Functions.ILike(p.Nome, padrao) ||
+                    EF.Functions.ILike(p.Ref, padrao) ||
+                    (p.Marca != null && EF.Functions.ILike(p.Marca.Name, padrao)) ||
+                    (p.Tipo != null && EF.Functions.ILike(p.Tipo.Name, padrao)) ||
+                    (p.Subtipo != null && EF.Functions.ILike(p.Subtipo.Name, padrao)) ||
+                    (p.Categoria != null && EF.Functions.ILike(p.Categoria.Name, padrao)) ||
+                    (p.Colecao != null && EF.Functions.ILike(p.Colecao.Name, padrao)));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(marca))
             query = query.Where(p => p.Marca != null && p.Marca.Name == marca);
         if (ativo.HasValue)

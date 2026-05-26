@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { api, useCatalogoProdutos, useProdutoPorId } from "@/lib/api";
+import { api, useCatalogoProdutos, useProdutoPorId, useProdutos } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Camera, X } from "lucide-react";
@@ -30,6 +30,8 @@ export default function NovoProduto() {
   const editando = Boolean(params.id);
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
+  const [tentouSalvar, setTentouSalvar] = useState(false);
+  const { data: todosProdutos = [] } = useProdutos();
   const [form, setForm] = useState({
     nome: "",
     ref: "",
@@ -75,20 +77,7 @@ export default function NovoProduto() {
     setAtivo(produto.ativo);
   }, [produto]);
 
-  useEffect(() => {
-    if (form.categoriaId || categorias.length === 0) return;
-    setForm((current) => ({ ...current, categoriaId: categorias[0].id }));
-  }, [categorias, form.categoriaId]);
-
-  useEffect(() => {
-    if (form.marcaId || marcas.length === 0) return;
-    setForm((current) => ({ ...current, marcaId: marcas[0].id }));
-  }, [form.marcaId, marcas]);
-
-  useEffect(() => {
-    if (form.tipoId || tipos.length === 0) return;
-    setForm((current) => ({ ...current, tipoId: tipos[0].id }));
-  }, [form.tipoId, tipos]);
+  // Campos não são pré-selecionados: usuário escolhe explicitamente
 
   const atualizarCampo = (campo: keyof typeof form, valor: string) => {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -133,9 +122,20 @@ export default function NovoProduto() {
   };
 
   const handleSalvar = async () => {
-    if (!form.nome.trim() || !form.ref.trim() || !form.marcaId || !form.tipoId || !form.categoriaId) {
-      toast.error("Preencha nome, referência, marca, tipo e categoria.");
+    setTentouSalvar(true);
+    if (!form.nome.trim() || !form.marcaId || !form.tipoId || !form.categoriaId) {
+      toast.error("Preencha nome, marca, tipo e categoria.");
       return;
+    }
+
+    // Gera referência automática sequencial se não informada
+    let refFinal = form.ref.trim();
+    if (!refFinal) {
+      const nums = todosProdutos
+        .map(p => { const m = p.ref?.match(/(\d+)$/); return m ? parseInt(m[1], 10) : 0; })
+        .filter(n => n > 0);
+      const proximo = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      refFinal = `PJ-${String(proximo).padStart(3, "0")}`;
     }
 
     setSalvando(true);
@@ -144,7 +144,7 @@ export default function NovoProduto() {
       const dadosProduto = {
         id: produto?.id ?? "",
         nome: form.nome.trim(),
-        ref: form.ref.trim(),
+        ref: refFinal,
         marcaId: form.marcaId || undefined,
         tipoId: form.tipoId || undefined,
         subtipoId: form.subtipoId || undefined,
@@ -189,39 +189,62 @@ export default function NovoProduto() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto">
-      <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
           <Card className="p-5">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do produto</h3>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-1.5">
-                <span className="text-sm font-medium">Nome</span>
-                <Input value={form.nome} onChange={(event) => atualizarCampo("nome", event.target.value)} placeholder="Ex.: Pijama americano" />
+                <span className="text-sm font-medium">Nome <span className="text-destructive">*</span></span>
+                <Input
+                  value={form.nome}
+                  onChange={(event) => atualizarCampo("nome", event.target.value)}
+                  placeholder="Descrição"
+                  className={tentouSalvar && !form.nome.trim() ? "border-destructive focus-visible:ring-destructive" : ""}
+                />
               </label>
               <label className="space-y-1.5">
-                <span className="text-sm font-medium">Referência</span>
+                <span className="text-sm font-medium">Referência <span className="text-xs font-normal text-muted-foreground">(opcional — gerada automaticamente)</span></span>
                 <Input value={form.ref} onChange={(event) => atualizarCampo("ref", event.target.value)} placeholder="Ex.: PJ-001" />
               </label>
               <label className="space-y-1.5">
-                <span className="text-sm font-medium">Marca</span>
-                <AppSelect value={form.marcaId} onValueChange={(value) => atualizarCampo("marcaId", value)} placeholder="Selecione" options={marcas.map((item) => ({ value: item.id, label: item.name }))} />
+                <span className="text-sm font-medium">Marca <span className="text-destructive">*</span></span>
+                <AppSelect
+                  value={form.marcaId}
+                  onValueChange={(value) => atualizarCampo("marcaId", value)}
+                  placeholder="Informe a marca"
+                  options={marcas.map((item) => ({ value: item.id, label: item.name }))}
+                  className={tentouSalvar && !form.marcaId ? "border-destructive" : ""}
+                />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Coleção</span>
                 <AppSelect value={form.colecaoId} onValueChange={(value) => atualizarCampo("colecaoId", value)} placeholder="Sem coleção" options={catalogo.colecoes.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
-                <span className="text-sm font-medium">Tipo</span>
-                <AppSelect value={form.tipoId} onValueChange={(value) => atualizarCampo("tipoId", value)} options={tipos.map((item) => ({ value: item.id, label: item.name }))} />
+                <span className="text-sm font-medium">Tipo <span className="text-destructive">*</span></span>
+                <AppSelect
+                  value={form.tipoId}
+                  onValueChange={(value) => atualizarCampo("tipoId", value)}
+                  placeholder="Informe o tipo"
+                  options={tipos.map((item) => ({ value: item.id, label: item.name }))}
+                  className={tentouSalvar && !form.tipoId ? "border-destructive" : ""}
+                />
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium">Subtipo</span>
-                <AppSelect value={form.subtipoId} onValueChange={(value) => atualizarCampo("subtipoId", value)} options={subtiposDisponiveis.map((item) => ({ value: item.id, label: item.name }))} />
+                <AppSelect value={form.subtipoId} onValueChange={(value) => atualizarCampo("subtipoId", value)} placeholder="Sem subtipo" options={subtiposDisponiveis.map((item) => ({ value: item.id, label: item.name }))} />
               </label>
               <label className="space-y-1.5">
-                <span className="text-sm font-medium">Categoria</span>
-                <AppSelect value={form.categoriaId} onValueChange={(value) => atualizarCampo("categoriaId", value)} options={categorias.map((item) => ({ value: item.id, label: item.name }))} />
+                <span className="text-sm font-medium">Categoria <span className="text-destructive">*</span></span>
+                <AppSelect
+                  value={form.categoriaId}
+                  onValueChange={(value) => atualizarCampo("categoriaId", value)}
+                  placeholder="Informe a categoria"
+                  options={categorias.map((item) => ({ value: item.id, label: item.name }))}
+                  className={tentouSalvar && !form.categoriaId ? "border-destructive" : ""}
+                />
               </label>
             </div>
           </Card>
@@ -255,7 +278,8 @@ export default function NovoProduto() {
           )}
         </div>
 
-        <Card className="h-fit space-y-5 p-5">
+        <div className="overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
+        <Card className="space-y-5 p-5">
           <div>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Imagem</h3>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleArquivoSelecionado} />
@@ -313,6 +337,7 @@ export default function NovoProduto() {
             </div>
           </div>
         </Card>
+        </div>
       </div>
       </div>
     </AppShell>

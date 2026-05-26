@@ -22,10 +22,16 @@ public class ClienteRepository : IClienteRepository
         var query = _db.Clientes.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busca))
-            query = query.Where(c =>
-                c.Nome.Contains(busca) ||
-                c.Telefone.Contains(busca) ||
-                c.Cpf.Contains(busca));
+        {
+            foreach (var termo in busca.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var padrao = $"%{termo}%";
+                query = query.Where(c =>
+                    EF.Functions.ILike(c.Nome, padrao) ||
+                    EF.Functions.ILike(c.Telefone, padrao) ||
+                    EF.Functions.ILike(c.Cpf, padrao));
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(tipo) && tipo != "all" &&
             Enum.TryParse<TipoCliente>(tipo, true, out var tc))

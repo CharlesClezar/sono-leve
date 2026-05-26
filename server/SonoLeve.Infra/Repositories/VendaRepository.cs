@@ -8,6 +8,11 @@ namespace SonoLeve.Infra.Repositories;
 
 public class VendaRepository : IVendaRepository
 {
+    private const string PeriodoHoje = "hoje";
+    private const string Periodo7Dias = "7d";
+    private const string Periodo30Dias = "30d";
+    private const string PeriodoTodos = "todos";
+
     private readonly SonoLeveDbContext _db;
     public VendaRepository(SonoLeveDbContext db) => _db = db;
 
@@ -35,14 +40,14 @@ public class VendaRepository : IVendaRepository
             query = query.Where(v => v.FormaPagamento != null &&
                                      v.FormaPagamento.Nome.Contains(formaPagamento));
 
-        if (!string.IsNullOrWhiteSpace(periodo) && periodo != "todos")
+        if (!string.IsNullOrWhiteSpace(periodo) && periodo != PeriodoTodos)
         {
             var inicio = periodo switch
             {
-                "hoje" => (DateTime?)DateTime.UtcNow.Date,
-                "7d"   => DateTime.UtcNow.AddDays(-7),
-                "30d"  => DateTime.UtcNow.AddDays(-30),
-                _      => null
+                PeriodoHoje  => (DateTime?)DateTime.UtcNow.Date,
+                Periodo7Dias => DateTime.UtcNow.AddDays(-7),
+                Periodo30Dias => DateTime.UtcNow.AddDays(-30),
+                _             => null
             };
             if (inicio.HasValue)
                 query = query.Where(v => v.Data >= inicio.Value);

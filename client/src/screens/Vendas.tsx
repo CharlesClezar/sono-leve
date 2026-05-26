@@ -46,8 +46,10 @@ const filtrosPadraoAba: FiltrosAba = {
   periodo: "30d",
 };
 
+const PRECO_MEDIO_PECA = 198;
+
 function pecasPorEncomenda(total: number) {
-  return Math.max(1, Math.round(total / 198));
+  return Math.max(1, Math.round(total / PRECO_MEDIO_PECA));
 }
 
 export default function Vendas() {

@@ -64,7 +64,7 @@ public class ProdutoController : ControllerBase
     }
 
     [HttpPost("{id:guid}/imagem")]
-    [DisableRequestSizeLimit]
+    [RequestSizeLimit(5_242_880)] // 5 MB
     public async Task<ActionResult<object>> UploadImagem(Guid id, IFormFile arquivo)
     {
         if (arquivo == null || arquivo.Length == 0)

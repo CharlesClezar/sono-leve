@@ -89,11 +89,20 @@ export interface Account {
   id: string;
   clienteId: string;
   clienteNome: string;
+  ehManual: boolean;
   origem: string;
+  descricao?: string;
+  vendaId?: string;
   total: number;
   recebido: number;
+  valorLiquido: number;
   vencimento: string;
   status: AccountStatus;
+  numeroParcelas?: number;
+  percentualTaxaCartao?: number;
+  taxaFixaCartao?: number;
+  valorTaxaCartao?: number;
+  criadoEm: string;
 }
 
 export function formatBRL(value: number) {

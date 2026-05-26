@@ -9,8 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { formatBRL, type ItemVenda, type Product, type Sale } from "@/lib/types";
-import { api, useBuscarProdutos, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
+import { formatBRL, type Customer, type ItemVenda, type Product, type Sale } from "@/lib/types";
+import { api, useBandeirasCartao, useBuscarClientes, useBuscarProdutos, useClientePorId, useConfiguracoesTaxaCartao, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search, X, UserPlus, CreditCard } from "lucide-react";
@@ -26,6 +26,8 @@ interface Item {
 interface DescProduto { pct: number; val: number; }
 const ZERO_DESC: DescProduto = { pct: 0, val: 0 };
 const GRADE_PADRAO = ["P", "M", "G", "GG"];
+const PRODUTOS_BUSCA_VAZIOS: Product[] = [];
+const CLIENTES_BUSCA_VAZIOS: Customer[] = [];
 
 function calcPrecoEfetivo(preco: number, desc: DescProduto): number {
   if (desc.pct > 0) return preco * (1 - desc.pct / 100);
@@ -41,8 +43,10 @@ function dataHoje() {
 export default function NovaVenda() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { clientes, fichas, encomendas, produtos, vendas } = useDadosOperacionais();
+  const { fichas, encomendas, produtos, vendas } = useDadosOperacionais();
   const { data: formasPagamento = [] } = useFormasPagamento();
+  const { data: bandeiras = [] } = useBandeirasCartao();
+  const { data: configuracoesTaxa = [] } = useConfiguracoesTaxaCartao();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
   const params = useParams<{ id?: string }>();
@@ -54,11 +58,11 @@ export default function NovaVenda() {
   const fichaOrigemId = searchParams.get("from") === "ficha" ? searchParams.get("id") : null;
   const fichaOrigem = fichaOrigemId ? fichas.find((item) => item.id === fichaOrigemId) ?? null : null;
   const editando = Boolean(venda);
-  const vieuDoDashboard = searchParams.get("from") === "dashboard";
-  const breadcrumb = vieuDoDashboard
+  const veioDoDashboard = searchParams.get("from") === "dashboard";
+  const breadcrumb = veioDoDashboard
     ? ["Dashboard", "Venda", editando ? "Editar venda" : "Nova venda"]
     : ["Vendas", editando ? "Editar" : "Nova"];
-  const cancelHref = vieuDoDashboard ? "/" : "/vendas";
+  const cancelHref = veioDoDashboard ? "/" : "/vendas";
   const clienteIdInicial = venda
     ? venda.clienteId
     : encomendaOrigem
@@ -68,10 +72,23 @@ export default function NovaVenda() {
       : null;
   const primeiroProduto = produtos[0];
 
+  // ── Refs de foco ──────────────────────────────────────────────────────────
+  const refBuscaProduto  = useRef<HTMLInputElement>(null);
+  const refBuscaCliente  = useRef<HTMLInputElement>(null);
+  const refDropdownProduto = useRef<HTMLDivElement>(null);
+  const refDropdownCliente = useRef<HTMLDivElement>(null);
+
+  // ── Estado de busca clientes ──────────────────────────────────────────────
   const [buscaCliente, setBuscaCliente] = useState("");
+  const [termoCliente, setTermoCliente] = useState("");
   const [clienteId, setClienteId] = useState<string | null>(clienteIdInicial);
+
+  // ── Estado de busca produtos ──────────────────────────────────────────────
   const [buscaProduto, setBuscaProduto] = useState("");
   const [termoBusca, setTermoBusca] = useState("");
+  const [indiceProduto, setIndiceProduto] = useState(-1);
+
+  // ── Itens e descontos ─────────────────────────────────────────────────────
   const [produtosAdicionados, setProdutosAdicionados] = useState<Record<string, Product>>({});
   const [itens, setItens] = useState<Item[]>(
     venda && primeiroProduto
@@ -80,7 +97,11 @@ export default function NovaVenda() {
   );
   const [descontoGlobal, setDescontoGlobal] = useState(0);
   const [descontosPorProduto, setDescontosPorProduto] = useState<Record<string, DescProduto>>({});
+
+  // ── Pagamento / datas ─────────────────────────────────────────────────────
   const [formaPagamentoId, setFormaPagamentoId] = useState(venda?.formaPagamentoId ?? "");
+  const [bandeiraId, setBandeiraId] = useState("");
+  const [numeroParcelas, setNumeroParcelas] = useState<number | null>(null);
   const [valorPago, setValorPago] = useState(0);
   const [dataVenda, setDataVenda] = useState(venda?.data?.substring(0, 10) ?? dataHoje());
   const [modalPagamento, setModalPagamento] = useState(false);
@@ -88,17 +109,79 @@ export default function NovaVenda() {
   const [valorModal, setValorModal] = useState(0);
   const idempotencyKey = useRef(crypto.randomUUID());
   const [gerando, setGerando] = useState(false);
+  const [tentouSalvar, setTentouSalvar] = useState(false);
   const { data: itensEncomendaOrigem } = useItensEncomenda(encomendaOrigemId ?? "");
   const itensPreenchidos = useRef(false);
 
+  const { data: clienteSelecionado } = useClientePorId(clienteId ?? undefined);
+
+  // ── Debounce clientes ─────────────────────────────────────────────────────
+  const { data: resultadoClientes = CLIENTES_BUSCA_VAZIOS, isFetching: buscandoCliente } = useBuscarClientes(termoCliente);
+  const [clientesVisiveis, setClientesVisiveis] = useState<Customer[]>([]);
+
   useEffect(() => {
-    if (!buscaProduto.trim()) { setTermoBusca(""); return; }
+    if (!buscaCliente.trim()) { setTermoCliente(""); setClientesVisiveis([]); return; }
+    const t = setTimeout(() => setTermoCliente(buscaCliente.trim()), 300);
+    return () => clearTimeout(t);
+  }, [buscaCliente]);
+
+  useEffect(() => {
+    if (!buscandoCliente) setClientesVisiveis(resultadoClientes);
+  }, [resultadoClientes, buscandoCliente]);
+
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (refDropdownCliente.current && !refDropdownCliente.current.contains(e.target as Node))
+        setBuscaCliente("");
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+
+  // ── Debounce produtos ─────────────────────────────────────────────────────
+  const { data: resultadoBusca = PRODUTOS_BUSCA_VAZIOS, isFetching: buscando } = useBuscarProdutos(termoBusca);
+  const [produtosVisiveis, setProdutosVisiveis] = useState<Product[]>([]);
+
+  // True enquanto o debounce ainda não disparou — evita flash de "não encontrado"
+  const aguardandoDebounce = buscaProduto.trim() !== termoBusca;
+
+  useEffect(() => {
+    if (!buscaProduto.trim()) { setTermoBusca(""); setProdutosVisiveis([]); return; }
     const t = setTimeout(() => setTermoBusca(buscaProduto.trim()), 300);
     return () => clearTimeout(t);
   }, [buscaProduto]);
 
-  const { data: resultadoBusca = [], isLoading: buscando } = useBuscarProdutos(termoBusca);
+  useEffect(() => {
+    if (!buscando) setProdutosVisiveis(resultadoBusca.filter((p) => p.ativo));
+  }, [resultadoBusca, buscando]);
 
+  // Resetar seleção de teclado ao mudar resultados
+  useEffect(() => { setIndiceProduto(-1); }, [produtosVisiveis]);
+
+  useEffect(() => {
+    const fechar = (e: MouseEvent) => {
+      if (refDropdownProduto.current && !refDropdownProduto.current.contains(e.target as Node))
+        setBuscaProduto("");
+    };
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, []);
+
+  // ── Tecla "+" foca o campo de produto ────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "+") {
+        e.preventDefault();
+        refBuscaProduto.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  // ── Preencher itens da encomenda/sessão ───────────────────────────────────
   useEffect(() => {
     if (itensPreenchidos.current) return;
     if (!encomendaOrigemId || produtos.length === 0) return;
@@ -117,14 +200,10 @@ export default function NovaVenda() {
     }
   }, [itensEncomendaOrigem, encomendaOrigemId, parcial, produtos]);
 
-  const cliente = clientes.find((c) => c.id === clienteId) ?? null;
+  const cliente = clienteSelecionado ?? null;
   const tipoCliente = cliente?.tipo ?? "varejo";
 
-  const clientesFiltrados = buscaCliente
-    ? clientes.filter((c) => c.nome.toLowerCase().includes(buscaCliente.toLowerCase()))
-    : [];
-  const produtosFiltrados = resultadoBusca.filter((p) => p.ativo);
-
+  // ── Adicionar produto ─────────────────────────────────────────────────────
   const adicionarProduto = (produto: Product) => {
     if (itens.some((i) => i.produtoId === produto.id)) {
       toast.info("Produto já adicionado. Ajuste as quantidades nos tamanhos.");
@@ -134,12 +213,16 @@ export default function NovaVenda() {
     const preco = tipoCliente === "atacado" ? produto.precoAtacado : produto.precoVarejo;
     const grade = produto.categoriaGrade?.length ? produto.categoriaGrade : GRADE_PADRAO;
     setProdutosAdicionados((prev) => ({ ...prev, [produto.id]: produto }));
+    // Quantidade começa vazia (0 internamente, mas exibido como "")
     setItens((prev) => [...prev, ...grade.map((t) => ({ produtoId: produto.id, tamanho: t, quantidade: 0, preco }))]);
     setBuscaProduto("");
+    setIndiceProduto(-1);
   };
 
-  const atualizarQuantidade = (idx: number, quantidade: number) =>
-    setItens((prev) => prev.map((it, i) => (i === idx ? { ...it, quantidade: Math.max(0, quantidade) } : it)));
+  const atualizarQuantidade = (idx: number, raw: string | number) => {
+    const quantidade = raw === "" ? 0 : Math.max(0, Number(raw) || 0);
+    setItens((prev) => prev.map((it, i) => (i === idx ? { ...it, quantidade } : it)));
+  };
 
   const itensValidos = useMemo(() => itens.filter((i) => i.quantidade > 0), [itens]);
 
@@ -190,6 +273,14 @@ export default function NovaVenda() {
             descontoVal: desc.val > 0 ? desc.val : undefined,
           };
         }),
+        // ── Snapshot da taxa de cartão → gravado na Conta a Receber ──────────
+        bandeiraId:            bandeiraId || undefined,
+        numeroParcelas:        numeroParcelas ?? undefined,
+        percentualTaxaCartao:  parcelaSelecionada?.percentualTaxa,
+        taxaFixaCartao:        parcelaSelecionada?.taxaFixa ?? undefined,
+        valorTaxaCartao:       parcelaSelecionada ? valorTaxa : undefined,
+        prazoRecebimentoDias:  parcelaSelecionada?.prazoRecebimentoDias,
+        valorPago:             vPago > 0 ? vPago : undefined,
       };
 
       if (editando) await api.atualizarVenda({ ...payload, id: venda!.id });
@@ -224,6 +315,7 @@ export default function NovaVenda() {
   };
 
   const handleGerar = () => {
+    setTentouSalvar(true);
     if (!cliente) return toast.error("Selecione um cliente");
     if (itensValidos.length === 0) return toast.error("Adicione ao menos um item");
     if (!formaPagamentoId) {
@@ -236,6 +328,80 @@ export default function NovaVenda() {
   };
 
   const formasPagamentoAtivas = formasPagamento.filter((f) => f.ativo);
+  const bandeirasAtivas = bandeiras.filter((b) => b.ativo);
+
+  // ── Lookup automático de taxa ─────────────────────────────────────────────
+  const formaSelecionada = useMemo(
+    () => formasPagamentoAtivas.find((f) => f.id === formaPagamentoId) ?? null,
+    [formasPagamentoAtivas, formaPagamentoId],
+  );
+
+  const configTaxa = useMemo(() => {
+    if (!formaSelecionada?.exigeBandeira || !bandeiraId) return null;
+    return configuracoesTaxa.find(
+      (c) => c.formaPagamentoId === formaPagamentoId && c.bandeiraId === bandeiraId && c.ativo,
+    ) ?? null;
+  }, [configuracoesTaxa, formaPagamentoId, bandeiraId, formaSelecionada]);
+
+  const parcelaSelecionada = useMemo(() => {
+    if (!configTaxa || !numeroParcelas) return null;
+    return configTaxa.parcelas.find((p) => p.numeroParcelas === numeroParcelas) ?? null;
+  }, [configTaxa, numeroParcelas]);
+
+  // Para débito (exigeBandeira=true mas permiteParcelamento=false): auto-seleciona 1x
+  useEffect(() => {
+    if (formaSelecionada && !formaSelecionada.permiteParcelamento && configTaxa) {
+      const parcela1x = configTaxa.parcelas.find((p) => p.numeroParcelas === 1);
+      setNumeroParcelas(parcela1x ? 1 : null);
+    }
+  }, [formaSelecionada, configTaxa]);
+
+  const valorTaxa = useMemo(() => {
+    if (!parcelaSelecionada) return 0;
+    return total * (parcelaSelecionada.percentualTaxa / 100) + (parcelaSelecionada.taxaFixa ?? 0);
+  }, [parcelaSelecionada, total]);
+
+  const valorLiquido = total - valorTaxa;
+
+  const previsaoRecebimento = useMemo(() => {
+    if (!parcelaSelecionada) return null;
+    const d = new Date(dataVenda + "T12:00:00");
+    d.setDate(d.getDate() + parcelaSelecionada.prazoRecebimentoDias);
+    return d.toLocaleDateString("pt-BR");
+  }, [parcelaSelecionada, dataVenda]);
+
+  // ── Navegação via teclado no dropdown de produtos ─────────────────────────
+  const handleKeyDownProduto = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const dropdownAberto = buscaProduto.trim().length >= 2;
+    if (e.key === "Escape") { setBuscaProduto(""); return; }
+    if (e.key === "Tab") {
+      // Tab vai para o campo de cliente
+      setBuscaProduto("");
+      if (!cliente) {
+        e.preventDefault();
+        refBuscaCliente.current?.focus();
+      }
+      return;
+    }
+    if (!dropdownAberto) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setIndiceProduto((prev) => Math.min(prev + 1, produtosVisiveis.length - 1));
+      return;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setIndiceProduto((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (e.key === "Enter") {
+      if (indiceProduto >= 0 && produtosVisiveis[indiceProduto]) {
+        e.preventDefault();
+        adicionarProduto(produtosVisiveis[indiceProduto]);
+      }
+      return;
+    }
+  };
 
   return (
     <AppShell>
@@ -254,50 +420,77 @@ export default function NovaVenda() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_360px]">
+      {/* Conteúdo: ocupa o restante da tela sem scroll externo */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
 
-          {/* Coluna esquerda: apenas produtos */}
-          <Card className="p-5">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Produtos</h3>
-              <div className="relative mb-4">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome ou referência..."
-                  className="pl-9"
-                  value={buscaProduto}
-                  onChange={(e) => setBuscaProduto(e.target.value)}
-                />
-                {(buscando && termoBusca) && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg">
-                    Buscando...
-                  </div>
-                )}
-                {!buscando && produtosFiltrados.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                    {produtosFiltrados.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => adicionarProduto(p)}
-                        className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
-                      >
-                        {p.imagemUrl ? (
-                          <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
-                        ) : (
-                          <div className="h-8 w-8 shrink-0 rounded bg-muted" />
-                        )}
-                        <span className="flex-1 min-w-0">{p.nome} <span className="text-xs text-muted-foreground">({p.ref})</span></span>
-                        <span className="shrink-0 text-xs font-semibold">
-                          {formatBRL(tipoCliente === "atacado" ? p.precoAtacado : p.precoVarejo)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+          {/* ── Coluna esquerda: produtos com scroll interno ── */}
+          <Card className="flex min-h-0 flex-col overflow-hidden p-5 lg:flex-1">
+            <h3 className="mb-3 shrink-0 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Produtos <span className="text-destructive">*</span>
+            </h3>
 
+            {/* Campo de busca (fixo, não rola) */}
+            <div ref={refDropdownProduto} className="relative mb-4 shrink-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={refBuscaProduto}
+                placeholder="Buscar por nome ou referência... (ou pressione +)"
+                className="pl-9"
+                value={buscaProduto}
+                onChange={(e) => setBuscaProduto(e.target.value)}
+                onKeyDown={handleKeyDownProduto}
+              />
+              {buscaProduto.trim().length >= 2 && (
+                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
+                  {(buscando || aguardandoDebounce) && produtosVisiveis.length === 0 ? (
+                    // Skeleton — mostra enquanto debounce ou fetch estiver pendente
+                    <div className="divide-y">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex animate-pulse items-center gap-3 px-3 py-2.5">
+                          <div className="h-12 w-12 shrink-0 rounded bg-muted" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-2/3 rounded bg-muted" />
+                            <div className="h-2.5 w-1/3 rounded bg-muted" />
+                          </div>
+                          <div className="h-3 w-12 rounded bg-muted" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : produtosVisiveis.length > 0 ? (
+                    <div className={`transition-opacity duration-150 ${buscando ? "opacity-50" : "opacity-100"}`}>
+                      {produtosVisiveis.map((p, idx) => (
+                        <button
+                          key={p.id}
+                          onClick={() => adicionarProduto(p)}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted ${indiceProduto === idx ? "bg-muted" : ""}`}
+                        >
+                          {p.imagemUrl ? (
+                            <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
+                          ) : (
+                            <div className="h-12 w-12 shrink-0 rounded bg-muted" />
+                          )}
+                          <span className="min-w-0 flex-1">{p.nome} <span className="text-xs text-muted-foreground">({p.ref})</span></span>
+                          <span className="shrink-0 text-xs font-semibold">
+                            {formatBRL(tipoCliente === "atacado" ? p.precoAtacado : p.precoVarejo)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    // Só mostra "não encontrado" quando o termo já está sincronizado
+                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                      Nenhum produto encontrado para &quot;{termoBusca}&quot;
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de produtos — área com scroll */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
               {agrupados.length === 0 ? (
-                <div className="rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
+                <div className={`rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground${tentouSalvar && itensValidos.length === 0 ? " border-destructive text-destructive" : ""}`}>
                   Busque um produto acima para começar
                 </div>
               ) : (
@@ -309,101 +502,120 @@ export default function NovaVenda() {
                     const temDesconto = descProduto.pct > 0 || descProduto.val > 0;
                     const precoEfetivo = calcPrecoEfetivo(grupo[0].preco, descProduto);
                     return (
-                      <div key={pid} className="rounded-md border p-2.5">
-                        {/* Cabeçalho compacto */}
-                        <div className="mb-2 flex items-center gap-2">
-                          {p.imagemUrl ? (
-                            <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
-                          ) : (
-                            <div className="h-8 w-8 shrink-0 rounded bg-muted" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate text-sm font-medium leading-tight">{p.nome}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {p.ref} ·{" "}
-                              {temDesconto ? (
-                                <>
-                                  <span className="line-through opacity-50">{formatBRL(grupo[0].preco)}</span>
-                                  {" "}
-                                  <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}</span>
-                                </>
-                              ) : (
-                                formatBRL(grupo[0].preco)
-                              )}
-                            </div>
-                          </div>
-                          {/* Desconto R$ */}
-                          <div className="relative w-[62px] shrink-0">
-                            <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={descProduto.val || ""}
-                              onChange={(e) => {
-                                const v = Math.max(0, Number(e.target.value) || 0);
-                                setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } }));
-                              }}
-                              disabled={descProduto.pct > 0}
-                              placeholder="0"
-                              className="h-7 pl-7 pr-1 text-right text-xs disabled:opacity-40"
-                            />
-                          </div>
-                          {/* Desconto % */}
-                          <div className="relative w-[52px] shrink-0">
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={descProduto.pct || ""}
-                              onChange={(e) => {
-                                const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } }));
-                              }}
-                              disabled={descProduto.val > 0}
-                              placeholder="0"
-                              className="h-7 pr-5 text-right text-xs disabled:opacity-40"
-                            />
-                            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
-                          </div>
-                          <button
-                            onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))}
-                            className="shrink-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        {/* Tamanhos em linha única */}
-                        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-                          {grupo.map((it) => {
-                            const idx = itens.indexOf(it);
-                            return (
-                              <div key={it.tamanho} className="shrink-0 w-12 text-center">
-                                <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={it.quantidade}
-                                  onChange={(e) => atualizarQuantidade(idx, +e.target.value)}
-                                  className="mt-0.5 h-8 border-muted/60 px-1 text-center text-sm font-semibold"
-                                />
+                      <div key={pid} className="rounded-md border overflow-hidden flex">
+                        {/* Imagem — ocupa toda a altura do card */}
+                        {p.imagemUrl ? (
+                          <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="w-20 shrink-0 self-stretch object-cover" />
+                        ) : (
+                          <div className="w-20 shrink-0 self-stretch bg-muted" />
+                        )}
+
+                        {/* Conteúdo */}
+                        <div className="flex-1 min-w-0 p-3 flex flex-col gap-2.5">
+                          {/* Linha superior: nome/preço + desconto + X */}
+                          <div className="flex items-start gap-2">
+                            {/* Nome e preço */}
+                            <div className="flex-1 min-w-0">
+                              <div className="truncate font-semibold leading-tight">{p.nome}</div>
+                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                {p.ref} ·{" "}
+                                {temDesconto ? (
+                                  <>
+                                    <span className="line-through opacity-50">{formatBRL(grupo[0].preco)}</span>
+                                    {" "}
+                                    <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}</span>
+                                  </>
+                                ) : (
+                                  formatBRL(grupo[0].preco)
+                                )}
                               </div>
-                            );
-                          })}
+                            </div>
+
+                            {/* Desconto */}
+                            <div className="shrink-0">
+                              <div className="mb-1 text-right text-[10px] font-semibold text-muted-foreground">Desconto</div>
+                              <div className="flex gap-1">
+                                {/* R$ */}
+                                <div className="relative w-[72px]">
+                                  <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={descProduto.val || ""}
+                                    onChange={(e) => {
+                                      const v = Math.max(0, Number(e.target.value) || 0);
+                                      setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } }));
+                                    }}
+                                    disabled={descProduto.pct > 0}
+                                    placeholder="0"
+                                    className="h-8 pl-8 pr-1 text-right text-sm disabled:opacity-40"
+                                  />
+                                </div>
+                                {/* % */}
+                                <div className="relative w-[54px]">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={descProduto.pct || ""}
+                                    onChange={(e) => {
+                                      const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                      setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } }));
+                                    }}
+                                    disabled={descProduto.val > 0}
+                                    placeholder="0"
+                                    className="h-8 pl-2 pr-6 text-right text-sm disabled:opacity-40"
+                                  />
+                                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Remover */}
+                            <button
+                              onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))}
+                              className="shrink-0 text-muted-foreground hover:text-destructive"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          {/* Grade de tamanhos — linha completa */}
+                          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                            {grupo.map((it) => {
+                              const idx = itens.indexOf(it);
+                              return (
+                                <div key={it.tamanho} className="shrink-0 w-12 text-center">
+                                  <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={it.quantidade || ""}
+                                    onChange={(e) => atualizarQuantidade(idx, e.target.value)}
+                                    className="mt-0.5 h-8 border-muted/60 px-1 text-center text-sm font-semibold"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
-            </Card>
+            </div>
+          </Card>
 
-          {/* Coluna direita */}
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          {/* ── Coluna direita: resumo + pagamento (scroll próprio) ── */}
+          <div className="flex flex-col gap-4 overflow-y-auto pb-2 lg:w-[360px] lg:shrink-0">
             {/* Resumo (inclui cliente) */}
-            <Card className="p-5">
+            <Card className="shrink-0 p-5">
               {/* Cliente */}
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cliente</h3>
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Cliente <span className="text-destructive">*</span>
+              </h3>
               {cliente ? (
                 <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
                   <div>
@@ -415,35 +627,57 @@ export default function NovaVenda() {
                   <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
                 </div>
               ) : (
-                <div className="relative">
+                <div ref={refDropdownCliente} className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
+                    ref={refBuscaCliente}
                     placeholder="Buscar cliente..."
-                    className="pl-9"
+                    className={`pl-9${tentouSalvar && !cliente ? " border-destructive focus-visible:ring-destructive" : ""}`}
                     value={buscaCliente}
                     onChange={(e) => setBuscaCliente(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Escape") setBuscaCliente(""); }}
                   />
-                  {clientesFiltrados.length > 0 && (
+                  {buscaCliente.trim().length >= 2 && (
                     <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                      {clientesFiltrados.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
-                          className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                        >
-                          <span>{c.nome}</span>
-                          <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
-                        </button>
-                      ))}
-                      <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
-                        <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
-                      </button>
+                      {buscandoCliente && clientesVisiveis.length === 0 ? (
+                        <div className="divide-y">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex animate-pulse items-center justify-between px-3 py-2.5">
+                              <div className="space-y-1.5">
+                                <div className="h-3 w-32 rounded bg-muted" />
+                                <div className="h-2.5 w-20 rounded bg-muted" />
+                              </div>
+                              <div className="h-2.5 w-12 rounded bg-muted" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : clientesVisiveis.length > 0 ? (
+                        <div className={`transition-opacity duration-150 ${buscandoCliente ? "opacity-50" : "opacity-100"}`}>
+                          {clientesVisiveis.map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
+                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                            >
+                              <span>{c.nome}</span>
+                              <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
+                            </button>
+                          ))}
+                          <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
+                            <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                          Nenhum cliente encontrado para &quot;{termoCliente}&quot;
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Origem da venda (compacto) */}
+              {/* Origem da venda */}
               {encomendaOrigem && (
                 <div className="mt-3 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs">
                   <span className="font-medium text-primary">Encomenda</span>
@@ -490,7 +724,7 @@ export default function NovaVenda() {
             </Card>
 
             {/* Pagamento */}
-            <Card className="p-5">
+            <Card className="shrink-0 p-5">
               <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 <CreditCard className="h-4 w-4" /> Pagamento
               </h3>
@@ -499,14 +733,62 @@ export default function NovaVenda() {
                   <span className="text-xs text-muted-foreground">Forma de pagamento</span>
                   <AppSelect
                     value={formaPagamentoId}
-                    onValueChange={setFormaPagamentoId}
+                    onValueChange={(v) => { setFormaPagamentoId(v); setBandeiraId(""); setNumeroParcelas(null); }}
                     placeholder="Selecionar..."
-                    options={formasPagamentoAtivas.map((f) => ({
-                      value: f.id,
-                      label: `${f.nome}${f.condicao ? ` — ${f.condicao}` : ""}`,
-                    }))}
+                    options={formasPagamentoAtivas.map((f) => ({ value: f.id, label: f.nome }))}
                   />
                 </label>
+
+                {/* Bandeira — só quando a forma exige bandeira */}
+                {formaSelecionada?.exigeBandeira && (
+                  <label className="space-y-1.5">
+                    <span className="text-xs text-muted-foreground">Bandeira</span>
+                    <AppSelect
+                      value={bandeiraId}
+                      onValueChange={(v) => { setBandeiraId(v); setNumeroParcelas(null); }}
+                      placeholder="Selecionar..."
+                      options={bandeirasAtivas.map((b) => ({ value: b.id, label: b.nome }))}
+                    />
+                  </label>
+                )}
+
+                {/* Parcelas — só quando a forma permite parcelamento e há config de taxa */}
+                {formaSelecionada?.permiteParcelamento && configTaxa && (
+                  <label className="space-y-1.5">
+                    <span className="text-xs text-muted-foreground">Parcelas</span>
+                    <AppSelect
+                      value={numeroParcelas?.toString() ?? ""}
+                      onValueChange={(v) => setNumeroParcelas(Number(v))}
+                      placeholder="Selecionar..."
+                      options={configTaxa.parcelas.map((p) => ({
+                        value: p.numeroParcelas.toString(),
+                        label: `${p.numeroParcelas}x — ${p.percentualTaxa.toFixed(2)}%`,
+                      }))}
+                    />
+                  </label>
+                )}
+
+                {/* Resumo de taxa calculada */}
+                {parcelaSelecionada && (
+                  <div className="space-y-1.5 rounded-md border bg-muted/30 px-3 py-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">
+                        Taxa ({parcelaSelecionada.percentualTaxa.toFixed(2)}%
+                        {parcelaSelecionada.taxaFixa ? ` + R$ ${parcelaSelecionada.taxaFixa.toFixed(2)}` : ""})
+                      </span>
+                      <span className="font-medium text-destructive">− {formatBRL(valorTaxa)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Valor líquido</span>
+                      <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(valorLiquido)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Previsão de recebimento</span>
+                      <span>{previsaoRecebimento}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Valor pago</span>
                   <Input
@@ -550,10 +832,7 @@ export default function NovaVenda() {
                 value={fpModal}
                 onValueChange={setFpModal}
                 placeholder="Selecionar..."
-                options={formasPagamentoAtivas.map((f) => ({
-                  value: f.id,
-                  label: `${f.nome}${f.condicao ? ` — ${f.condicao}` : ""}`,
-                }))}
+                options={formasPagamentoAtivas.map((f) => ({ value: f.id, label: f.nome }))}
               />
             </label>
             <div className="flex items-center justify-between">

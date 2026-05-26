@@ -1,15 +1,10 @@
-using System;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
-using SonoLeve.Infra.Data;
 
 #nullable disable
 
 namespace SonoLeve.Infra.Migrations
 {
-    [DbContext(typeof(SonoLeveDbContext))]
-    [Migration("20260518200000_Inicial")]
     /// <inheritdoc />
     public partial class Inicial : Migration
     {
@@ -17,13 +12,28 @@ namespace SonoLeve.Infra.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "BandeirasCartao",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Nome = table.Column<string>(type: "text", nullable: false),
+                    Ativo = table.Column<bool>(type: "boolean", nullable: false),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BandeirasCartao", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Categorias",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    Active = table.Column<bool>(type: "boolean", nullable: false),
-                    Grade = table.Column<string>(type: "text", nullable: false)
+                    Grade = table.Column<string>(type: "text", nullable: false),
+                    Active = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -55,9 +65,9 @@ namespace SonoLeve.Infra.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
-                    Active = table.Column<bool>(type: "boolean", nullable: false),
                     DataInicio = table.Column<DateOnly>(type: "date", nullable: true),
-                    DataFim = table.Column<DateOnly>(type: "date", nullable: true)
+                    DataFim = table.Column<DateOnly>(type: "date", nullable: true),
+                    Active = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -70,8 +80,9 @@ namespace SonoLeve.Infra.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Nome = table.Column<string>(type: "text", nullable: false),
-                    Condicao = table.Column<string>(type: "text", nullable: false),
-                    Taxa = table.Column<string>(type: "text", nullable: false),
+                    Tipo = table.Column<string>(type: "text", nullable: false),
+                    PermiteParcelamento = table.Column<bool>(type: "boolean", nullable: false),
+                    ExigeBandeira = table.Column<bool>(type: "boolean", nullable: false),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -87,8 +98,8 @@ namespace SonoLeve.Infra.Migrations
                 {
                     Key = table.Column<string>(type: "text", nullable: false),
                     StatusCode = table.Column<int>(type: "integer", nullable: false),
-                    ContentType = table.Column<string>(type: "text", nullable: false),
                     ResponseBody = table.Column<string>(type: "text", nullable: false),
+                    ContentType = table.Column<string>(type: "text", nullable: false),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     ExpiraEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -230,6 +241,66 @@ namespace SonoLeve.Infra.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ConfiguracoesTaxaCartao",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FormaPagamentoId = table.Column<Guid>(type: "uuid", nullable: false),
+                    BandeiraId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TipoCartao = table.Column<string>(type: "text", nullable: false),
+                    Ativo = table.Column<bool>(type: "boolean", nullable: false),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConfiguracoesTaxaCartao", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ConfiguracoesTaxaCartao_BandeirasCartao_BandeiraId",
+                        column: x => x.BandeiraId,
+                        principalTable: "BandeirasCartao",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ConfiguracoesTaxaCartao_FormasPagamento_FormaPagamentoId",
+                        column: x => x.FormaPagamentoId,
+                        principalTable: "FormasPagamento",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Vendas",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
+                    FormaPagamentoId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Data = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Pecas = table.Column<int>(type: "integer", nullable: false),
+                    Total = table.Column<decimal>(type: "numeric", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Origem = table.Column<int>(type: "integer", nullable: false),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Vendas", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Vendas_Clientes_ClienteId",
+                        column: x => x.ClienteId,
+                        principalTable: "Clientes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Vendas_FormasPagamento_FormaPagamentoId",
+                        column: x => x.FormaPagamentoId,
+                        principalTable: "FormasPagamento",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Produtos",
                 columns: table => new
                 {
@@ -280,34 +351,27 @@ namespace SonoLeve.Infra.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Vendas",
+                name: "ConfiguracoesTaxaCartaoParcelas",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
-                    FormaPagamentoId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Data = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Pecas = table.Column<int>(type: "integer", nullable: false),
-                    Total = table.Column<decimal>(type: "numeric", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    Origem = table.Column<int>(type: "integer", nullable: false),
+                    ConfiguracaoTaxaCartaoId = table.Column<Guid>(type: "uuid", nullable: false),
+                    NumeroParcelas = table.Column<int>(type: "integer", nullable: false),
+                    PercentualTaxa = table.Column<decimal>(type: "numeric", nullable: false),
+                    PrazoRecebimentoDias = table.Column<int>(type: "integer", nullable: false),
+                    TaxaFixa = table.Column<decimal>(type: "numeric", nullable: true),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Vendas", x => x.Id);
+                    table.PrimaryKey("PK_ConfiguracoesTaxaCartaoParcelas", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Vendas_Clientes_ClienteId",
-                        column: x => x.ClienteId,
-                        principalTable: "Clientes",
+                        name: "FK_ConfiguracoesTaxaCartaoParcelas_ConfiguracoesTaxaCartao_Con~",
+                        column: x => x.ConfiguracaoTaxaCartaoId,
+                        principalTable: "ConfiguracoesTaxaCartao",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Vendas_FormasPagamento_FormaPagamentoId",
-                        column: x => x.FormaPagamentoId,
-                        principalTable: "FormasPagamento",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -367,6 +431,21 @@ namespace SonoLeve.Infra.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConfiguracoesTaxaCartao_BandeiraId",
+                table: "ConfiguracoesTaxaCartao",
+                column: "BandeiraId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConfiguracoesTaxaCartao_FormaPagamentoId",
+                table: "ConfiguracoesTaxaCartao",
+                column: "FormaPagamentoId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConfiguracoesTaxaCartaoParcelas_ConfiguracaoTaxaCartaoId",
+                table: "ConfiguracoesTaxaCartaoParcelas",
+                column: "ConfiguracaoTaxaCartaoId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Contas_ClienteId",
@@ -442,22 +521,62 @@ namespace SonoLeve.Infra.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "ItensVenda");
-            migrationBuilder.DropTable(name: "ItensEncomenda");
-            migrationBuilder.DropTable(name: "Contas");
-            migrationBuilder.DropTable(name: "Fichas");
-            migrationBuilder.DropTable(name: "IdempotencyRecords");
-            migrationBuilder.DropTable(name: "Usuarios");
-            migrationBuilder.DropTable(name: "Vendas");
-            migrationBuilder.DropTable(name: "Encomendas");
-            migrationBuilder.DropTable(name: "Produtos");
-            migrationBuilder.DropTable(name: "Clientes");
-            migrationBuilder.DropTable(name: "FormasPagamento");
-            migrationBuilder.DropTable(name: "Categorias");
-            migrationBuilder.DropTable(name: "Colecoes");
-            migrationBuilder.DropTable(name: "Marcas");
-            migrationBuilder.DropTable(name: "Subtipos");
-            migrationBuilder.DropTable(name: "Tipos");
+            migrationBuilder.DropTable(
+                name: "ConfiguracoesTaxaCartaoParcelas");
+
+            migrationBuilder.DropTable(
+                name: "Contas");
+
+            migrationBuilder.DropTable(
+                name: "Fichas");
+
+            migrationBuilder.DropTable(
+                name: "IdempotencyRecords");
+
+            migrationBuilder.DropTable(
+                name: "ItensEncomenda");
+
+            migrationBuilder.DropTable(
+                name: "ItensVenda");
+
+            migrationBuilder.DropTable(
+                name: "Usuarios");
+
+            migrationBuilder.DropTable(
+                name: "ConfiguracoesTaxaCartao");
+
+            migrationBuilder.DropTable(
+                name: "Encomendas");
+
+            migrationBuilder.DropTable(
+                name: "Produtos");
+
+            migrationBuilder.DropTable(
+                name: "Vendas");
+
+            migrationBuilder.DropTable(
+                name: "BandeirasCartao");
+
+            migrationBuilder.DropTable(
+                name: "Categorias");
+
+            migrationBuilder.DropTable(
+                name: "Colecoes");
+
+            migrationBuilder.DropTable(
+                name: "Marcas");
+
+            migrationBuilder.DropTable(
+                name: "Subtipos");
+
+            migrationBuilder.DropTable(
+                name: "Tipos");
+
+            migrationBuilder.DropTable(
+                name: "Clientes");
+
+            migrationBuilder.DropTable(
+                name: "FormasPagamento");
         }
     }
 }

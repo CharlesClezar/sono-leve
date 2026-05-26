@@ -59,6 +59,7 @@ Controllers/
  CatalogoController.cs
  ClienteController.cs
  ContaController.cs
+ DashboardController.cs
  EncomendaController.cs
  FichaController.cs
  FormaPagamentoController.cs
@@ -68,6 +69,7 @@ DTOs/
  CatalogoDto.cs
  ClienteDto.cs
  ContaDto.cs
+ DashboardDto.cs
  EncomendaDto.cs
  FichaDto.cs
  FormaPagamentoDto.cs

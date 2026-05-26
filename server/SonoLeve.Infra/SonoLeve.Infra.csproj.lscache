@@ -58,26 +58,8 @@ Data/
  DataSeeder.cs
  SonoLeveDbContext.cs
 Migrations/
- 20260511031700_Inicial.cs
- 20260511031700_Inicial.Designer.cs
- 20260511194137_AdicionarEntidades.cs
- 20260511194137_AdicionarEntidades.Designer.cs
- 20260511233311_AdicionarIdempotency.cs
- 20260511233311_AdicionarIdempotency.Designer.cs
- 20260512030350_AdicionarItensEncomenda.cs
- 20260512030350_AdicionarItensEncomenda.Designer.cs
- 20260512032421_AdicionarCatalogoProdutos.cs
- 20260512032421_AdicionarCatalogoProdutos.Designer.cs
- 20260512034914_AdicionarItensVenda.cs
- 20260512034914_AdicionarItensVenda.Designer.cs
- 20260512142747_AdicionarImagemProduto.cs
- 20260512142747_AdicionarImagemProduto.Designer.cs
- 20260513010731_AdicionarPecasEncomenda.cs
- 20260513010731_AdicionarPecasEncomenda.Designer.cs
- 20260513024208_AdicionarFormasPagamento.cs
- 20260513024208_AdicionarFormasPagamento.Designer.cs
- 20260517191900_AdicionarFKsRelacionamentos.cs
- 20260517191900_AdicionarFKsRelacionamentos.Designer.cs
+ 20260518200000_Inicial.cs
+ 20260519000000_AdicionarIndicesPerformance.cs
  SonoLeveDbContextModelSnapshot.cs
 obj/Debug/net10.0/
  .NETCoreApp,Version=v10.0.AssemblyAttributes.cs

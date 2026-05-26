@@ -16,21 +16,29 @@ public class CatalogoController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<CatalogoProdutosResponse>> Listar()
     {
-        var categorias = await _db.Categorias.OrderBy(x => x.Name).ToListAsync();
-        var marcas = await _db.Marcas.OrderBy(x => x.Name).ToListAsync();
-        var tipos = await _db.Tipos.OrderBy(x => x.Name).ToListAsync();
-        var subtipos = await _db.Subtipos.OrderBy(x => x.Name).ToListAsync();
-        var colecoes = await _db.Colecoes.OrderBy(x => x.Name).ToListAsync();
-        var produtos = await _db.Produtos
+        var categorias = await _db.Categorias.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var marcas    = await _db.Marcas.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var tipos     = await _db.Tipos.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var subtipos  = await _db.Subtipos.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var colecoes  = await _db.Colecoes.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+
+        // Uma única query; dicionários em memória para lookup O(1) em vez de Count() O(n) por item
+        var produtos = await _db.Produtos.AsNoTracking()
             .Select(p => new { p.MarcaId, p.TipoId, p.SubtipoId, p.CategoriaId, p.ColecaoId })
             .ToListAsync();
 
+        var cntCategoria = produtos.Where(p => p.CategoriaId.HasValue).GroupBy(p => p.CategoriaId!.Value).ToDictionary(g => g.Key, g => g.Count());
+        var cntMarca     = produtos.Where(p => p.MarcaId.HasValue).GroupBy(p => p.MarcaId!.Value).ToDictionary(g => g.Key, g => g.Count());
+        var cntTipo      = produtos.Where(p => p.TipoId.HasValue).GroupBy(p => p.TipoId!.Value).ToDictionary(g => g.Key, g => g.Count());
+        var cntSubtipo   = produtos.Where(p => p.SubtipoId.HasValue).GroupBy(p => p.SubtipoId!.Value).ToDictionary(g => g.Key, g => g.Count());
+        var cntColecao   = produtos.Where(p => p.ColecaoId.HasValue).GroupBy(p => p.ColecaoId!.Value).ToDictionary(g => g.Key, g => g.Count());
+
         return Ok(new CatalogoProdutosResponse(
-            categorias.Select(c => new CategoriaCatalogoResponse(c.Id, c.Name, c.Grade, produtos.Count(p => p.CategoriaId == c.Id), c.Active)),
-            marcas.Select(m => new CatalogoSimplesResponse(m.Id, m.Name, produtos.Count(p => p.MarcaId == m.Id), m.Active)),
-            tipos.Select(t => new TipoCatalogoResponse(t.Id, t.Name, produtos.Count(p => p.TipoId == t.Id), t.Active, subtipos.Count)),
-            subtipos.Select(s => new SubtipoCatalogoResponse(s.Id, s.Name, produtos.Count(p => p.SubtipoId == s.Id), s.Active)),
-            colecoes.Select(c => new ColecaoCatalogoResponse(c.Id, c.Name, produtos.Count(p => p.ColecaoId == c.Id), c.Active, c.DataInicio, c.DataFim))
+            categorias.Select(c => new CategoriaCatalogoResponse(c.Id, c.Name, c.Grade, cntCategoria.GetValueOrDefault(c.Id), c.Active)),
+            marcas.Select(m    => new CatalogoSimplesResponse(m.Id, m.Name, cntMarca.GetValueOrDefault(m.Id), m.Active)),
+            tipos.Select(t     => new TipoCatalogoResponse(t.Id, t.Name, cntTipo.GetValueOrDefault(t.Id), t.Active, subtipos.Count)),
+            subtipos.Select(s  => new SubtipoCatalogoResponse(s.Id, s.Name, cntSubtipo.GetValueOrDefault(s.Id), s.Active)),
+            colecoes.Select(c  => new ColecaoCatalogoResponse(c.Id, c.Name, cntColecao.GetValueOrDefault(c.Id), c.Active, c.DataInicio, c.DataFim))
         ));
     }
 

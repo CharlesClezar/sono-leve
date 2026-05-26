@@ -20,6 +20,7 @@ export default function NovoCliente() {
   const saveShortcutLabel = useShortcutLabel("save");
   const idempotencyKey = useRef(crypto.randomUUID());
   const [salvando, setSalvando] = useState(false);
+  const [tentouSalvar, setTentouSalvar] = useState(false);
   const params = useParams<{ id?: string }>();
   const { data: cliente } = useClientePorId(params.id);
   const editando = Boolean(params.id);
@@ -49,6 +50,7 @@ export default function NovoCliente() {
   };
 
   const handleSalvar = async () => {
+    setTentouSalvar(true);
     if (!form.nome.trim()) {
       toast.error("Preencha o nome do cliente.");
       return;
@@ -94,14 +96,20 @@ export default function NovoCliente() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto">
-      <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
+        <div className="min-h-0 flex-1 overflow-y-auto">
         <Card className="p-5">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Dados do cliente</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 md:col-span-2">
-              <span className="text-sm font-medium">Nome</span>
-              <Input value={form.nome} onChange={(event) => atualizarCampo("nome", event.target.value)} placeholder="Nome completo ou razão social" />
+              <span className="text-sm font-medium">Nome <span className="text-destructive">*</span></span>
+              <Input
+                value={form.nome}
+                onChange={(event) => atualizarCampo("nome", event.target.value)}
+                placeholder="Nome completo ou razão social"
+                className={tentouSalvar && !form.nome.trim() ? "border-destructive focus-visible:ring-destructive" : ""}
+              />
             </label>
             <label className="space-y-1.5">
               <span className="text-sm font-medium">Telefone</span>
@@ -128,8 +136,10 @@ export default function NovoCliente() {
             </label>
           </div>
         </Card>
+        </div>
 
-        <Card className="h-fit p-5">
+        <div className="overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
+        <Card className="p-5">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ativo</h3>
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
@@ -150,6 +160,7 @@ export default function NovoCliente() {
             </label>
           </div>
         </Card>
+        </div>
       </div>
       </div>
     </AppShell>

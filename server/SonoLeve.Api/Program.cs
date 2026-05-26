@@ -1,4 +1,6 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SonoLeve.Api.Filters;
 using SonoLeve.Application.Interfaces;
@@ -25,8 +27,24 @@ var origensPermitidas = builder.Configuration["Cors:Origens"]?.Split(",")
 builder.Services.AddCors(opcoes =>
     opcoes.AddDefaultPolicy(politica =>
         politica.WithOrigins(origensPermitidas)
-                .AllowAnyHeader()
-                .AllowAnyMethod()));
+                .WithHeaders("Content-Type", "Authorization", "Idempotency-Key")
+                .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE")));
+
+// Rate limiting: 200 req/min por IP
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            }));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 // Repositories
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
@@ -36,6 +54,8 @@ builder.Services.AddScoped<IEncomendaRepository, EncomendaRepository>();
 builder.Services.AddScoped<IFichaRepository, FichaRepository>();
 builder.Services.AddScoped<IContaRepository, ContaRepository>();
 builder.Services.AddScoped<IFormaPagamentoRepository, FormaPagamentoRepository>();
+builder.Services.AddScoped<IBandeiraCartaoRepository, BandeiraCartaoRepository>();
+builder.Services.AddScoped<IConfiguracaoTaxaCartaoRepository, ConfiguracaoTaxaCartaoRepository>();
 
 // Services
 builder.Services.AddScoped<IClienteService, ClienteService>();
@@ -45,8 +65,21 @@ builder.Services.AddScoped<IEncomendaService, EncomendaService>();
 builder.Services.AddScoped<IFichaService, FichaService>();
 builder.Services.AddScoped<IContaService, ContaService>();
 builder.Services.AddScoped<IFormaPagamentoService, FormaPagamentoService>();
+builder.Services.AddScoped<IBandeiraCartaoService, BandeiraCartaoService>();
+builder.Services.AddScoped<IConfiguracaoTaxaCartaoService, ConfiguracaoTaxaCartaoService>();
 
 var app = builder.Build();
+
+// Handler global: impede stack trace vazar em produção
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler(err => err.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { message = "Ocorreu um erro interno." });
+    }));
+}
 
 // Aplicar migrations e seed de desenvolvimento
 using (var escopo = app.Services.CreateScope())
@@ -58,6 +91,7 @@ using (var escopo = app.Services.CreateScope())
         await DataSeeder.SeedAsync(db);
 }
 
+app.UseRateLimiter();
 app.UseCors();
 app.UseStaticFiles();
 app.MapControllers();

@@ -31,7 +31,17 @@ public record VendaRequest(
     [Range(0, 9999999.99)] decimal Total,
     [Required, StringLength(20)] string Status,
     [Required, StringLength(50)] string Origem,
-    List<ItemVendaRequest>? Items = null
+    List<ItemVendaRequest>? Items = null,
+    // ── Pagamento / taxa (para snapshot na Conta) ──────────────────────────
+    Guid? BandeiraId = null,
+    int? NumeroParcelas = null,
+    [Range(0, 100)] decimal? PercentualTaxaCartao = null,
+    [Range(0, 999999.99)] decimal? TaxaFixaCartao = null,
+    [Range(0, 999999.99)] decimal? ValorTaxaCartao = null,
+    /// <summary>Prazo de recebimento em dias (da parcela selecionada).</summary>
+    int? PrazoRecebimentoDias = null,
+    /// <summary>Valor já pago no ato da venda.</summary>
+    [Range(0, 9999999.99)] decimal? ValorPago = null
 );
 
 public record VendaResponse(

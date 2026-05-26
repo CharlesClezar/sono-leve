@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, formatDate, type ItemVenda, type OrderStatus } from "@/lib/types";
-import { api, useDashboard } from "@/lib/api";
+import { api, useDashboard, useEncomendasCalendario, DASHBOARD_KPIS_VAZIO, ENCOMENDAS_CALENDARIO_VAZIAS } from "@/lib/api";
 import type { VendaDashboard, EncomendaDashboard, FichaDashboard, ContaDashboard } from "@/lib/api";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import Link from "next/link";
@@ -90,14 +90,8 @@ const deslocarDias = (iso: string, quantidade: number) => {
   return formatarDataIso(data);
 };
 
-const DASHBOARD_VAZIO = { vendas: [] as Sale[], encomendas: [] as EncomendaDashboard[], fichas: [] as Ficha[], contas: [] as Account[] };
 
 export default function Dashboard() {
-  const { data: dashboard = DASHBOARD_VAZIO } = useDashboard();
-  const vendas = dashboard.vendas;
-  const encomendas = dashboard.encomendas;
-  const fichas = dashboard.fichas;
-  const contas = dashboard.contas;
   const router = useRouter();
   const queryClient = useQueryClient();
   const atalhoNovaVenda = useShortcutLabel("dashboard_new_sale");
@@ -105,6 +99,20 @@ export default function Dashboard() {
   const atalhoNovaFicha = useShortcutLabel("dashboard_new_ficha");
   const [periodoSelecionado, setPeriodoSelecionado] = useState<PeriodoDashboard>("today");
   const [dataBaseCalendario, setDataBaseCalendario] = useState(() => new Date());
+  const { calendarioInicio, calendarioFim } = useMemo(() => {
+    const ano = dataBaseCalendario.getFullYear();
+    const mes = dataBaseCalendario.getMonth();
+    const primeiroDia = new Date(ano, mes, 1).getDay();
+    return {
+      calendarioInicio: formatarDataIso(new Date(ano, mes, 1 - primeiroDia)),
+      calendarioFim: formatarDataIso(new Date(ano, mes, 1 - primeiroDia + 41)),
+    };
+  }, [dataBaseCalendario]);
+  const { data: dadosDashboard = DASHBOARD_KPIS_VAZIO } = useDashboard();
+  const { data: encomendas = ENCOMENDAS_CALENDARIO_VAZIAS } = useEncomendasCalendario(calendarioInicio, calendarioFim);
+  const vendas = dadosDashboard.vendas;
+  const fichas = dadosDashboard.fichas;
+  const contas = dadosDashboard.contas;
   const [statusPorId, setStatusPorId] = useState<Record<string, OrderStatus>>(
     () => Object.fromEntries(encomendas.map((encomenda) => [encomenda.id, encomenda.status as OrderStatus])),
   );
@@ -169,7 +177,7 @@ export default function Dashboard() {
       agrupadas.set(iso, atuais);
     });
     return agrupadas;
-  }, [statusPorId]);
+  }, [encomendas, statusPorId]);
 
   const isosEntregasVisiveis = useMemo(
     () => celulas.map((celula) => celula.iso).filter((iso) => entregasPorData.has(iso)),
@@ -194,28 +202,28 @@ export default function Dashboard() {
           venda.status === "Gerada" &&
           (intervaloPeriodo ? venda.data.substring(0, 10) >= intervaloPeriodo.inicio && venda.data.substring(0, 10) <= intervaloPeriodo.fim : true)
       ),
-    [intervaloPeriodo]
+    [vendas, intervaloPeriodo]
   );
   const contasFiltradas = useMemo(
     () =>
       contas.filter((conta) =>
         intervaloPeriodo ? conta.vencimento.substring(0, 10) >= intervaloPeriodo.inicio && conta.vencimento.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [intervaloPeriodo]
+    [contas, intervaloPeriodo]
   );
   const fichasFiltradas = useMemo(
     () =>
       fichas.filter((ficha) =>
         intervaloPeriodo ? ficha.dataAbertura.substring(0, 10) >= intervaloPeriodo.inicio && ficha.dataAbertura.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [intervaloPeriodo]
+    [fichas, intervaloPeriodo]
   );
   const encomendasFiltradas = useMemo(
     () =>
       encomendas.filter((encomenda) =>
         intervaloPeriodo ? encomenda.previsao.substring(0, 10) >= intervaloPeriodo.inicio && encomenda.previsao.substring(0, 10) <= intervaloPeriodo.fim : true
       ),
-    [intervaloPeriodo]
+    [encomendas, intervaloPeriodo]
   );
   const kpis = useMemo(() => {
     const faturado = vendasFiltradas.reduce((total, venda) => total + venda.total, 0);
@@ -305,11 +313,15 @@ export default function Dashboard() {
     }
   };
 
+  const direcaoNav = useRef<"anterior" | "proximo">("proximo");
+
   const irParaMesAnterior = () => {
+    direcaoNav.current = "anterior";
     setDataBaseCalendario((atual) => new Date(atual.getFullYear(), atual.getMonth() - 1, 1));
   };
 
   const irParaProximoMes = () => {
+    direcaoNav.current = "proximo";
     setDataBaseCalendario((atual) => new Date(atual.getFullYear(), atual.getMonth() + 1, 1));
   };
 
@@ -388,11 +400,14 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="grid grid-cols-7 gap-1 text-center sm:gap-1.5">
-                {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
-                  <div key={i} className="py-0.5 text-[10px] font-medium text-muted-foreground sm:py-1 sm:text-xs">{d}</div>
+                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
+                  <div key={d} className="py-0.5 text-[10px] font-medium text-muted-foreground sm:py-1 sm:text-xs">{d}</div>
                 ))}
               </div>
-              <div className="grid flex-1 grid-cols-7 grid-rows-6 gap-1 text-center sm:gap-1.5">
+              <div
+                key={calendarioInicio}
+                className={`grid flex-1 grid-cols-7 grid-rows-6 gap-1 text-center sm:gap-1.5 animate-in fade-in duration-200 ${direcaoNav.current === "proximo" ? "slide-in-from-right-3" : "slide-in-from-left-3"}`}
+              >
                 {celulas.map((celula, i) => (
                   (() => {
                     const { dia, noMesAtual, iso } = celula;

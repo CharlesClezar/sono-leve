@@ -15,7 +15,7 @@ import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
-import { TableSkeleton } from "@/components/TableSkeleton";
+import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -75,7 +75,7 @@ export default function Fichas() {
         }}
       />
       <PageHeader
-        breadcrumb={["Fichas"]}
+        breadcrumb={["Fichas", tab]}
         title="Fichas / Consignado"
         infoTooltip="Controle de peças enviadas para revendedoras, com acompanhamento de envio, devolução, venda e faturamento."
         actions={
@@ -84,8 +84,8 @@ export default function Fichas() {
           </Button>
         }
       />
-      <div className="space-y-4 p-6">
-        <div className="sticky top-20 z-20 -mx-6 space-y-4 border-b bg-background/95 px-6 pb-4 pt-4 backdrop-blur">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 space-y-4 border-b px-6 py-4">
           <IndexedTabsNav tabs={tabs} activeTab={tab} onSelect={selectTab} getTabButtonProps={indexedTabs.getTabButtonProps} getShortcutLabel={indexedTabs.getShortcutLabel} />
           <Card className="p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
@@ -97,9 +97,11 @@ export default function Fichas() {
           </Card>
         </div>
 
-        <div {...indexedTabs.getTabPanelProps(tab)} className="space-y-4">
+        <div {...indexedTabs.getTabPanelProps(tab)} className="flex-1 overflow-y-auto p-6">
         <div className="grid gap-3 lg:hidden">
-          {pagination.items.length === 0 ? (
+          {isLoading ? (
+            <CardsSkeleton />
+          ) : pagination.items.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</Card>
           ) : (
             pagination.items.map((f) => (
@@ -127,7 +129,7 @@ export default function Fichas() {
             ))
           )}
         </div>
-        <PaginationFooter pagination={pagination} className="rounded-md border lg:hidden" />
+        <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
 
         <Card className="hidden overflow-hidden lg:block">
           <div className="overflow-x-auto">

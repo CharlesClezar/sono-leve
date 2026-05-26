@@ -21,6 +21,15 @@ export function useGlobalShortcuts() {
   const platform = getShortcutPlatform();
 
   useEffect(() => {
+    const saveShortcut = getShortcutById(shortcuts, "save");
+    const cancelShortcut = getShortcutById(shortcuts, "cancel");
+    const contextualShortcut = getShortcutById(shortcuts, "new_contextual");
+    const dashboardSaleShortcut = getShortcutById(shortcuts, "dashboard_new_sale");
+    const dashboardOrderShortcut = getShortcutById(shortcuts, "dashboard_new_order");
+    const dashboardFichaShortcut = getShortcutById(shortcuts, "dashboard_new_ficha");
+    const salesFromOrderShortcut = getShortcutById(shortcuts, "sales_from_order");
+    const salesFromFichaShortcut = getShortcutById(shortcuts, "sales_from_ficha");
+
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTypingField =
@@ -32,14 +41,6 @@ export function useGlobalShortcuts() {
       if (isTypingField) return;
 
       const mod = e.ctrlKey || e.metaKey;
-      const saveShortcut = getShortcutById(shortcuts, "save");
-      const cancelShortcut = getShortcutById(shortcuts, "cancel");
-      const contextualShortcut = getShortcutById(shortcuts, "new_contextual");
-      const dashboardSaleShortcut = getShortcutById(shortcuts, "dashboard_new_sale");
-      const dashboardOrderShortcut = getShortcutById(shortcuts, "dashboard_new_order");
-      const dashboardFichaShortcut = getShortcutById(shortcuts, "dashboard_new_ficha");
-      const salesFromOrderShortcut = getShortcutById(shortcuts, "sales_from_order");
-      const salesFromFichaShortcut = getShortcutById(shortcuts, "sales_from_ficha");
 
       // Ctrl/Cmd+S
       if (mod && matchesShortcut(e, saveShortcut, platform)) {
