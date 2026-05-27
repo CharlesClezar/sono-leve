@@ -10,15 +10,23 @@ echo "║   Sono Leve — Atualização            ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-echo "1/3 → Baixando atualizações..."
+echo "1/4 → Backup antes do deploy..."
+if docker ps --filter "name=^postgres$" --filter "status=running" --format "{{.Names}}" | grep -q "^postgres$"; then
+  "${SCRIPT_DIR}/backup.sh"
+else
+  echo "  postgres não está rodando, pulando backup."
+fi
+
+echo ""
+echo "2/4 → Baixando atualizações..."
 git pull
 
 echo ""
-echo "2/3 → Reconstruindo e reiniciando containers..."
+echo "3/4 → Reconstruindo e reiniciando containers..."
 docker compose -f infra/docker-compose.prod.yml --env-file .env up -d --build
 
 echo ""
-echo "3/3 → Limpando imagens antigas..."
+echo "4/4 → Limpando imagens antigas..."
 docker image prune -f
 
 echo ""
