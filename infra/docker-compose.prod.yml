@@ -11,7 +11,7 @@ services:
     env_file: ../.env
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Default: "Host=postgres-shared;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__Default: "Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Jwt__Segredo: ${JWT_SEGREDO}
       Jwt__ExpiracaoMinutos: ${JWT_EXPIRACAO_MINUTOS:-15}
       Jwt__ExpiracaoRefreshDias: ${JWT_EXPIRACAO_REFRESH_DIAS:-7}

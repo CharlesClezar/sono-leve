@@ -25,7 +25,7 @@ log() {
 
 log "→ Iniciando backup do banco '${POSTGRES_DB}'..."
 
-docker exec postgres-shared \
+docker exec postgres \
   pg_dump -U postgres "${POSTGRES_DB}" | gzip > "${BACKUP_FILE}"
 
 SIZE=$(du -sh "${BACKUP_FILE}" | cut -f1)

@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: postgres-shared
+    container_name: postgres
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:

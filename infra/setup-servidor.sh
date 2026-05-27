@@ -30,15 +30,15 @@ else
   echo "     ✓ criada"
 fi
 
-# 2. Subir postgres-shared
+# 2. Subir postgres
 echo "2/3 → Postgres compartilhado..."
-if docker ps --filter "name=postgres-shared" --filter "status=running" | grep -q "postgres-shared"; then
+if docker ps --filter "name=postgres" --filter "status=running" | grep -q "postgres"; then
   echo "     ✓ já está rodando"
 else
   docker compose -f infra/docker-compose.yml --env-file .env up -d
 
   echo -n "     aguardando ficar saudável"
-  until docker exec postgres-shared pg_isready -U postgres >/dev/null 2>&1; do
+  until docker exec postgres pg_isready -U postgres >/dev/null 2>&1; do
     echo -n "."
     sleep 2
   done
@@ -47,10 +47,10 @@ fi
 
 # 3. Criar banco de dados
 echo "3/3 → Banco de dados '${POSTGRES_DB}'..."
-if docker exec postgres-shared psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "${POSTGRES_DB}"; then
+if docker exec postgres psql -U postgres -lqt | cut -d \| -f 1 | grep -qw "${POSTGRES_DB}"; then
   echo "     ✓ já existe"
 else
-  docker exec postgres-shared psql -U postgres -c "CREATE DATABASE ${POSTGRES_DB};"
+  docker exec postgres psql -U postgres -c "CREATE DATABASE ${POSTGRES_DB};"
   echo "     ✓ criado"
 fi
 
