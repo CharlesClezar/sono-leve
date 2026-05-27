@@ -36,6 +36,7 @@ if docker ps --filter "name=postgres-shared" --filter "status=running" | grep -q
   echo "     ✓ já está rodando"
 else
   docker compose -f infra/docker-compose.yml --env-file .env up -d
+
   echo -n "     aguardando ficar saudável"
   until docker exec postgres-shared pg_isready -U postgres >/dev/null 2>&1; do
     echo -n "."

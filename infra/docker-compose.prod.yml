@@ -1,11 +1,11 @@
 services:
   api:
     build:
-      context: ./server
+      context: ../server
       dockerfile: Dockerfile
     ports:
       - "${API_PORTA:-5000}:8080"
-    env_file: .env
+    env_file: ../.env
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Default: "Host=postgres-shared;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
@@ -20,7 +20,7 @@ services:
 
   frontend:
     build:
-      context: ./client
+      context: ../client
       dockerfile: Dockerfile
       args:
         API_INTERNAL_URL: http://api:8080

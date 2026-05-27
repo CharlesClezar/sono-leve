@@ -15,7 +15,7 @@ git pull
 
 echo ""
 echo "2/3 → Reconstruindo e reiniciando containers..."
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f infra/docker-compose.prod.yml --env-file .env up -d --build
 
 echo ""
 echo "3/3 → Limpando imagens antigas..."
@@ -24,4 +24,4 @@ docker image prune -f
 echo ""
 echo "✅ Atualização concluída em $(date '+%d/%m/%Y %H:%M:%S')"
 echo ""
-docker compose -f docker-compose.prod.yml ps
+docker compose -f infra/docker-compose.prod.yml --env-file .env ps
