@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -107,7 +108,7 @@ export default function NovaVenda() {
   const [modalPagamento, setModalPagamento] = useState(false);
   const [fpModal, setFpModal] = useState("");
   const [valorModal, setValorModal] = useState(0);
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const [gerando, setGerando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const { data: itensEncomendaOrigem } = useItensEncomenda(encomendaOrigemId ?? "");

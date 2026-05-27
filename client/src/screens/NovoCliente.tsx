@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ export default function NovoCliente() {
   const queryClient = useQueryClient();
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const [salvando, setSalvando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const params = useParams<{ id?: string }>();

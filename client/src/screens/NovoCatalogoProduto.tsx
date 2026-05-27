@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,7 +35,7 @@ export default function NovoCatalogoProduto() {
   const { data: itemExistente } = useItemCatalogoProduto(tipo, idEditar ?? "");
   const cancelShortcutLabel = useShortcutLabel("cancel");
   const saveShortcutLabel = useShortcutLabel("save");
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const preenchido = useRef(false);
   const [salvando, setSalvando] = useState(false);
   const [name, setName] = useState("");

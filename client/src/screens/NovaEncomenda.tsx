@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,7 +32,7 @@ export default function NovaEncomenda() {
     ? ["Dashboard", "Encomenda", editando ? "Editar encomenda" : "Nova encomenda"]
     : ["Encomendas", editando ? "Editar" : "Nova"];
   const cancelHref = vieuDoDashboard ? "/" : "/encomendas";
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const itensPreenchidos = useRef(false);
   const [salvando, setSalvando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);

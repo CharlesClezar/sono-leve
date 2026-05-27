@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,7 +29,7 @@ export default function NovoProduto() {
   const { data: produto } = useProdutoPorId(params.id);
   const { data: catalogo = catalogoPadrao } = useCatalogoProdutos();
   const editando = Boolean(params.id);
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const [salvando, setSalvando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const { data: todosProdutos = [] } = useProdutos();

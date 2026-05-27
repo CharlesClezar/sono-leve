@@ -1,3 +1,4 @@
+import { gerarUUID } from "@/lib/uuid";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -31,7 +32,7 @@ export default function NovaFicha() {
     ? ["Dashboard", "Ficha", editando ? "Editar ficha" : "Nova ficha"]
     : ["Fichas", editando ? "Editar" : "Nova"];
   const cancelHref = vieuDoDashboard ? "/" : "/fichas";
-  const idempotencyKey = useRef(crypto.randomUUID());
+  const idempotencyKey = useRef(gerarUUID());
   const [salvando, setSalvando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const [clienteId, setClienteId] = useState(ficha?.clienteId ?? "");
