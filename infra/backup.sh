@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 BACKUP_DIR="${HOME}/backups/sono-leve"
-RETENTION_DAYS=7
+RETENTION_MAX=3
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="${BACKUP_DIR}/backup.log"
 
@@ -31,9 +31,13 @@ docker exec postgres \
 SIZE=$(du -sh "${BACKUP_FILE}" | cut -f1)
 log "✓ Backup salvo: $(basename "${BACKUP_FILE}") (${SIZE})"
 
-# Remover backups antigos
-REMOVED=$(find "${BACKUP_DIR}" -name "*.sql.gz" -mtime +${RETENTION_DAYS} -print -delete | wc -l)
-[ "${REMOVED}" -gt 0 ] && log "→ ${REMOVED} backup(s) antigo(s) removido(s)"
+# Manter apenas os últimos N backups
+PARA_REMOVER=$(ls -t "${BACKUP_DIR}"/*.sql.gz 2>/dev/null | tail -n +"$((RETENTION_MAX + 1))")
+if [ -n "${PARA_REMOVER}" ]; then
+  REMOVED=$(echo "${PARA_REMOVER}" | wc -l)
+  echo "${PARA_REMOVER}" | xargs rm -f
+  log "→ ${REMOVED} backup(s) antigo(s) removido(s)"
+fi
 
-COUNT=$(find "${BACKUP_DIR}" -name "*.sql.gz" | wc -l)
-log "✓ Total de backups mantidos: ${COUNT} (últimos ${RETENTION_DAYS} dias)"
+COUNT=$(ls "${BACKUP_DIR}"/*.sql.gz 2>/dev/null | wc -l)
+log "✓ Total de backups mantidos: ${COUNT}/${RETENTION_MAX}"
