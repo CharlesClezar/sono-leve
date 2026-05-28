@@ -16,6 +16,8 @@ services:
       Jwt__ExpiracaoMinutos: ${JWT_EXPIRACAO_MINUTOS:-15}
       Jwt__ExpiracaoRefreshDias: ${JWT_EXPIRACAO_REFRESH_DIAS:-7}
       Cors__Origens: ${CORS_ORIGENS}
+    volumes:
+      - ../data/imagens:/app/wwwroot/imagens/produtos
     networks:
       - default
       - infra
