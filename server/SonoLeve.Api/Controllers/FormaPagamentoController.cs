@@ -32,11 +32,12 @@ public class FormaPagamentoController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.Nome                = request.Nome;
-            existente.Tipo                = request.Tipo;
-            existente.PermiteParcelamento = request.PermiteParcelamento;
-            existente.ExigeBandeira       = request.ExigeBandeira;
-            existente.Ativo               = request.Ativo;
+            existente.Nome                  = request.Nome;
+            existente.Tipo                  = request.Tipo;
+            existente.PermiteParcelamento   = request.PermiteParcelamento;
+            existente.ExigeBandeira         = request.ExigeBandeira;
+            existente.Ativo                 = request.Ativo;
+            existente.RepassaTaxaAoCliente  = request.RepassaTaxaAoCliente;
             return Ok(Mapear(await _service.AtualizarAsync(existente)));
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -52,13 +53,14 @@ public class FormaPagamentoController : ControllerBase
     private static FormaPagamento MapearEntidade(FormaPagamentoRequest r) =>
         new()
         {
-            Nome                = r.Nome,
-            Tipo                = r.Tipo,
-            PermiteParcelamento = r.PermiteParcelamento,
-            ExigeBandeira       = r.ExigeBandeira,
-            Ativo               = r.Ativo,
+            Nome                 = r.Nome,
+            Tipo                 = r.Tipo,
+            PermiteParcelamento  = r.PermiteParcelamento,
+            ExigeBandeira        = r.ExigeBandeira,
+            Ativo                = r.Ativo,
+            RepassaTaxaAoCliente = r.RepassaTaxaAoCliente,
         };
 
     private static FormaPagamentoResponse Mapear(FormaPagamento f) =>
-        new(f.Id, f.Nome, f.Tipo, f.PermiteParcelamento, f.ExigeBandeira, f.Ativo);
+        new(f.Id, f.Nome, f.Tipo, f.PermiteParcelamento, f.ExigeBandeira, f.Ativo, f.RepassaTaxaAoCliente);
 }

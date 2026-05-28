@@ -6,6 +6,7 @@ using SonoLeve.Api.Filters;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Application.Services;
 using SonoLeve.Infra.Data;
+using SonoLeve.Infra.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 

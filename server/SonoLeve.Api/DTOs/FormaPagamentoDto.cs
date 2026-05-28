@@ -5,7 +5,8 @@ public record FormaPagamentoRequest(
     string Tipo,
     bool PermiteParcelamento,
     bool ExigeBandeira,
-    bool Ativo);
+    bool Ativo,
+    bool RepassaTaxaAoCliente);
 
 public record FormaPagamentoResponse(
     Guid Id,
@@ -13,4 +14,5 @@ public record FormaPagamentoResponse(
     string Tipo,
     bool PermiteParcelamento,
     bool ExigeBandeira,
-    bool Ativo);
+    bool Ativo,
+    bool RepassaTaxaAoCliente);

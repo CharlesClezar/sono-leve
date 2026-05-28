@@ -210,6 +210,7 @@ export type FormaPagamento = {
   permiteParcelamento: boolean;
   exigeBandeira: boolean;
   ativo: boolean;
+  repassaTaxaAoCliente: boolean;
 };
 
 export type FormaPagamentoSalvar = Omit<FormaPagamento, "id">;

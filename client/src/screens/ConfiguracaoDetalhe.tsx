@@ -423,7 +423,7 @@ function PaymentsTable() {
 
 // ── Formas de Pagamento ────────────────────────────────────────────────────────
 
-const FORMA_PADRAO: FormaPagamentoSalvar = { nome: "", tipo: "Pix", permiteParcelamento: false, exigeBandeira: false, ativo: true };
+const FORMA_PADRAO: FormaPagamentoSalvar = { nome: "", tipo: "Pix", permiteParcelamento: false, exigeBandeira: false, ativo: true, repassaTaxaAoCliente: false };
 
 function FormasPagamentoTabela() {
   const { data: formas = [], isLoading } = useFormasPagamento();
@@ -437,7 +437,7 @@ function FormasPagamentoTabela() {
 
   const handleEditar = (f: FormaPagamento) => {
     setEditandoId(f.id);
-    setDraft({ nome: f.nome, tipo: f.tipo, permiteParcelamento: f.permiteParcelamento, exigeBandeira: f.exigeBandeira, ativo: f.ativo });
+    setDraft({ nome: f.nome, tipo: f.tipo, permiteParcelamento: f.permiteParcelamento, exigeBandeira: f.exigeBandeira, ativo: f.ativo, repassaTaxaAoCliente: f.repassaTaxaAoCliente });
     setAdicionando(false);
     setConfirmandoExcluirId(null);
   };
@@ -488,6 +488,9 @@ function FormasPagamentoTabela() {
       <td className="px-4 py-2 text-center">
         <Switch checked={draft.ativo} onCheckedChange={v => setDraft(d => ({ ...d, ativo: v }))} />
       </td>
+      <td className="px-4 py-2 text-center">
+        <Switch checked={draft.repassaTaxaAoCliente} onCheckedChange={v => setDraft(d => ({ ...d, repassaTaxaAoCliente: v }))} />
+      </td>
       <td className="px-4 py-2">
         <div className="flex gap-2">
           <Button size="sm" onClick={onSave}>Salvar</Button>
@@ -506,7 +509,7 @@ function FormasPagamentoTabela() {
         </Button>
       </div>
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[680px] text-sm">
+      <table className="w-full min-w-[820px] text-sm">
         <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Nome</th>
@@ -514,20 +517,21 @@ function FormasPagamentoTabela() {
             <th className="px-4 py-3 text-center">Parcelamento</th>
             <th className="px-4 py-3 text-center">Exige bandeira</th>
             <th className="px-4 py-3 text-center">Status</th>
+            <th className="px-4 py-3 text-center">Cobrar do cliente</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y">
           {isLoading
-            ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
+            ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
             : formas.length === 0 && !adicionando
-              ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma forma de pagamento cadastrada.</td></tr>
+              ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma forma de pagamento cadastrada.</td></tr>
               : formas.map((f) =>
                   editandoId === f.id ? (
                     <EditRow key={f.id} rowKey={f.id} onSave={() => handleSalvar(f.id)} onCancel={() => setEditandoId(null)} />
                   ) : confirmandoExcluirId === f.id ? (
                     <tr key={f.id} className="bg-destructive/5">
-                      <td colSpan={5} className="px-4 py-3 text-sm">Excluir <strong>{f.nome}</strong>?</td>
+                      <td colSpan={6} className="px-4 py-3 text-sm">Excluir <strong>{f.nome}</strong>?</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <Button size="sm" variant="destructive" onClick={() => handleExcluir(f.id)}>Excluir</Button>
@@ -542,6 +546,7 @@ function FormasPagamentoTabela() {
                       <td className="px-4 py-3 text-center text-xs">{f.permiteParcelamento ? "Sim" : "—"}</td>
                       <td className="px-4 py-3 text-center text-xs">{f.exigeBandeira ? "Sim" : "—"}</td>
                       <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={f.ativo} /></td>
+                      <td className="px-4 py-3 text-center text-xs">{f.repassaTaxaAoCliente ? "Sim" : "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(f)}>Editar</Button>

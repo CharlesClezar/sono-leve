@@ -28,7 +28,7 @@ echo ""
 # ─── Parar e remover containers da aplicação ──────────────────────────────────
 echo "  Parando containers da aplicação..."
 if [ -f .env ]; then
-  docker compose -f infra/docker-compose.prod.yml --env-file .env down --remove-orphans 2>/dev/null || true
+  docker compose -f docker-compose.prod.yml --env-file .env down --remove-orphans 2>/dev/null || true
   ok "Containers da aplicação removidos"
 else
   warn ".env não encontrado, pulando containers da aplicação"
@@ -36,7 +36,7 @@ fi
 
 # ─── Parar e remover PostgreSQL + volume ──────────────────────────────────────
 echo "  Parando PostgreSQL e removendo volume..."
-docker compose -f infra/docker-compose.yml down -v --remove-orphans 2>/dev/null || true
+docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
 ok "PostgreSQL e volume removidos"
 
 # ─── Remover rede Docker ──────────────────────────────────────────────────────
