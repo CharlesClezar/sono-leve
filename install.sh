@@ -155,6 +155,16 @@ echo "  Fazendo primeiro deploy (isso leva alguns minutos)..."
 echo ""
 ./infra/update.sh
 
+# ─── Dados iniciais ───────────────────────────────────────────────────────────
+echo ""
+echo "  Inserindo dados iniciais..."
+docker exec postgres psql -U postgres -d sono_leve -c "
+  INSERT INTO \"Clientes\" (\"Id\", \"Nome\", \"Telefone\", \"Cpf\", \"Tipo\", \"Status\", \"Credito\", \"CriadoEm\", \"AtualizadoEm\")
+  SELECT gen_random_uuid(), 'CONSUMIDOR FINAL', '', '', 0, 'Ativo', 0, NOW(), NOW()
+  WHERE NOT EXISTS (SELECT 1 FROM \"Clientes\" WHERE \"Nome\" = 'CONSUMIDOR FINAL');
+" >/dev/null
+ok "Cliente 'CONSUMIDOR FINAL' garantido"
+
 # ─── Agendar backup ───────────────────────────────────────────────────────────
 echo ""
 echo "  Agendando backup diário às ${BACKUP_HORA}h..."

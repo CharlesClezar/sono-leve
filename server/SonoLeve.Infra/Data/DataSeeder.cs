@@ -89,18 +89,6 @@ public static class DataSeeder
             await db.SaveChangesAsync();
         }
 
-        // Cliente padrão para vendas no varejo sem identificação
-        if (!db.Clientes.Any(c => c.Nome == "CONSUMIDOR FINAL"))
-        {
-            db.Clientes.Add(new Cliente
-            {
-                Nome   = "CONSUMIDOR FINAL",
-                Tipo   = TipoCliente.Varejo,
-                Status = "Ativo",
-            });
-            await db.SaveChangesAsync();
-        }
-
         // Dados transacionais (clientes, produtos, vendas, etc.) não são mais
         // semeados automaticamente — cadastre os dados reais pelo sistema.
     }
