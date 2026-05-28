@@ -157,13 +157,83 @@ echo ""
 
 # ─── Dados iniciais ───────────────────────────────────────────────────────────
 echo ""
-echo "  Inserindo dados iniciais..."
-docker exec postgres psql -U postgres -d sono_leve -c "
-  INSERT INTO \"Clientes\" (\"Id\", \"Nome\", \"Telefone\", \"Cpf\", \"Tipo\", \"Status\", \"Credito\", \"CriadoEm\", \"AtualizadoEm\")
-  SELECT gen_random_uuid(), 'CONSUMIDOR FINAL', '', '', 0, 'Ativo', 0, NOW(), NOW()
-  WHERE NOT EXISTS (SELECT 1 FROM \"Clientes\" WHERE \"Nome\" = 'CONSUMIDOR FINAL');
-" >/dev/null
-ok "Cliente 'CONSUMIDOR FINAL' garantido"
+echo "  Aguardando banco de dados ficar pronto..."
+echo -n "  "
+until docker exec postgres psql -U postgres -d sono_leve -c "SELECT 1 FROM \"Clientes\" LIMIT 1" >/dev/null 2>&1; do
+  echo -n "."; sleep 2
+done
+echo " pronto"
+
+echo "  Inserindo catálogo e dados iniciais..."
+SQL_FILE=$(mktemp)
+cat > "${SQL_FILE}" << 'SQLEOF'
+-- Marcas
+INSERT INTO "Marcas" ("Id", "Name", "Active")
+SELECT gen_random_uuid(), v."Name", true
+FROM (VALUES ('Sono Leve'), ('Clelia Anastácio'), ('Thainá Reichen'), ('Ronca&Fuça')) AS v("Name")
+WHERE NOT EXISTS (SELECT 1 FROM "Marcas" WHERE "Name" = v."Name");
+
+-- Categorias
+INSERT INTO "Categorias" ("Id", "Name", "Grade", "Active")
+SELECT gen_random_uuid(), v."Name", v."Grade", true
+FROM (VALUES
+  ('Adulto Feminino',  '["PP","P","M","G","GG","50","52","54","56"]'),
+  ('Adulto Masculino', '["40","42","44","46","48","50","52","54","56"]'),
+  ('Infantil',         '["RN","1","2","3","4","6","8","10","12","14","16"]'),
+  ('Pantufa',          '["35","36","37","38","39","40","41","42","43","44"]')
+) AS v("Name", "Grade")
+WHERE NOT EXISTS (SELECT 1 FROM "Categorias" WHERE "Name" = v."Name");
+
+-- Tipos
+INSERT INTO "Tipos" ("Id", "Name", "Active")
+SELECT gen_random_uuid(), v."Name", true
+FROM (VALUES ('Camisola'), ('Conjunto'), ('Macacão'), ('Pantufa'), ('Pescador')) AS v("Name")
+WHERE NOT EXISTS (SELECT 1 FROM "Tipos" WHERE "Name" = v."Name");
+
+-- Subtipos
+INSERT INTO "Subtipos" ("Id", "Name", "Active")
+SELECT gen_random_uuid(), v."Name", true
+FROM (VALUES ('Alça'), ('Regata'), ('Manga Curta'), ('Manga Longa')) AS v("Name")
+WHERE NOT EXISTS (SELECT 1 FROM "Subtipos" WHERE "Name" = v."Name");
+
+-- Coleções
+INSERT INTO "Colecoes" ("Id", "Name", "DataInicio", "DataFim", "Active")
+SELECT gen_random_uuid(), v."Name", v."DataInicio"::date, v."DataFim"::date, true
+FROM (VALUES
+  ('Inverno 2025', '2025-06-01', '2025-08-31'),
+  ('Outono 2025',  '2025-03-01', '2025-05-31'),
+  ('Verão 2025',   '2024-12-01', '2025-02-28'),
+  ('Básico',       NULL::text,   NULL::text)
+) AS v("Name", "DataInicio", "DataFim")
+WHERE NOT EXISTS (SELECT 1 FROM "Colecoes" WHERE "Name" = v."Name");
+
+-- Formas de pagamento
+INSERT INTO "FormasPagamento" ("Id", "Nome", "Tipo", "PermiteParcelamento", "ExigeBandeira", "Ativo", "CriadoEm", "AtualizadoEm")
+SELECT gen_random_uuid(), v."Nome", v."Tipo", v."Parcel"::bool, v."Exige"::bool, v."Ativo"::bool, NOW(), NOW()
+FROM (VALUES
+  ('Pix',            'Pix',      'false', 'false', 'true'),
+  ('Dinheiro',       'Dinheiro', 'false', 'false', 'true'),
+  ('Cartão Débito',  'Debito',   'false', 'true',  'true'),
+  ('Cartão Crédito', 'Credito',  'true',  'true',  'true'),
+  ('Boleto',         'Boleto',   'false', 'false', 'false')
+) AS v("Nome", "Tipo", "Parcel", "Exige", "Ativo")
+WHERE NOT EXISTS (SELECT 1 FROM "FormasPagamento" WHERE "Nome" = v."Nome");
+
+-- Bandeiras de cartão
+INSERT INTO "BandeirasCartao" ("Id", "Nome", "Ativo", "CriadoEm", "AtualizadoEm")
+SELECT gen_random_uuid(), v."Nome", true, NOW(), NOW()
+FROM (VALUES ('Visa'), ('Mastercard'), ('Elo'), ('Hipercard'), ('American Express')) AS v("Nome")
+WHERE NOT EXISTS (SELECT 1 FROM "BandeirasCartao" WHERE "Nome" = v."Nome");
+
+-- Cliente padrão para varejo sem identificação
+INSERT INTO "Clientes" ("Id", "Nome", "Telefone", "Cpf", "Tipo", "Status", "Credito", "CriadoEm", "AtualizadoEm")
+SELECT gen_random_uuid(), 'CONSUMIDOR FINAL', '', '', 0, 'Ativo', 0, NOW(), NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "Clientes" WHERE "Nome" = 'CONSUMIDOR FINAL');
+SQLEOF
+
+docker exec -i postgres psql -U postgres -d sono_leve < "${SQL_FILE}" >/dev/null
+rm -f "${SQL_FILE}"
+ok "Catálogo e dados iniciais inseridos"
 
 # ─── Agendar backup ───────────────────────────────────────────────────────────
 echo ""

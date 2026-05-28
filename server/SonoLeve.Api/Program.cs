@@ -6,7 +6,6 @@ using SonoLeve.Api.Filters;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Application.Services;
 using SonoLeve.Infra.Data;
-using SonoLeve.Infra.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,13 +80,11 @@ if (!app.Environment.IsDevelopment())
     }));
 }
 
-// Aplicar migrations e seed de desenvolvimento
+// Aplicar migrations pendentes na inicialização
 using (var escopo = app.Services.CreateScope())
 {
     var db = escopo.ServiceProvider.GetRequiredService<SonoLeveDbContext>();
     db.Database.Migrate();
-
-    await DataSeeder.SeedAsync(db);
 }
 
 app.UseRateLimiter();
