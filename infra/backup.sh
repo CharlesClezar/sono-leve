@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 BACKUP_DIR="${HOME}/backups/sono-leve"
 RETENTION_MAX=3
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+TIMESTAMP=$(TZ="America/Sao_Paulo" date +"%Y%m%d_%H%M%S")
 LOG_FILE="${BACKUP_DIR}/backup.log"
 
 # Carregar variáveis do .env
@@ -20,7 +20,7 @@ BACKUP_FILE="${BACKUP_DIR}/sono_leve_${TIMESTAMP}.sql.gz"
 mkdir -p "${BACKUP_DIR}"
 
 log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
+  echo "[$(TZ="America/Sao_Paulo" date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
 }
 
 log "→ Iniciando backup do banco '${POSTGRES_DB}'..."
