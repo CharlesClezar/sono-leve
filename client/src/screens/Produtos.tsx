@@ -16,7 +16,7 @@ import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { usePagination, useServerPagination } from "@/hooks/usePagination";
 import { formatBRL, type Product } from "@/lib/types";
-import { api, useCatalogoProdutos, useProdutosPaginados, type CatalogSlug, type CategoriaCatalogo, type ColecaoCatalogo, type SubtipoCatalogo } from "@/lib/api";
+import { api, useCatalogoProdutos, useProdutosPaginados, type CatalogSlug, type CategoriaCatalogo, type ColecaoCatalogo } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TableSkeleton } from "@/components/TableSkeleton";
@@ -61,41 +61,6 @@ const tooltipsPorAba: Record<AbaProduto, string> = {
   Coleções: "Agrupamento comercial ou sazonal (ex: Verão 2026, Dia das Mães). Não impacta regras operacionais.",
 };
 
-const categoriasFallback: CategoriaCatalogo[] = [
-  { id: "cat-adulto-fem",  name: "Adulto Feminino",  grade: ["PP", "P", "M", "G", "GG", "50", "52", "54", "56"],          products: 0, active: true },
-  { id: "cat-adulto-masc", name: "Adulto Masculino", grade: ["40", "42", "44", "46", "48", "50", "52", "54", "56"],        products: 0, active: true },
-  { id: "cat-infantil",    name: "Infantil",          grade: ["RN", "1", "2", "3", "4", "6", "8", "10", "12", "14", "16"], products: 0, active: true },
-  { id: "cat-pantufa",     name: "Pantufa",           grade: ["35", "36", "37", "38", "39", "40", "41", "42", "43", "44"], products: 0, active: true },
-];
-
-const marcasFallback = [
-  { id: "marca-sono-leve",  name: "Sono Leve",        products: 0, active: true },
-  { id: "marca-clelia",     name: "Clelia Anastácio", products: 0, active: true },
-  { id: "marca-thaina",     name: "Thainá Reichen",   products: 0, active: true },
-  { id: "marca-ronca",      name: "Ronca&Fuça",       products: 0, active: true },
-];
-
-const tiposFallback = [
-  { id: "tipo-camisola",  name: "Camisola",  subtypes: 0, products: 0, active: true },
-  { id: "tipo-conjunto",  name: "Conjunto",  subtypes: 0, products: 0, active: true },
-  { id: "tipo-macacao",   name: "Macacão",   subtypes: 0, products: 0, active: true },
-  { id: "tipo-pantufa",   name: "Pantufa",   subtypes: 0, products: 0, active: true },
-  { id: "tipo-pescador",  name: "Pescador",  subtypes: 0, products: 0, active: true },
-];
-
-const subtipsFallback: SubtipoCatalogo[] = [
-  { id: "sub-alca",        name: "Alça",        products: 0, active: true },
-  { id: "sub-regata",      name: "Regata",      products: 0, active: true },
-  { id: "sub-manga-curta", name: "Manga Curta", products: 0, active: true },
-  { id: "sub-manga-longa", name: "Manga Longa", products: 0, active: true },
-];
-
-const colecoesFallback: ColecaoCatalogo[] = [
-  { id: "col-verao-2026", name: "Verão 2026",    products: 0, active: true },
-  { id: "col-inverno",    name: "Inverno 2026",  products: 0, active: true },
-  { id: "col-basica",     name: "Linha Básica",  products: 0, active: true },
-];
-
 const abaParaTipo: Partial<Record<AbaProduto, CatalogSlug>> = {
   Categorias: "categorias",
   Marcas: "marcas",
@@ -120,11 +85,7 @@ export default function Produtos() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { data: catalogo = { categorias: [], marcas: [], tipos: [], subtipos: [], colecoes: [] }, isLoading: carregandoCatalogo } = useCatalogoProdutos();
-  const categorias = catalogo.categorias.length > 0 ? catalogo.categorias : categoriasFallback;
-  const marcas = catalogo.marcas.length > 0 ? catalogo.marcas : marcasFallback;
-  const tipos = catalogo.tipos.length > 0 ? catalogo.tipos : tiposFallback;
-  const subtipos = catalogo.subtipos.length > 0 ? catalogo.subtipos : subtipsFallback;
-  const colecoes = catalogo.colecoes.length > 0 ? catalogo.colecoes : colecoesFallback;
+  const { categorias, marcas, tipos, subtipos, colecoes } = catalogo;
   const [aba, setAba] = useState<AbaProduto>(() => {
     const tab = searchParams.get("tab");
     return (tab && (abas as readonly string[]).includes(tab)) ? tab as AbaProduto : "Produtos";
@@ -336,8 +297,10 @@ export default function Produtos() {
                 <tbody className="divide-y">
                   {carregandoCatalogo ? (
                     <TableSkeleton cols={4} />
+                  ) : paginacaoCategoria.items.length === 0 ? (
+                    <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma categoria cadastrada</td></tr>
                   ) : paginacaoCategoria.items.map((item) => (
-                    <tr key={item.name} className="hover:bg-muted/30">
+                    <tr key={item.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">{item.name}</td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{item.grade.join(", ")}</td>
                       <td className="px-4 py-3 text-center">{item.products}</td>
@@ -361,8 +324,10 @@ export default function Produtos() {
                       <div className="flex gap-2">{Array.from({ length: 4 }).map((_, j) => <Skeleton key={j} className="h-7 w-14 rounded-md" />)}</div>
                     </div>
                   ))
+                ) : categorias.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma categoria cadastrada.</p>
                 ) : categorias.map((item) => (
-                  <div key={item.name} className="rounded-md border p-4">
+                  <div key={item.id} className="rounded-md border p-4">
                     <div className="mb-3 font-medium">{item.name}</div>
                     <div className="flex flex-wrap gap-2">
                       {item.grade.map((tamanho, index) => (
@@ -462,8 +427,10 @@ function TabelaCatalogoSimples({
         <tbody className="divide-y">
           {carregando ? (
             <TableSkeleton cols={3} />
+          ) : paginacao.items.length === 0 ? (
+            <tr><td colSpan={3} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro cadastrado</td></tr>
           ) : paginacao.items.map((item) => (
-            <tr key={String(item.name)} className="hover:bg-muted/30">
+            <tr key={item.id ?? item.name} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-medium">{item.name}</td>
               <td className={`px-4 py-3 text-muted-foreground ${chaveMeio === "products" || chaveMeio === "subtypes" ? "text-center" : ""}`}>
                 {item[chaveMeio as keyof ItemCatalogo] as string}
@@ -507,8 +474,10 @@ function TabelaColecoes({ linhas, sinalLimparFiltros, aba, onExcluir, carregando
         <tbody className="divide-y">
           {carregando ? (
             <TableSkeleton cols={4} />
+          ) : paginacao.items.length === 0 ? (
+            <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma coleção cadastrada</td></tr>
           ) : paginacao.items.map((item) => (
-            <tr key={item.name} className="hover:bg-muted/30">
+            <tr key={item.id} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-medium">{item.name}</td>
               <td className="px-4 py-3 text-muted-foreground">{formatarDataColecao(item.dataInicio, item.dataFim)}</td>
               <td className="px-4 py-3 text-center">{item.products}</td>

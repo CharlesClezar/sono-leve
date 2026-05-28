@@ -87,8 +87,7 @@ using (var escopo = app.Services.CreateScope())
     var db = escopo.ServiceProvider.GetRequiredService<SonoLeveDbContext>();
     db.Database.Migrate();
 
-    if (app.Environment.IsDevelopment())
-        await DataSeeder.SeedAsync(db);
+    await DataSeeder.SeedAsync(db);
 }
 
 app.UseRateLimiter();
