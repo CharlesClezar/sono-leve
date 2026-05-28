@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { api, useCatalogoProdutos, useProdutoPorId, useProdutos } from "@/lib/api";
 import { BASE_URL } from "@/lib/http";
+import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Camera, X } from "lucide-react";
 import { toast } from "sonner";
@@ -290,11 +291,7 @@ export default function NovoProduto() {
             >
               {imagemUrl ? (
                 <>
-                  <img
-                    src={imagemUrl.startsWith("blob:") ? imagemUrl : `${BASE_URL}${imagemUrl}`}
-                    alt="Imagem do produto"
-                    className="h-full w-full object-cover"
-                  />
+                  <ProdutoImagem imagemUrl={imagemUrl} alt="Imagem do produto" className="h-full w-full object-cover" />
                   {uploadando && (
                     <div className="absolute inset-0 flex items-center justify-center bg-background/70">
                       <span className="text-sm text-muted-foreground">Enviando...</span>

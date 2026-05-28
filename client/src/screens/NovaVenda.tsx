@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { formatBRL, type Customer, type ItemVenda, type Product, type Sale } from "@/lib/types";
 import { api, useBandeirasCartao, useBuscarClientes, useBuscarProdutos, useClientePorId, useConfiguracoesTaxaCartao, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
-import { BASE_URL } from "@/lib/http";
+import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search, X, UserPlus, CreditCard } from "lucide-react";
 import { toast } from "sonner";
@@ -466,11 +466,7 @@ export default function NovaVenda() {
                           onClick={() => adicionarProduto(p)}
                           className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted ${indiceProduto === idx ? "bg-muted" : ""}`}
                         >
-                          {p.imagemUrl ? (
-                            <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-12 w-12 shrink-0 rounded object-cover" />
-                          ) : (
-                            <div className="h-12 w-12 shrink-0 rounded bg-muted" />
-                          )}
+                          <ProdutoImagem imagemUrl={p.imagemUrl} className="h-12 w-12 shrink-0 rounded object-cover" />
                           <span className="min-w-0 flex-1">{p.nome} <span className="text-xs text-muted-foreground">({p.ref})</span></span>
                           <span className="shrink-0 text-xs font-semibold">
                             {formatBRL(tipoCliente === "atacado" ? p.precoAtacado : p.precoVarejo)}
@@ -505,11 +501,7 @@ export default function NovaVenda() {
                     return (
                       <div key={pid} className="rounded-md border overflow-hidden flex">
                         {/* Imagem — ocupa toda a altura do card */}
-                        {p.imagemUrl ? (
-                          <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="w-20 shrink-0 self-stretch object-cover" />
-                        ) : (
-                          <div className="w-20 shrink-0 self-stretch bg-muted" />
-                        )}
+                        <ProdutoImagem imagemUrl={p.imagemUrl} className="w-20 shrink-0 self-stretch object-cover" />
 
                         {/* Conteúdo */}
                         <div className="flex-1 min-w-0 p-3 flex flex-col gap-2.5">

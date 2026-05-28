@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { formatBRL } from "@/lib/types";
 import { api, useClientes, useBuscarProdutos, useFichaPorId } from "@/lib/api";
 import type { Product } from "@/lib/types";
-import { BASE_URL } from "@/lib/http";
+import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
@@ -126,11 +126,7 @@ export default function NovaFicha() {
                 {produtoSelecionado ? (
                   <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
                     <div className="flex items-center gap-3">
-                      {produtoSelecionado.imagemUrl ? (
-                        <img src={`${BASE_URL}${produtoSelecionado.imagemUrl}`} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 shrink-0 rounded bg-muted" />
-                      )}
+                      <ProdutoImagem imagemUrl={produtoSelecionado.imagemUrl} className="h-10 w-10 shrink-0 rounded object-cover" />
                       <div>
                         <div className="font-medium">{produtoSelecionado.nome}</div>
                         <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
@@ -155,11 +151,7 @@ export default function NovaFicha() {
                             onClick={() => { setProdutoSelecionado(p); setBuscaProduto(""); }}
                             className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
                           >
-                            {p.imagemUrl ? (
-                              <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
-                            ) : (
-                              <div className="h-8 w-8 shrink-0 rounded bg-muted" />
-                            )}
+                            <ProdutoImagem imagemUrl={p.imagemUrl} className="h-8 w-8 shrink-0 rounded object-cover" />
                             <span className="flex-1 min-w-0">{p.nome} <span className="text-xs text-muted-foreground">({p.ref})</span></span>
                             <span className="shrink-0 text-xs font-semibold">{formatBRL(p.precoVarejo)}</span>
                           </button>

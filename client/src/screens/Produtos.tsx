@@ -17,7 +17,7 @@ import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { usePagination, useServerPagination } from "@/hooks/usePagination";
 import { formatBRL, type Product } from "@/lib/types";
 import { api, useCatalogoProdutos, useProdutosPaginados, type CatalogSlug, type CategoriaCatalogo, type ColecaoCatalogo } from "@/lib/api";
-import { BASE_URL } from "@/lib/http";
+import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TableSkeleton } from "@/components/TableSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -253,11 +253,7 @@ export default function Produtos() {
                   ) : paginacaoProdutos.items.map((p) => (
                     <tr key={p.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3">
-                        {p.imagemUrl ? (
-                          <img src={`${BASE_URL}${p.imagemUrl}`} alt="" className="h-10 w-10 rounded object-cover" />
-                        ) : (
-                          <div className="h-10 w-10 rounded bg-muted" />
-                        )}
+                        <ProdutoImagem imagemUrl={p.imagemUrl} className="h-10 w-10 rounded object-cover" />
                       </td>
                       <td className="px-4 py-3 font-medium">{p.nome}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.ref}</td>
