@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "${SCRIPT_DIR}"
+PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+cd "${PROJECT_DIR}"
 
 # ─── Cores ────────────────────────────────────────────────────────────────────
 G='\033[0;32m'; Y='\033[1;33m'; C='\033[0;36m'; R='\033[0;31m'; N='\033[0m'
@@ -28,7 +29,7 @@ if [ -f .env ]; then
   echo -e "${Y}  ⚠ Arquivo .env já existe.${N}"
   read -rp "  Sobrescrever e reconfigurar tudo? (s/N): " RESET
   if [[ ! "${RESET}" =~ ^[Ss]$ ]]; then
-    echo "  Abortado. Para atualizar o deploy, use: ./scripts/update.sh"
+    echo "  Abortado. Para atualizar o deploy, use: scripts/update.sh"
     exit 0
   fi
 fi
@@ -114,64 +115,29 @@ EOF
 
 ok ".env criado"
 
-# ─── Rede Docker ──────────────────────────────────────────────────────────────
-echo ""
-echo "  Configurando rede Docker..."
-if docker network inspect infra >/dev/null 2>&1; then
-  ok "Rede 'infra' já existe"
-else
-  docker network create infra >/dev/null
-  ok "Rede 'infra' criada"
-fi
-
-# ─── PostgreSQL ───────────────────────────────────────────────────────────────
-echo ""
-echo "  Iniciando PostgreSQL..."
-if docker ps --filter "name=^postgres$" --filter "status=running" --format "{{.Names}}" | grep -q "^postgres$"; then
-  ok "PostgreSQL já está rodando"
-else
-  docker compose -f docker-compose.yml --env-file .env up -d >/dev/null 2>&1
-  echo -n "  aguardando ficar saudável"
-  until docker exec postgres pg_isready -U postgres >/dev/null 2>&1; do
-    echo -n "."; sleep 2
-  done
-  echo ""
-  ok "PostgreSQL iniciado"
-fi
-
-# ─── Banco sono_leve ──────────────────────────────────────────────────────────
-echo ""
-echo "  Criando banco de dados..."
-if docker exec postgres psql -U postgres -lqt | cut -d'|' -f1 | grep -qw "sono_leve"; then
-  ok "Banco 'sono_leve' já existe"
-else
-  docker exec postgres psql -U postgres -c "CREATE DATABASE sono_leve;" >/dev/null
-  ok "Banco 'sono_leve' criado"
-fi
-
 # ─── Primeiro deploy ──────────────────────────────────────────────────────────
 echo ""
 echo "  Fazendo primeiro deploy (isso leva alguns minutos)..."
 echo ""
-./scripts/update.sh
+"${SCRIPT_DIR}/update.sh"
 
 # ─── Dados iniciais ───────────────────────────────────────────────────────────
 echo ""
 echo "  Aguardando banco de dados ficar pronto..."
 echo -n "  "
-until docker exec postgres psql -U postgres -d sono_leve -c "SELECT 1 FROM \"Clientes\" LIMIT 1" >/dev/null 2>&1; do
+until docker exec sono-leve-postgres psql -U postgres -d sono_leve -c "SELECT 1 FROM \"Clientes\" LIMIT 1" >/dev/null 2>&1; do
   echo -n "."; sleep 2
 done
 echo " pronto"
 
 echo "  Inserindo catálogo e dados iniciais..."
-docker exec -i postgres psql -U postgres -d sono_leve < "${SCRIPT_DIR}/scripts/sql/seed.sql" >/dev/null
+docker exec -i sono-leve-postgres psql -U postgres -d sono_leve < "${SCRIPT_DIR}/sql/seed.sql" >/dev/null
 ok "Catálogo e dados iniciais inseridos"
 
 # ─── Agendar backup ───────────────────────────────────────────────────────────
 echo ""
 echo "  Agendando backup diário às ${BACKUP_HORA}h..."
-CRON_JOB="0 ${BACKUP_HORA} * * * ${SCRIPT_DIR}/scripts/backup.sh"
+CRON_JOB="0 ${BACKUP_HORA} * * * ${SCRIPT_DIR}/backup.sh"
 ( crontab -l 2>/dev/null | grep -v "sono-leve.*backup.sh" || true; echo "${CRON_JOB}" ) | crontab -
 ok "Backup agendado (logs em ~/backups/sono-leve/backup.log)"
 
@@ -184,5 +150,5 @@ echo ""
 echo -e "  Acesse: ${G}${CORS_ORIGENS}${N}"
 echo ""
 echo "  Backup:   diário às ${BACKUP_HORA}h  →  ~/backups/sono-leve/"
-echo "  Deploy:   ./scripts/update.sh"
+echo "  Deploy:   scripts/update.sh"
 echo ""

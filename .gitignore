@@ -1,15 +1,22 @@
+# Node / Next.js
 client/node_modules/
 client/.next/
 client/tsconfig.tsbuildinfo
 
-server/bin/
-server/obj/
+# .NET
 server/**/bin/
 server/**/obj/
 
+# Variáveis de ambiente
 .env
 .env.local
-.idea/
-server/obj/
 
+# Dados de produção (imagens de produtos)
+data/
+
+# IDEs
+.idea/
+.vscode/
+
+# macOS
 .DS_Store

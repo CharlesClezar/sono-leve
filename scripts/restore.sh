@@ -43,7 +43,7 @@ fi
 echo ""
 read -rsp "  Senha do PostgreSQL: " SENHA_DIGITADA; echo ""
 
-if ! docker exec -e PGPASSWORD="${SENHA_DIGITADA}" postgres \
+if ! docker exec -e PGPASSWORD="${SENHA_DIGITADA}" sono-leve-postgres\
     psql -U postgres -c '\q' >/dev/null 2>&1; then
   echo -e "${R}❌ Senha incorreta.${N}"
   exit 1
@@ -56,20 +56,20 @@ echo ""
 echo "  Restaurando..."
 
 # Terminar conexões ativas no banco
-docker exec -e PGPASSWORD="${SENHA_DIGITADA}" postgres \
+docker exec -e PGPASSWORD="${SENHA_DIGITADA}" sono-leve-postgres\
   psql -U postgres -c \
   "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'sono_leve' AND pid <> pg_backend_pid();" \
   >/dev/null 2>&1 || true
 
 # Recriar banco limpo
-docker exec -e PGPASSWORD="${SENHA_DIGITADA}" postgres \
+docker exec -e PGPASSWORD="${SENHA_DIGITADA}" sono-leve-postgres\
   psql -U postgres -c "DROP DATABASE IF EXISTS sono_leve;" >/dev/null
-docker exec -e PGPASSWORD="${SENHA_DIGITADA}" postgres \
+docker exec -e PGPASSWORD="${SENHA_DIGITADA}" sono-leve-postgres\
   psql -U postgres -c "CREATE DATABASE sono_leve;" >/dev/null
 
 # Restaurar dump
 gunzip -c "${ULTIMO_BACKUP}" | \
-  docker exec -i -e PGPASSWORD="${SENHA_DIGITADA}" postgres \
+  docker exec -i -e PGPASSWORD="${SENHA_DIGITADA}" sono-leve-postgres \
   psql -U postgres sono_leve >/dev/null
 
 echo -e "${G}  ✓ Banco restaurado com sucesso${N}"

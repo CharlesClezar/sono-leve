@@ -5,10 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 cd "${PROJECT_DIR}"
 
-G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; N='\033[0m'
+G='\033[0;32m'; Y='\033[1;33m'; N='\033[0m'
 ok()  { echo -e "${G}  ✓ $1${N}"; }
 warn(){ echo -e "${Y}  ⚠ $1${N}"; }
-err() { echo -e "${R}  ❌ $1${N}"; }
 
 echo "╔══════════════════════════════════════════════╗"
 echo "║       Sono Leve — Desinstalação              ║"
@@ -25,28 +24,14 @@ fi
 
 echo ""
 
-# ─── Parar e remover containers da aplicação ──────────────────────────────────
-echo "  Parando containers da aplicação..."
+# ─── Parar e remover todos os containers + volume postgres ────────────────────
+echo "  Parando e removendo containers e volumes..."
 if [ -f .env ]; then
-  docker compose -f docker-compose.prod.yml --env-file .env down --remove-orphans 2>/dev/null || true
-  ok "Containers da aplicação removidos"
+  docker compose -f docker-compose.prod.yml --env-file .env down -v --remove-orphans 2>/dev/null || true
 else
-  warn ".env não encontrado, pulando containers da aplicação"
+  docker compose -f docker-compose.prod.yml down -v --remove-orphans 2>/dev/null || true
 fi
-
-# ─── Parar e remover PostgreSQL + volume ──────────────────────────────────────
-echo "  Parando PostgreSQL e removendo volume..."
-docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
-docker compose -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
-# Fallback: remove direto por nome/padrão para garantir limpeza total
-docker ps -a --format "{{.Names}}" | grep -E "^(postgres|sono-leve-db)" | xargs -r docker stop 2>/dev/null || true
-docker ps -a --format "{{.Names}}" | grep -E "^(postgres|sono-leve-db)" | xargs -r docker rm   2>/dev/null || true
-docker volume ls --format "{{.Name}}" | grep -E "postgres" | xargs -r docker volume rm 2>/dev/null || true
-ok "PostgreSQL e volume removidos"
-
-# ─── Remover rede Docker ──────────────────────────────────────────────────────
-echo "  Removendo rede Docker 'infra'..."
-docker network rm infra 2>/dev/null && ok "Rede 'infra' removida" || warn "Rede 'infra' não encontrada ou em uso por outro serviço"
+ok "Containers e volumes removidos"
 
 # ─── Remover imagens Docker ───────────────────────────────────────────────────
 echo "  Removendo imagens Docker da aplicação..."
@@ -54,7 +39,7 @@ docker rmi sono-leve-api sono-leve-frontend 2>/dev/null && ok "Imagens removidas
 docker image prune -f >/dev/null 2>&1 || true
 
 # ─── Remover dados de imagens de produtos ─────────────────────────────────────
-echo "  Removendo dados de imagens de produtos..."
+echo "  Removendo dados locais..."
 if [ -d "${PROJECT_DIR}/data" ]; then
   rm -rf "${PROJECT_DIR}/data"
   ok "Diretório data/ removido"
@@ -63,12 +48,9 @@ else
 fi
 
 # ─── Remover .env ─────────────────────────────────────────────────────────────
-echo "  Removendo .env..."
 if [ -f "${PROJECT_DIR}/.env" ]; then
   rm -f "${PROJECT_DIR}/.env"
   ok ".env removido"
-else
-  warn ".env não encontrado"
 fi
 
 # ─── Remover cron de backup ───────────────────────────────────────────────────
@@ -83,5 +65,5 @@ echo "║          ✅  Desinstalação concluída!        ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 warn "Backups preservados em: ~/backups/sono-leve/"
-echo "  Para reinstalar: ./install.sh"
+echo "  Para reinstalar: ./scripts/install.sh"
 echo ""
