@@ -37,6 +37,11 @@ fi
 # ─── Parar e remover PostgreSQL + volume ──────────────────────────────────────
 echo "  Parando PostgreSQL e removendo volume..."
 docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
+docker compose -f docker-compose.dev.yml down -v --remove-orphans 2>/dev/null || true
+# Fallback: remove direto por nome/padrão para garantir limpeza total
+docker ps -a --format "{{.Names}}" | grep -E "^(postgres|sono-leve-db)" | xargs -r docker stop 2>/dev/null || true
+docker ps -a --format "{{.Names}}" | grep -E "^(postgres|sono-leve-db)" | xargs -r docker rm   2>/dev/null || true
+docker volume ls --format "{{.Name}}" | grep -E "postgres" | xargs -r docker volume rm 2>/dev/null || true
 ok "PostgreSQL e volume removidos"
 
 # ─── Remover rede Docker ──────────────────────────────────────────────────────
