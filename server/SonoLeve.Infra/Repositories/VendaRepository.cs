@@ -44,8 +44,8 @@ public class VendaRepository : IVendaRepository
         {
             var inicio = periodo switch
             {
-                PeriodoHoje  => (DateTime?)DateTime.UtcNow.Date,
-                Periodo7Dias => DateTime.UtcNow.AddDays(-7),
+                PeriodoHoje   => (DateTime?)DateTime.UtcNow.Date,
+                Periodo7Dias  => DateTime.UtcNow.AddDays(-7),
                 Periodo30Dias => DateTime.UtcNow.AddDays(-30),
                 _             => null
             };
@@ -66,19 +66,17 @@ public class VendaRepository : IVendaRepository
         await _db.Vendas.Include(v => v.Cliente).Include(v => v.FormaPagamento)
             .FirstOrDefaultAsync(v => v.Id == id) ?? throw new KeyNotFoundException("Venda não encontrada.");
 
-    public async Task<Venda> CriarAsync(Venda venda)
+    public Task<Venda> CriarAsync(Venda venda)
     {
         _db.Vendas.Add(venda);
-        await _db.SaveChangesAsync();
-        return venda;
+        return Task.FromResult(venda);
     }
 
-    public async Task<Venda> AtualizarAsync(Venda venda)
+    public Task<Venda> AtualizarAsync(Venda venda)
     {
         venda.AtualizadoEm = DateTime.UtcNow;
         _db.Vendas.Update(venda);
-        await _db.SaveChangesAsync();
-        return venda;
+        return Task.FromResult(venda);
     }
 
     public async Task<IEnumerable<ItemVenda>> ObterItensAsync(Guid vendaId) =>
@@ -93,6 +91,5 @@ public class VendaRepository : IVendaRepository
             item.VendaId = vendaId;
             _db.ItensVenda.Add(item);
         }
-        await _db.SaveChangesAsync();
     }
 }

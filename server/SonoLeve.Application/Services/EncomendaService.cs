@@ -6,7 +6,13 @@ namespace SonoLeve.Application.Services;
 public class EncomendaService : IEncomendaService
 {
     private readonly IEncomendaRepository _repo;
-    public EncomendaService(IEncomendaRepository repo) => _repo = repo;
+    private readonly IUnitOfWork _uow;
+
+    public EncomendaService(IEncomendaRepository repo, IUnitOfWork uow)
+    {
+        _repo = repo;
+        _uow = uow;
+    }
 
     public Task<(IEnumerable<Encomenda> items, int total)> ListarAsync(
         string? search, string? status, int pagina, int tamanhoPagina) =>
@@ -20,6 +26,7 @@ public class EncomendaService : IEncomendaService
         var criado = await _repo.CriarAsync(encomenda);
         if (listaItens != null)
             await _repo.SalvarItensAsync(criado.Id, listaItens);
+        await _uow.CommitAsync();
         return criado;
     }
 
@@ -29,6 +36,7 @@ public class EncomendaService : IEncomendaService
         var atualizado = await _repo.AtualizarAsync(encomenda);
         if (listaItens != null)
             await _repo.SalvarItensAsync(atualizado.Id, listaItens);
+        await _uow.CommitAsync();
         return atualizado;
     }
 

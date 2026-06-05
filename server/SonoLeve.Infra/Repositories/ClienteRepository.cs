@@ -53,20 +53,18 @@ public class ClienteRepository : IClienteRepository
     public Task<Cliente?> ObterPorIdAsync(Guid id)
         => _db.Clientes.FindAsync(id).AsTask();
 
-    public async Task<Cliente> CriarAsync(Cliente cliente)
+    public Task<Cliente> CriarAsync(Cliente cliente)
     {
         cliente.CriadoEm = DateTime.UtcNow;
         cliente.AtualizadoEm = DateTime.UtcNow;
         _db.Clientes.Add(cliente);
-        await _db.SaveChangesAsync();
-        return cliente;
+        return Task.FromResult(cliente);
     }
 
-    public async Task<Cliente> AtualizarAsync(Cliente cliente)
+    public Task<Cliente> AtualizarAsync(Cliente cliente)
     {
         cliente.AtualizadoEm = DateTime.UtcNow;
         _db.Clientes.Update(cliente);
-        await _db.SaveChangesAsync();
-        return cliente;
+        return Task.FromResult(cliente);
     }
 }

@@ -44,19 +44,17 @@ public class EncomendaRepository : IEncomendaRepository
         await _db.Encomendas.Include(e => e.Cliente)
             .FirstOrDefaultAsync(e => e.Id == id) ?? throw new KeyNotFoundException("Encomenda não encontrada.");
 
-    public async Task<Encomenda> CriarAsync(Encomenda encomenda)
+    public Task<Encomenda> CriarAsync(Encomenda encomenda)
     {
         _db.Encomendas.Add(encomenda);
-        await _db.SaveChangesAsync();
-        return encomenda;
+        return Task.FromResult(encomenda);
     }
 
-    public async Task<Encomenda> AtualizarAsync(Encomenda encomenda)
+    public Task<Encomenda> AtualizarAsync(Encomenda encomenda)
     {
         encomenda.AtualizadoEm = DateTime.UtcNow;
         _db.Encomendas.Update(encomenda);
-        await _db.SaveChangesAsync();
-        return encomenda;
+        return Task.FromResult(encomenda);
     }
 
     public async Task<IEnumerable<ItemEncomenda>> ObterItensAsync(Guid encomendaId) =>
@@ -71,7 +69,6 @@ public class EncomendaRepository : IEncomendaRepository
             item.EncomendaId = encomendaId;
             _db.ItensEncomenda.Add(item);
         }
-        await _db.SaveChangesAsync();
     }
 
     private static StatusEncomenda? ParseStatus(string s) => s switch

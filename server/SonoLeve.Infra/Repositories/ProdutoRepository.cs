@@ -47,18 +47,16 @@ public class ProdutoRepository : IProdutoRepository
     public async Task<Produto> ObterPorIdAsync(Guid id) =>
         await ComIncludes().FirstOrDefaultAsync(p => p.Id == id) ?? throw new KeyNotFoundException("Produto não encontrado.");
 
-    public async Task<Produto> CriarAsync(Produto produto)
+    public Task<Produto> CriarAsync(Produto produto)
     {
         _db.Produtos.Add(produto);
-        await _db.SaveChangesAsync();
-        return produto;
+        return Task.FromResult(produto);
     }
 
-    public async Task<Produto> AtualizarAsync(Produto produto)
+    public Task<Produto> AtualizarAsync(Produto produto)
     {
         produto.AtualizadoEm = DateTime.UtcNow;
         _db.Produtos.Update(produto);
-        await _db.SaveChangesAsync();
-        return produto;
+        return Task.FromResult(produto);
     }
 }

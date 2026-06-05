@@ -26,35 +26,28 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
             .Include(c => c.Parcelas.OrderBy(p => p.NumeroParcelas))
             .FirstOrDefaultAsync(c => c.Id == id);
 
-    public async Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config)
+    public Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config)
     {
         _db.ConfiguracoesTaxaCartao.Add(config);
-        await _db.SaveChangesAsync();
-        return await ObterPorIdAsync(config.Id) ?? config;
+        return Task.FromResult(config);
     }
 
     public async Task<ConfiguracaoTaxaCartao> AtualizarAsync(ConfiguracaoTaxaCartao config)
     {
         config.AtualizadoEm = DateTime.UtcNow;
 
-        // Substituir parcelas: remover antigas e adicionar novas
         var parcelasExistentes = await _db.ConfiguracoesTaxaCartaoParcelas
             .Where(p => p.ConfiguracaoTaxaCartaoId == config.Id)
             .ToListAsync();
         _db.ConfiguracoesTaxaCartaoParcelas.RemoveRange(parcelasExistentes);
-
         _db.ConfiguracoesTaxaCartao.Update(config);
-        await _db.SaveChangesAsync();
-        return await ObterPorIdAsync(config.Id) ?? config;
+        return config;
     }
 
     public async Task ExcluirAsync(Guid id)
     {
         var config = await _db.ConfiguracoesTaxaCartao.FindAsync(id);
         if (config != null)
-        {
             _db.ConfiguracoesTaxaCartao.Remove(config);
-            await _db.SaveChangesAsync();
-        }
     }
 }

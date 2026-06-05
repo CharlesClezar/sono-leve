@@ -6,10 +6,12 @@ namespace SonoLeve.Application.Services;
 public class ClienteService : IClienteService
 {
     private readonly IClienteRepository _clienteRepository;
+    private readonly IUnitOfWork _uow;
 
-    public ClienteService(IClienteRepository clienteRepository)
+    public ClienteService(IClienteRepository clienteRepository, IUnitOfWork uow)
     {
         _clienteRepository = clienteRepository;
+        _uow = uow;
     }
 
     public Task<(IEnumerable<Cliente> items, int total)> ListarAsync(
@@ -20,9 +22,17 @@ public class ClienteService : IClienteService
         => await _clienteRepository.ObterPorIdAsync(id)
             ?? throw new KeyNotFoundException("Cliente não encontrado.");
 
-    public Task<Cliente> CriarAsync(Cliente cliente)
-        => _clienteRepository.CriarAsync(cliente);
+    public async Task<Cliente> CriarAsync(Cliente cliente)
+    {
+        var result = await _clienteRepository.CriarAsync(cliente);
+        await _uow.CommitAsync();
+        return result;
+    }
 
-    public Task<Cliente> AtualizarAsync(Cliente cliente)
-        => _clienteRepository.AtualizarAsync(cliente);
+    public async Task<Cliente> AtualizarAsync(Cliente cliente)
+    {
+        var result = await _clienteRepository.AtualizarAsync(cliente);
+        await _uow.CommitAsync();
+        return result;
+    }
 }

@@ -16,28 +16,23 @@ public class FormaPagamentoRepository : IFormaPagamentoRepository
     public async Task<FormaPagamento?> ObterPorIdAsync(Guid id) =>
         await _db.FormasPagamento.FindAsync(id);
 
-    public async Task<FormaPagamento> CriarAsync(FormaPagamento forma)
+    public Task<FormaPagamento> CriarAsync(FormaPagamento forma)
     {
         _db.FormasPagamento.Add(forma);
-        await _db.SaveChangesAsync();
-        return forma;
+        return Task.FromResult(forma);
     }
 
-    public async Task<FormaPagamento> AtualizarAsync(FormaPagamento forma)
+    public Task<FormaPagamento> AtualizarAsync(FormaPagamento forma)
     {
         forma.AtualizadoEm = DateTime.UtcNow;
         _db.FormasPagamento.Update(forma);
-        await _db.SaveChangesAsync();
-        return forma;
+        return Task.FromResult(forma);
     }
 
     public async Task ExcluirAsync(Guid id)
     {
         var forma = await _db.FormasPagamento.FindAsync(id);
         if (forma != null)
-        {
             _db.FormasPagamento.Remove(forma);
-            await _db.SaveChangesAsync();
-        }
     }
 }

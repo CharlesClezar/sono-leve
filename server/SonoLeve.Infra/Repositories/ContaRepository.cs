@@ -41,18 +41,16 @@ public class ContaRepository : IContaRepository
         await _db.Contas.AsNoTracking().Include(c => c.Cliente)
             .FirstOrDefaultAsync(c => c.VendaId == vendaId);
 
-    public async Task<Conta> CriarAsync(Conta conta)
+    public Task<Conta> CriarAsync(Conta conta)
     {
         _db.Contas.Add(conta);
-        await _db.SaveChangesAsync();
-        return conta;
+        return Task.FromResult(conta);
     }
 
-    public async Task<Conta> AtualizarAsync(Conta conta)
+    public Task<Conta> AtualizarAsync(Conta conta)
     {
         conta.AtualizadoEm = DateTime.UtcNow;
         _db.Contas.Update(conta);
-        await _db.SaveChangesAsync();
-        return conta;
+        return Task.FromResult(conta);
     }
 }

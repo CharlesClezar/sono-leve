@@ -20,6 +20,7 @@ builder.Services.AddControllers(opcoes =>
 // EF Core + PostgreSQL
 builder.Services.AddDbContext<SonoLeveDbContext>(opcoes =>
     opcoes.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SonoLeveDbContext>());
 
 // CORS
 var origensPermitidas = builder.Configuration["Cors:Origens"]?.Split(",")

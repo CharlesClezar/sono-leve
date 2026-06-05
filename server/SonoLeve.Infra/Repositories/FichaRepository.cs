@@ -47,18 +47,16 @@ public class FichaRepository : IFichaRepository
         await _db.Fichas.Include(f => f.Cliente)
             .FirstOrDefaultAsync(f => f.Id == id) ?? throw new KeyNotFoundException("Ficha não encontrada.");
 
-    public async Task<Ficha> CriarAsync(Ficha ficha)
+    public Task<Ficha> CriarAsync(Ficha ficha)
     {
         _db.Fichas.Add(ficha);
-        await _db.SaveChangesAsync();
-        return ficha;
+        return Task.FromResult(ficha);
     }
 
-    public async Task<Ficha> AtualizarAsync(Ficha ficha)
+    public Task<Ficha> AtualizarAsync(Ficha ficha)
     {
         ficha.AtualizadoEm = DateTime.UtcNow;
         _db.Fichas.Update(ficha);
-        await _db.SaveChangesAsync();
-        return ficha;
+        return Task.FromResult(ficha);
     }
 }

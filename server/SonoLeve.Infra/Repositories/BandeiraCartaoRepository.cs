@@ -16,28 +16,23 @@ public class BandeiraCartaoRepository : IBandeiraCartaoRepository
     public async Task<BandeiraCartao?> ObterPorIdAsync(Guid id) =>
         await _db.BandeirasCartao.FindAsync(id);
 
-    public async Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira)
+    public Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira)
     {
         _db.BandeirasCartao.Add(bandeira);
-        await _db.SaveChangesAsync();
-        return bandeira;
+        return Task.FromResult(bandeira);
     }
 
-    public async Task<BandeiraCartao> AtualizarAsync(BandeiraCartao bandeira)
+    public Task<BandeiraCartao> AtualizarAsync(BandeiraCartao bandeira)
     {
         bandeira.AtualizadoEm = DateTime.UtcNow;
         _db.BandeirasCartao.Update(bandeira);
-        await _db.SaveChangesAsync();
-        return bandeira;
+        return Task.FromResult(bandeira);
     }
 
     public async Task ExcluirAsync(Guid id)
     {
         var bandeira = await _db.BandeirasCartao.FindAsync(id);
         if (bandeira != null)
-        {
             _db.BandeirasCartao.Remove(bandeira);
-            await _db.SaveChangesAsync();
-        }
     }
 }

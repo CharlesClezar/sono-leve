@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using SonoLeve.Application.Interfaces;
 using SonoLeve.Domain.Entities;
 using System.Diagnostics;
 using System.Text.Json;
 
 namespace SonoLeve.Infra.Data;
 
-public class SonoLeveDbContext : DbContext
+public class SonoLeveDbContext : DbContext, IUnitOfWork
 {
     private readonly IHttpContextAccessor? _httpContextAccessor;
 
@@ -40,12 +41,15 @@ public class SonoLeveDbContext : DbContext
     public DbSet<ConfiguracaoTaxaCartaoParcela> ConfiguracoesTaxaCartaoParcelas => Set<ConfiguracaoTaxaCartaoParcela>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public Task CommitAsync(CancellationToken ct = default) => SaveChangesAsync(ct);
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var stackTrace = CapturarStackTrace();
         var pendentes = ColetarPendentes();
         var resultado = await base.SaveChangesAsync(cancellationToken);
         if (pendentes.Count > 0)
-            await GravarAuditLogsAsync(pendentes, cancellationToken);
+            await GravarAuditLogsAsync(pendentes, stackTrace, cancellationToken);
         return resultado;
     }
 
@@ -89,13 +93,11 @@ public class SonoLeveDbContext : DbContext
             .ToList();
     }
 
-    private async Task GravarAuditLogsAsync(List<EntradaAudit> pendentes, CancellationToken ct)
+    private async Task GravarAuditLogsAsync(List<EntradaAudit> pendentes, string? stackTrace, CancellationToken ct)
     {
         var endpoint = _httpContextAccessor?.HttpContext?.Request is { } req
             ? $"{req.Method} {req.Path}"
             : null;
-
-        var stackTrace = CapturarStackTrace();
 
         AuditLogs.AddRange(pendentes.Select(e => new AuditLog
         {

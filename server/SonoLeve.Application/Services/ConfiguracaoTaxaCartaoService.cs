@@ -6,16 +6,36 @@ namespace SonoLeve.Application.Services;
 public class ConfiguracaoTaxaCartaoService : IConfiguracaoTaxaCartaoService
 {
     private readonly IConfiguracaoTaxaCartaoRepository _repo;
-    public ConfiguracaoTaxaCartaoService(IConfiguracaoTaxaCartaoRepository repo) => _repo = repo;
+    private readonly IUnitOfWork _uow;
+
+    public ConfiguracaoTaxaCartaoService(IConfiguracaoTaxaCartaoRepository repo, IUnitOfWork uow)
+    {
+        _repo = repo;
+        _uow = uow;
+    }
 
     public Task<IEnumerable<ConfiguracaoTaxaCartao>> ListarAsync() => _repo.ListarAsync();
 
     public async Task<ConfiguracaoTaxaCartao> ObterPorIdAsync(Guid id) =>
         await _repo.ObterPorIdAsync(id) ?? throw new KeyNotFoundException("Configuração de taxa não encontrada.");
 
-    public Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config) => _repo.CriarAsync(config);
+    public async Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config)
+    {
+        await _repo.CriarAsync(config);
+        await _uow.CommitAsync();
+        return await _repo.ObterPorIdAsync(config.Id) ?? config;
+    }
 
-    public Task<ConfiguracaoTaxaCartao> AtualizarAsync(ConfiguracaoTaxaCartao config) => _repo.AtualizarAsync(config);
+    public async Task<ConfiguracaoTaxaCartao> AtualizarAsync(ConfiguracaoTaxaCartao config)
+    {
+        await _repo.AtualizarAsync(config);
+        await _uow.CommitAsync();
+        return await _repo.ObterPorIdAsync(config.Id) ?? config;
+    }
 
-    public Task ExcluirAsync(Guid id) => _repo.ExcluirAsync(id);
+    public async Task ExcluirAsync(Guid id)
+    {
+        await _repo.ExcluirAsync(id);
+        await _uow.CommitAsync();
+    }
 }
