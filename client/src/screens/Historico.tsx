@@ -4,8 +4,6 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
-  ChevronRight,
   Eye,
   Search,
   X,
@@ -126,38 +124,64 @@ function AcaoBadge({ acao }: { acao: string }) {
   );
 }
 
-// ── Bloco JSON expansível ──────────────────────────────────────────────────────
+// ── Comparação lado-a-lado ANTES / DEPOIS ─────────────────────────────────────
 
-function JsonExpandido({ label, json }: { label: string; json: string | null }) {
-  const [aberto, setAberto] = useState(false);
-  if (!json) return <span className="text-xs text-muted-foreground">—</span>;
-
-  let formatado: string;
-  try {
-    formatado = JSON.stringify(JSON.parse(json), null, 2);
-  } catch {
-    formatado = json;
-  }
+function ColunaCompare({
+  label,
+  chaves,
+  objPrincipal,
+  objComparacao,
+  variante,
+}: {
+  label: string;
+  chaves: string[];
+  objPrincipal: Record<string, unknown>;
+  objComparacao: Record<string, unknown> | null;
+  variante: "antes" | "depois";
+}) {
+  const isAntes = variante === "antes";
+  const borda = isAntes
+    ? "border-amber-200 dark:border-amber-900"
+    : "border-emerald-200 dark:border-emerald-900";
+  const cabecalho = isAntes
+    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400";
+  const celulaDest = isAntes
+    ? "bg-amber-50/70 dark:bg-amber-950/20"
+    : "bg-emerald-50/70 dark:bg-emerald-950/20";
+  const textoDest = isAntes
+    ? "text-amber-800 dark:text-amber-300"
+    : "text-emerald-800 dark:text-emerald-300";
 
   return (
-    <div>
-      <button
-        onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {aberto ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+    <div className={`rounded-md border ${borda} overflow-hidden`}>
+      <div className={`${cabecalho} px-3 py-2 text-xs font-semibold uppercase tracking-wide border-b ${borda}`}>
         {label}
-      </button>
-      {aberto && (
-        <pre className="mt-2 rounded-md bg-muted/60 p-3 text-[11px] leading-relaxed overflow-x-auto whitespace-pre-wrap break-all border border-border/50">
-          {formatado}
-        </pre>
-      )}
+      </div>
+      <div className="divide-y divide-border/50">
+        {chaves.map((chave) => {
+          const valPrincipal = objPrincipal[chave];
+          const valComp = objComparacao?.[chave];
+          const alterado = JSON.stringify(valPrincipal) !== JSON.stringify(valComp);
+          return (
+            <div key={chave} className={`px-3 py-1.5 ${alterado ? celulaDest : ""}`}>
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{chave}</div>
+              <div className="text-xs mt-0.5 break-all">
+                {valPrincipal === undefined ? (
+                  <span className="text-muted-foreground/50 italic">—</span>
+                ) : (
+                  <span className={alterado ? textoDest : ""}>
+                    {String(valPrincipal === null ? "null" : typeof valPrincipal === "object" ? JSON.stringify(valPrincipal) : valPrincipal)}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
-
-// ── Comparação lado-a-lado ANTES / DEPOIS ─────────────────────────────────────
 
 function ComparacaoJson({ antes, depois }: { antes: string | null; depois: string | null }) {
   const parse = (v: string | null): Record<string, unknown> | null => {
@@ -178,68 +202,25 @@ function ComparacaoJson({ antes, depois }: { antes: string | null; depois: strin
   );
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {/* Antes */}
-      <div className="rounded-md border border-red-200 dark:border-red-900 overflow-hidden">
-        <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-400 border-b border-red-200 dark:border-red-900">
-          Antes
-        </div>
-        <div className="divide-y divide-border/50">
-          {todasChaves.map((chave) => {
-            const valorAntes = objAntes?.[chave];
-            const valorDepois = objDepois?.[chave];
-            const alterado = JSON.stringify(valorAntes) !== JSON.stringify(valorDepois);
-            return (
-              <div
-                key={chave}
-                className={`px-3 py-1.5 ${alterado && objAntes ? "bg-red-50/60 dark:bg-red-950/20" : ""}`}
-              >
-                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{chave}</div>
-                <div className="text-xs mt-0.5 break-all">
-                  {valorAntes === undefined ? (
-                    <span className="text-muted-foreground/50 italic">—</span>
-                  ) : (
-                    <span className={alterado ? "text-red-700 dark:text-red-400" : ""}>
-                      {String(valorAntes === null ? "null" : typeof valorAntes === "object" ? JSON.stringify(valorAntes) : valorAntes)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Depois */}
-      <div className="rounded-md border border-emerald-200 dark:border-emerald-900 overflow-hidden">
-        <div className="bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-900">
-          Depois
-        </div>
-        <div className="divide-y divide-border/50">
-          {todasChaves.map((chave) => {
-            const valorAntes = objAntes?.[chave];
-            const valorDepois = objDepois?.[chave];
-            const alterado = JSON.stringify(valorAntes) !== JSON.stringify(valorDepois);
-            return (
-              <div
-                key={chave}
-                className={`px-3 py-1.5 ${alterado && objDepois ? "bg-emerald-50/60 dark:bg-emerald-950/20" : ""}`}
-              >
-                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{chave}</div>
-                <div className="text-xs mt-0.5 break-all">
-                  {valorDepois === undefined ? (
-                    <span className="text-muted-foreground/50 italic">—</span>
-                  ) : (
-                    <span className={alterado ? "text-emerald-700 dark:text-emerald-400" : ""}>
-                      {String(valorDepois === null ? "null" : typeof valorDepois === "object" ? JSON.stringify(valorDepois) : valorDepois)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div className={`grid gap-3 ${objAntes && objDepois ? "grid-cols-2" : "grid-cols-1"}`}>
+      {objAntes && (
+        <ColunaCompare
+          label="Antes"
+          chaves={todasChaves}
+          objPrincipal={objAntes}
+          objComparacao={objDepois}
+          variante="antes"
+        />
+      )}
+      {objDepois && (
+        <ColunaCompare
+          label="Depois"
+          chaves={todasChaves}
+          objPrincipal={objDepois}
+          objComparacao={objAntes}
+          variante="depois"
+        />
+      )}
     </div>
   );
 }
