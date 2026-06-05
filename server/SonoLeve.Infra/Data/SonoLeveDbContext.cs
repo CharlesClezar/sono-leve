@@ -44,11 +44,35 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // Só audita dentro de uma request HTTP — exclui seed, migrations e jobs
+        if (_httpContextAccessor?.HttpContext is null)
+            return await base.SaveChangesAsync(cancellationToken);
+
+        // Carrega valores originais do banco para entidades desconectadas (Update desanexado),
+        // garantindo que ANTES reflita o estado real antes da alteração
+        await CarregarValoresOriginaisAsync(cancellationToken);
+
         var pendentes = ColetarPendentes();
         var resultado = await base.SaveChangesAsync(cancellationToken);
         if (pendentes.Count > 0)
             await GravarAuditLogsAsync(pendentes, cancellationToken);
         return resultado;
+    }
+
+    private async Task CarregarValoresOriginaisAsync(CancellationToken ct)
+    {
+        var modificadas = ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Modified
+                     && e.Entity is not AuditLog
+                     && e.Entity is not IdempotencyRecord)
+            .ToList();
+
+        foreach (var entry in modificadas)
+        {
+            var dbValues = await entry.GetDatabaseValuesAsync(ct);
+            if (dbValues is not null)
+                entry.OriginalValues.SetValues(dbValues);
+        }
     }
 
     private record EntradaAudit(
