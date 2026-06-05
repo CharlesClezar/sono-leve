@@ -347,7 +347,7 @@ export default function Produtos() {
   );
 }
 
-type ItemCatalogo = { id?: string; name: string; products: number; active: boolean; subtypes?: number; grade?: string[] };
+type ItemCatalogo = { id?: string; name: string; products: number; active: boolean; grade?: string[] };
 type OnExcluir = (tipo: CatalogSlug, id: string) => Promise<void>;
 
 function BotoesAcaoCatalogo({ item, tipo, aba, onExcluir }: { item: ItemCatalogo; tipo: CatalogSlug; aba: AbaProduto; onExcluir: OnExcluir }) {
@@ -415,7 +415,7 @@ function TabelaCatalogoSimples({
         <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             {colunas.map((coluna) => (
-              <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label} align={coluna.id === "products" || coluna.id === "subtypes" ? "center" : "left"} />
+              <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label} align={coluna.id === "products" ? "center" : "left"} />
             ))}
             <th className="px-4 py-3 text-right">Ações</th>
           </tr>
@@ -428,7 +428,7 @@ function TabelaCatalogoSimples({
           ) : paginacao.items.map((item) => (
             <tr key={item.id ?? item.name} className="hover:bg-muted/30">
               <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className={`px-4 py-3 text-muted-foreground ${chaveMeio === "products" || chaveMeio === "subtypes" ? "text-center" : ""}`}>
+              <td className={`px-4 py-3 text-muted-foreground ${chaveMeio === "products" ? "text-center" : ""}`}>
                 {item[chaveMeio as keyof ItemCatalogo] as string}
               </td>
               <td className="px-4 py-3">

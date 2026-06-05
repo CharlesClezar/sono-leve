@@ -10,9 +10,14 @@ namespace SonoLeve.Api.Controllers;
 public class ProdutoController : ControllerBase
 {
     private readonly IProdutoService _service;
+    private readonly IWebHostEnvironment _env;
     private static readonly string[] _extensoesPermitidas = [".jpg", ".jpeg", ".png", ".webp"];
 
-    public ProdutoController(IProdutoService service) => _service = service;
+    public ProdutoController(IProdutoService service, IWebHostEnvironment env)
+    {
+        _service = service;
+        _env = env;
+    }
 
     [HttpGet]
     public async Task<ActionResult<ListaResponse<ProdutoResponse>>> Listar(
@@ -78,13 +83,12 @@ public class ProdutoController : ControllerBase
         {
             var produto = await _service.ObterPorIdAsync(id);
 
-            var dir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "imagens", "produtos");
+            var dir = Path.Combine(_env.WebRootPath, "imagens", "produtos");
             Directory.CreateDirectory(dir);
 
-            // remove imagem anterior se existir
             if (!string.IsNullOrEmpty(produto.ImagemUrl))
             {
-                var anterior = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot",
+                var anterior = Path.Combine(_env.WebRootPath,
                     produto.ImagemUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
                 if (System.IO.File.Exists(anterior))
                     System.IO.File.Delete(anterior);
@@ -112,7 +116,7 @@ public class ProdutoController : ControllerBase
             var produto = await _service.ObterPorIdAsync(id);
             if (!string.IsNullOrEmpty(produto.ImagemUrl))
             {
-                var caminho = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot",
+                var caminho = Path.Combine(_env.WebRootPath,
                     produto.ImagemUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
                 if (System.IO.File.Exists(caminho))
                     System.IO.File.Delete(caminho);

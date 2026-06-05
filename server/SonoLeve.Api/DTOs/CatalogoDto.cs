@@ -10,7 +10,7 @@ public record CatalogoProdutoRequest(
 
 public record CategoriaCatalogoResponse(Guid Id, string Name, List<string> Grade, int Products, bool Active);
 public record CatalogoSimplesResponse(Guid Id, string Name, int Products, bool Active);
-public record TipoCatalogoResponse(Guid Id, string Name, int Products, bool Active, int Subtypes);
+public record TipoCatalogoResponse(Guid Id, string Name, int Products, bool Active);
 public record SubtipoCatalogoResponse(Guid Id, string Name, int Products, bool Active);
 public record ColecaoCatalogoResponse(Guid Id, string Name, int Products, bool Active, DateOnly? DataInicio, DateOnly? DataFim);
 

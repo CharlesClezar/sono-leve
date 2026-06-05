@@ -13,9 +13,8 @@ public class DashboardController : ControllerBase
     private readonly SonoLeveDbContext _db;
     public DashboardController(SonoLeveDbContext db) => _db = db;
 
-    // KPIs: vendas, fichas, contas — estáveis, sem filtro de calendário
     [HttpGet]
-    public async Task<DashboardKpisResponse> Obter()
+    public async Task<ActionResult<DashboardKpisResponse>> Obter()
     {
         var vendasRaw = await _db.Vendas
             .AsNoTracking()
@@ -36,12 +35,11 @@ public class DashboardController : ControllerBase
         var fichas = fichasRaw.Select(f => new FichaDashboard(f.Id, f.DataAbertura, f.Status.ToString())).ToList();
         var contas = contasRaw.Select(c => new ContaDashboard(c.Id, c.Vencimento, c.Total, c.Recebido)).ToList();
 
-        return new DashboardKpisResponse(vendas, fichas, contas);
+        return Ok(new DashboardKpisResponse(vendas, fichas, contas));
     }
 
-    // Encomendas do calendário — filtradas pelo intervalo visível
     [HttpGet("encomendas")]
-    public async Task<IReadOnlyList<EncomendaDashboard>> ObterEncomendas(
+    public async Task<ActionResult<IReadOnlyList<EncomendaDashboard>>> ObterEncomendas(
         [FromQuery] DateOnly? inicio = null,
         [FromQuery] DateOnly? fim = null)
     {
@@ -64,7 +62,7 @@ public class DashboardController : ControllerBase
             .Select(e => new { e.Id, ClienteNome = e.Cliente != null ? e.Cliente.Nome : "", e.Previsao, e.Total, e.Status })
             .ToListAsync();
 
-        return [..raw.Select(e => new EncomendaDashboard(e.Id, e.ClienteNome, e.Previsao, e.Total, StatusEncomendaPt(e.Status)))];
+        return Ok(raw.Select(e => new EncomendaDashboard(e.Id, e.ClienteNome, e.Previsao, e.Total, StatusEncomendaPt(e.Status))).ToList());
     }
 
     private static string StatusEncomendaPt(StatusEncomenda status) => status switch

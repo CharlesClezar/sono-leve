@@ -13,7 +13,7 @@ public class BandeiraCartaoService : IBandeiraCartaoService
     public async Task<BandeiraCartao> ObterPorIdAsync(Guid id) =>
         await _repo.ObterPorIdAsync(id) ?? throw new KeyNotFoundException("Bandeira não encontrada.");
 
-    public Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira) => _repo.AdicionarAsync(bandeira);
+    public Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira) => _repo.CriarAsync(bandeira);
 
     public Task<BandeiraCartao> AtualizarAsync(BandeiraCartao bandeira) => _repo.AtualizarAsync(bandeira);
 

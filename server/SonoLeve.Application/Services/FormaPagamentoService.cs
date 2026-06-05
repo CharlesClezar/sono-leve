@@ -13,7 +13,7 @@ public class FormaPagamentoService : IFormaPagamentoService
     public async Task<FormaPagamento> ObterPorIdAsync(Guid id) =>
         await _repo.ObterPorIdAsync(id) ?? throw new KeyNotFoundException("Forma de pagamento não encontrada.");
 
-    public Task<FormaPagamento> CriarAsync(FormaPagamento forma) => _repo.AdicionarAsync(forma);
+    public Task<FormaPagamento> CriarAsync(FormaPagamento forma) => _repo.CriarAsync(forma);
 
     public Task<FormaPagamento> AtualizarAsync(FormaPagamento forma) => _repo.AtualizarAsync(forma);
 

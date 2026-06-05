@@ -112,7 +112,7 @@ export type CatalogoSimples = {
   active: boolean;
 };
 
-export type TipoCatalogo = CatalogoSimples & { subtypes: number };
+export type TipoCatalogo = CatalogoSimples;
 export type SubtipoCatalogo = CatalogoSimples;
 export type ColecaoCatalogo = CatalogoSimples & { dataInicio?: string; dataFim?: string };
 
@@ -140,7 +140,6 @@ export type CatalogoProdutoItem = {
   dataInicio?: string;
   dataFim?: string;
   products?: number;
-  subtypes?: number;
 };
 
 export type CatalogSlug = "categorias" | "marcas" | "tipos" | "subtipos" | "colecoes";

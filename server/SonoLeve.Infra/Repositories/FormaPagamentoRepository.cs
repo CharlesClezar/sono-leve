@@ -16,7 +16,7 @@ public class FormaPagamentoRepository : IFormaPagamentoRepository
     public async Task<FormaPagamento?> ObterPorIdAsync(Guid id) =>
         await _db.FormasPagamento.FindAsync(id);
 
-    public async Task<FormaPagamento> AdicionarAsync(FormaPagamento forma)
+    public async Task<FormaPagamento> CriarAsync(FormaPagamento forma)
     {
         _db.FormasPagamento.Add(forma);
         await _db.SaveChangesAsync();

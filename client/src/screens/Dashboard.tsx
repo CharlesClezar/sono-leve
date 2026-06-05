@@ -72,6 +72,57 @@ const classePilula: Record<OrderStatus, string> = {
   Cancelada: "bg-[hsl(var(--destructive-soft))] text-[hsl(var(--destructive))]",
 };
 
+type CelulaCalendarioProps = {
+  dia: number;
+  noMesAtual: boolean;
+  iso: string;
+  encomendasDia: EncomendaDashboard[];
+  statusPorId: Record<string, OrderStatus>;
+  selecionada: boolean;
+  temEntrega: boolean;
+  onClick: () => void;
+};
+
+function CelulaCalendario({ dia, noMesAtual, iso, encomendasDia, statusPorId, selecionada, temEntrega, onClick }: CelulaCalendarioProps) {
+  const contagensStatus = ordemStatusCalendario
+    .map((status) => ({
+      status,
+      count: encomendasDia.filter((e) => (statusPorId[e.id] ?? e.status) === status).length,
+    }))
+    .filter((entrada) => entrada.count > 0);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex h-full min-h-[3.25rem] items-center justify-center rounded-xl border text-sm font-medium transition-all sm:min-h-[3.5rem] sm:text-base ${
+        temEntrega
+          ? selecionada
+            ? "border-primary bg-primary text-primary-foreground shadow-sm"
+            : "border-primary/35 bg-primary-soft/90 font-semibold text-primary hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-soft hover:shadow-sm"
+          : noMesAtual
+            ? "border-transparent text-foreground hover:bg-muted"
+            : "border-transparent text-muted-foreground/40 hover:bg-muted/40"
+      } ${selecionada ? "ring-2 ring-primary ring-offset-1" : ""}`}
+    >
+      <span className={contagensStatus.length > 0 ? "pb-3" : ""}>{dia}</span>
+      {contagensStatus.length > 0 && (
+        <span className="absolute bottom-1 right-1 flex items-center gap-1">
+          {contagensStatus.map(({ status, count }) => (
+            <span
+              key={status}
+              className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${classePontoStatus[status]}`}
+              title={`${count} ${rotuloStatusCalendario[status]}`}
+            >
+              {count}
+            </span>
+          ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
 type PeriodoDashboard = "today" | "7d" | "30d" | "all";
 
 type ConfirmacaoPendente = { id: string; novoStatus: OrderStatus; mensagem: string } | null;
@@ -409,48 +460,17 @@ export default function Dashboard() {
                 className={`grid flex-1 grid-cols-7 grid-rows-6 gap-1 text-center sm:gap-1.5 animate-in fade-in duration-200 ${direcaoNav.current === "proximo" ? "slide-in-from-right-3" : "slide-in-from-left-3"}`}
               >
                 {celulas.map((celula, i) => (
-                  (() => {
-                    const { dia, noMesAtual, iso } = celula;
-                    const encomendasDia = entregasPorData.get(iso) ?? [];
-                    const contagensStatusDia = ordemStatusCalendario
-                      .map((status) => ({
-                        status,
-                        count: encomendasDia.filter((encomenda) => (statusPorId[encomenda.id] ?? encomenda.status) === status).length,
-                      }))
-                      .filter((entrada) => entrada.count > 0);
-
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setDataIsoSelecionada(iso)}
-                        className={`relative flex h-full min-h-[3.25rem] items-center justify-center rounded-xl border text-sm font-medium transition-all sm:min-h-[3.5rem] sm:text-base ${
-                          diasEntrega.has(iso)
-                            ? dataIsoSelecionada === iso
-                              ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                              : "border-primary/35 bg-primary-soft/90 font-semibold text-primary hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-soft hover:shadow-sm"
-                            : noMesAtual
-                              ? "border-transparent text-foreground hover:bg-muted"
-                              : "border-transparent text-muted-foreground/40 hover:bg-muted/40"
-                        } ${dataIsoSelecionada === iso ? "ring-2 ring-primary ring-offset-1" : ""}`}
-                      >
-                        <span className={`${contagensStatusDia.length > 0 ? "pb-3" : ""}`}>{dia}</span>
-                        {contagensStatusDia.length > 0 && (
-                          <span className="absolute bottom-1 right-1 flex items-center gap-1">
-                            {contagensStatusDia.map(({ status, count }) => (
-                              <span
-                                key={status}
-                                className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none ${classePontoStatus[status]}`}
-                                title={`${count} ${rotuloStatusCalendario[status]}`}
-                              >
-                                {count}
-                              </span>
-                            ))}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })()
+                  <CelulaCalendario
+                    key={i}
+                    dia={celula.dia}
+                    noMesAtual={celula.noMesAtual}
+                    iso={celula.iso}
+                    encomendasDia={entregasPorData.get(celula.iso) ?? []}
+                    statusPorId={statusPorId}
+                    selecionada={dataIsoSelecionada === celula.iso}
+                    temEntrega={diasEntrega.has(celula.iso)}
+                    onClick={() => setDataIsoSelecionada(celula.iso)}
+                  />
                 ))}
               </div>
             </Card>

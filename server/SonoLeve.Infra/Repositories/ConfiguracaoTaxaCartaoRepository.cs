@@ -26,7 +26,7 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
             .Include(c => c.Parcelas.OrderBy(p => p.NumeroParcelas))
             .FirstOrDefaultAsync(c => c.Id == id);
 
-    public async Task<ConfiguracaoTaxaCartao> AdicionarAsync(ConfiguracaoTaxaCartao config)
+    public async Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config)
     {
         _db.ConfiguracoesTaxaCartao.Add(config);
         await _db.SaveChangesAsync();

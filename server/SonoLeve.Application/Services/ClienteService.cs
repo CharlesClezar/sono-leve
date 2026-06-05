@@ -21,7 +21,7 @@ public class ClienteService : IClienteService
             ?? throw new KeyNotFoundException("Cliente não encontrado.");
 
     public Task<Cliente> CriarAsync(Cliente cliente)
-        => _clienteRepository.AdicionarAsync(cliente);
+        => _clienteRepository.CriarAsync(cliente);
 
     public Task<Cliente> AtualizarAsync(Cliente cliente)
         => _clienteRepository.AtualizarAsync(cliente);

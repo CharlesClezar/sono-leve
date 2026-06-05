@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -84,6 +84,7 @@ namespace SonoLeve.Infra.Migrations
                     PermiteParcelamento = table.Column<bool>(type: "boolean", nullable: false),
                     ExigeBandeira = table.Column<bool>(type: "boolean", nullable: false),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
+                    RepassaTaxaAoCliente = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -170,11 +171,18 @@ namespace SonoLeve.Infra.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EhManual = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     Origem = table.Column<string>(type: "text", nullable: false),
+                    Descricao = table.Column<string>(type: "text", nullable: true),
+                    VendaId = table.Column<Guid>(type: "uuid", nullable: true),
                     Total = table.Column<decimal>(type: "numeric", nullable: false),
                     Recebido = table.Column<decimal>(type: "numeric", nullable: false),
                     Vencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
+                    NumeroParcelas = table.Column<int>(type: "integer", nullable: true),
+                    PercentualTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
+                    TaxaFixaCartao = table.Column<decimal>(type: "numeric", nullable: true),
+                    ValorTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -432,6 +440,15 @@ namespace SonoLeve.Infra.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            // FK Contas → Vendas (VendaId) adicionada após criação de ambas as tabelas
+            migrationBuilder.AddForeignKey(
+                name: "FK_Contas_Vendas_VendaId",
+                table: "Contas",
+                column: "VendaId",
+                principalTable: "Vendas",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
+
             migrationBuilder.CreateIndex(
                 name: "IX_ConfiguracoesTaxaCartao_BandeiraId",
                 table: "ConfiguracoesTaxaCartao",
@@ -451,6 +468,11 @@ namespace SonoLeve.Infra.Migrations
                 name: "IX_Contas_ClienteId",
                 table: "Contas",
                 column: "ClienteId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contas_VendaId",
+                table: "Contas",
+                column: "VendaId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Encomendas_ClienteId",
@@ -521,62 +543,29 @@ namespace SonoLeve.Infra.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "ConfiguracoesTaxaCartaoParcelas");
+            migrationBuilder.DropForeignKey(
+                name: "FK_Contas_Vendas_VendaId",
+                table: "Contas");
 
-            migrationBuilder.DropTable(
-                name: "Contas");
-
-            migrationBuilder.DropTable(
-                name: "Fichas");
-
-            migrationBuilder.DropTable(
-                name: "IdempotencyRecords");
-
-            migrationBuilder.DropTable(
-                name: "ItensEncomenda");
-
-            migrationBuilder.DropTable(
-                name: "ItensVenda");
-
-            migrationBuilder.DropTable(
-                name: "Usuarios");
-
-            migrationBuilder.DropTable(
-                name: "ConfiguracoesTaxaCartao");
-
-            migrationBuilder.DropTable(
-                name: "Encomendas");
-
-            migrationBuilder.DropTable(
-                name: "Produtos");
-
-            migrationBuilder.DropTable(
-                name: "Vendas");
-
-            migrationBuilder.DropTable(
-                name: "BandeirasCartao");
-
-            migrationBuilder.DropTable(
-                name: "Categorias");
-
-            migrationBuilder.DropTable(
-                name: "Colecoes");
-
-            migrationBuilder.DropTable(
-                name: "Marcas");
-
-            migrationBuilder.DropTable(
-                name: "Subtipos");
-
-            migrationBuilder.DropTable(
-                name: "Tipos");
-
-            migrationBuilder.DropTable(
-                name: "Clientes");
-
-            migrationBuilder.DropTable(
-                name: "FormasPagamento");
+            migrationBuilder.DropTable(name: "ConfiguracoesTaxaCartaoParcelas");
+            migrationBuilder.DropTable(name: "IdempotencyRecords");
+            migrationBuilder.DropTable(name: "ItensEncomenda");
+            migrationBuilder.DropTable(name: "ItensVenda");
+            migrationBuilder.DropTable(name: "Usuarios");
+            migrationBuilder.DropTable(name: "Contas");
+            migrationBuilder.DropTable(name: "Fichas");
+            migrationBuilder.DropTable(name: "ConfiguracoesTaxaCartao");
+            migrationBuilder.DropTable(name: "Encomendas");
+            migrationBuilder.DropTable(name: "Produtos");
+            migrationBuilder.DropTable(name: "Vendas");
+            migrationBuilder.DropTable(name: "BandeirasCartao");
+            migrationBuilder.DropTable(name: "Categorias");
+            migrationBuilder.DropTable(name: "Colecoes");
+            migrationBuilder.DropTable(name: "Marcas");
+            migrationBuilder.DropTable(name: "Subtipos");
+            migrationBuilder.DropTable(name: "Tipos");
+            migrationBuilder.DropTable(name: "Clientes");
+            migrationBuilder.DropTable(name: "FormasPagamento");
         }
     }
 }

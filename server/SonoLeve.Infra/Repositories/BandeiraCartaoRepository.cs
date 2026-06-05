@@ -16,7 +16,7 @@ public class BandeiraCartaoRepository : IBandeiraCartaoRepository
     public async Task<BandeiraCartao?> ObterPorIdAsync(Guid id) =>
         await _db.BandeirasCartao.FindAsync(id);
 
-    public async Task<BandeiraCartao> AdicionarAsync(BandeiraCartao bandeira)
+    public async Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira)
     {
         _db.BandeirasCartao.Add(bandeira);
         await _db.SaveChangesAsync();

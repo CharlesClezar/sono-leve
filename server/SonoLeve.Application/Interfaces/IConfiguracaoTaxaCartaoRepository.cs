@@ -6,7 +6,7 @@ public interface IConfiguracaoTaxaCartaoRepository
 {
     Task<IEnumerable<ConfiguracaoTaxaCartao>> ListarAsync();
     Task<ConfiguracaoTaxaCartao?> ObterPorIdAsync(Guid id);
-    Task<ConfiguracaoTaxaCartao> AdicionarAsync(ConfiguracaoTaxaCartao config);
+    Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config);
     Task<ConfiguracaoTaxaCartao> AtualizarAsync(ConfiguracaoTaxaCartao config);
     Task ExcluirAsync(Guid id);
 }

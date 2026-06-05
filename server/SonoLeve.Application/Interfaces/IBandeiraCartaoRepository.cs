@@ -6,7 +6,7 @@ public interface IBandeiraCartaoRepository
 {
     Task<IEnumerable<BandeiraCartao>> ListarAsync();
     Task<BandeiraCartao?> ObterPorIdAsync(Guid id);
-    Task<BandeiraCartao> AdicionarAsync(BandeiraCartao bandeira);
+    Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira);
     Task<BandeiraCartao> AtualizarAsync(BandeiraCartao bandeira);
     Task ExcluirAsync(Guid id);
 }

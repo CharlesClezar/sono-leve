@@ -13,7 +13,7 @@ public class ConfiguracaoTaxaCartaoService : IConfiguracaoTaxaCartaoService
     public async Task<ConfiguracaoTaxaCartao> ObterPorIdAsync(Guid id) =>
         await _repo.ObterPorIdAsync(id) ?? throw new KeyNotFoundException("Configuração de taxa não encontrada.");
 
-    public Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config) => _repo.AdicionarAsync(config);
+    public Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config) => _repo.CriarAsync(config);
 
     public Task<ConfiguracaoTaxaCartao> AtualizarAsync(ConfiguracaoTaxaCartao config) => _repo.AtualizarAsync(config);
 

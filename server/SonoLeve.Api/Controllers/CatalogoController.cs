@@ -36,7 +36,7 @@ public class CatalogoController : ControllerBase
         return Ok(new CatalogoProdutosResponse(
             categorias.Select(c => new CategoriaCatalogoResponse(c.Id, c.Name, c.Grade, cntCategoria.GetValueOrDefault(c.Id), c.Active)),
             marcas.Select(m    => new CatalogoSimplesResponse(m.Id, m.Name, cntMarca.GetValueOrDefault(m.Id), m.Active)),
-            tipos.Select(t     => new TipoCatalogoResponse(t.Id, t.Name, cntTipo.GetValueOrDefault(t.Id), t.Active, subtipos.Count)),
+            tipos.Select(t     => new TipoCatalogoResponse(t.Id, t.Name, cntTipo.GetValueOrDefault(t.Id), t.Active)),
             subtipos.Select(s  => new SubtipoCatalogoResponse(s.Id, s.Name, cntSubtipo.GetValueOrDefault(s.Id), s.Active)),
             colecoes.Select(c  => new ColecaoCatalogoResponse(c.Id, c.Name, cntColecao.GetValueOrDefault(c.Id), c.Active, c.DataInicio, c.DataFim))
         ));
@@ -135,7 +135,7 @@ public class CatalogoController : ControllerBase
         var entidade = new Tipo { Name = request.Name, Active = request.Active };
         _db.Tipos.Add(entidade);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(Listar), new TipoCatalogoResponse(entidade.Id, entidade.Name, 0, entidade.Active, 0));
+        return CreatedAtAction(nameof(Listar), new TipoCatalogoResponse(entidade.Id, entidade.Name, 0, entidade.Active));
     }
 
     [HttpGet("tipos/{id:guid}")]
@@ -144,8 +144,7 @@ public class CatalogoController : ControllerBase
         var item = await _db.Tipos.FindAsync(id);
         if (item == null) return NotFound();
         var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
-        var subtypes = await _db.Subtipos.CountAsync();
-        return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active, subtypes));
+        return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpPut("tipos/{id:guid}")]
@@ -157,8 +156,7 @@ public class CatalogoController : ControllerBase
         item.Active = request.Active;
         await _db.SaveChangesAsync();
         var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
-        var subtypes = await _db.Subtipos.CountAsync();
-        return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active, subtypes));
+        return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpDelete("tipos/{id:guid}")]
