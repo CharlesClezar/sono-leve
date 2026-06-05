@@ -485,8 +485,14 @@ export const api = {
 
   listarAuditLogs: (f: AuditLogsFiltros) =>
     http.get<AuditLogsResponse>(`/audit-logs?${buildQS({
-      entidade: f.entidade, busca: f.busca,
-      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+      entidade: f.entidade,
+      entidadeId: f.entidadeId,
+      busca: f.busca,
+      acao: f.acao,
+      dataInicio: f.dataInicio,
+      dataFim: f.dataFim,
+      page: f.page ?? 1,
+      pageSize: f.pageSize ?? 30,
     })}`),
 };
 
@@ -506,7 +512,11 @@ export type AuditLog = {
 
 export type AuditLogsFiltros = {
   entidade?: string;
+  entidadeId?: string;
   busca?: string;
+  acao?: string;
+  dataInicio?: string;
+  dataFim?: string;
   page?: number;
   pageSize?: number;
 };

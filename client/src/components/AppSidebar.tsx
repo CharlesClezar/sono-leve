@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   ClipboardList,
+  History,
   LayoutDashboard,
   Package2,
   Settings,
@@ -30,7 +31,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { AuditLogDrawer } from "@/components/AuditLogDrawer";
 
 const iconsByRoute = {
   "/": LayoutDashboard,
@@ -111,7 +111,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
-        <AuditLogDrawer collapsed={collapsed} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/historico"}
+              tooltip="Histórico de alterações"
+            >
+              <Link href="/historico">
+                <History className="h-4 w-4" />
+                <span>Histórico</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

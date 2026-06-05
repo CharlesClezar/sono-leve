@@ -433,6 +433,16 @@ function FormasPagamentoTabela() {
   const [draft, setDraft] = useState<FormaPagamentoSalvar>(FORMA_PADRAO);
   const [confirmandoExcluirId, setConfirmandoExcluirId] = useState<string | null>(null);
 
+  const colunasFP = useMemo<DataGridColumn<FormaPagamento>[]>(() => [
+    { id: "nome", label: "Nome", accessor: (f) => f.nome },
+    { id: "tipo", label: "Tipo", accessor: (f) => f.tipo },
+    { id: "permiteParcelamento", label: "Parcelamento", accessor: (f) => f.permiteParcelamento ? "Sim" : "Não" },
+    { id: "exigeBandeira", label: "Exige bandeira", accessor: (f) => f.exigeBandeira ? "Sim" : "Não" },
+    { id: "ativo", label: "Status", accessor: (f) => f.ativo ? "Ativo" : "Inativo" },
+    { id: "repassaTaxaAoCliente", label: "Cobrar do cliente", accessor: (f) => f.repassaTaxaAoCliente ? "Sim" : "Não" },
+  ], []);
+  const gridFP = useDataGrid(formas, colunasFP);
+
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ["formas-pagamento"] });
 
   const handleEditar = (f: FormaPagamento) => {
@@ -469,11 +479,11 @@ function FormasPagamentoTabela() {
   const EditRow = ({ rowKey, onSave, onCancel }: { rowKey: string; onSave: () => void; onCancel: () => void }) => (
     <tr key={rowKey} className="bg-primary/5">
       <td className="px-4 py-2">
-        <Input value={draft.nome} onChange={e => setDraft(d => ({ ...d, nome: e.target.value }))} className="h-8 w-[160px]" placeholder="Ex: Pix" />
+        <Input value={draft.nome} onChange={e => setDraft(d => ({ ...d, nome: e.target.value }))} className="h-8 w-full" placeholder="Ex: Pix" />
       </td>
       <td className="px-4 py-2">
         <AppSelect
-          className="w-[140px]"
+          className="w-full"
           value={draft.tipo}
           onValueChange={v => setDraft(d => ({ ...d, tipo: v }))}
           options={TIPOS_PAGAMENTO}
@@ -509,57 +519,66 @@ function FormasPagamentoTabela() {
         </Button>
       </div>
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-sm">
-        <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-4 py-3">Nome</th>
-            <th className="px-4 py-3">Tipo</th>
-            <th className="px-4 py-3 text-center">Parcelamento</th>
-            <th className="px-4 py-3 text-center">Exige bandeira</th>
-            <th className="px-4 py-3 text-center">Status</th>
-            <th className="px-4 py-3 text-center">Cobrar do cliente</th>
-            <th className="px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {isLoading
-            ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
-            : formas.length === 0 && !adicionando
-              ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma forma de pagamento cadastrada.</td></tr>
-              : formas.map((f) =>
-                  editandoId === f.id ? (
-                    <EditRow key={f.id} rowKey={f.id} onSave={() => handleSalvar(f.id)} onCancel={() => setEditandoId(null)} />
-                  ) : confirmandoExcluirId === f.id ? (
-                    <tr key={f.id} className="bg-destructive/5">
-                      <td colSpan={6} className="px-4 py-3 text-sm">Excluir <strong>{f.nome}</strong>?</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="destructive" onClick={() => handleExcluir(f.id)}>Excluir</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setConfirmandoExcluirId(null)}>Cancelar</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    <tr key={f.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">{f.nome}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{TIPOS_PAGAMENTO.find(t => t.value === f.tipo)?.label ?? f.tipo}</td>
-                      <td className="px-4 py-3 text-center text-xs">{f.permiteParcelamento ? "Sim" : "—"}</td>
-                      <td className="px-4 py-3 text-center text-xs">{f.exigeBandeira ? "Sim" : "—"}</td>
-                      <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={f.ativo} /></td>
-                      <td className="px-4 py-3 text-center text-xs">{f.repassaTaxaAoCliente ? "Sim" : "—"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(f)}>Editar</Button>
-                          <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={() => setConfirmandoExcluirId(f.id)}>Excluir</Button>
-                        </div>
-                      </td>
-                    </tr>
+        <table className="w-full min-w-[860px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-48" />
+            <col className="w-40" />
+            <col className="w-36" />
+            <col className="w-36" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col />
+          </colgroup>
+          <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <DataGridColumnHeader grid={gridFP} columnId="nome" label="Nome" />
+              <DataGridColumnHeader grid={gridFP} columnId="tipo" label="Tipo" />
+              <DataGridColumnHeader grid={gridFP} columnId="permiteParcelamento" label="Parcelamento" align="center" />
+              <DataGridColumnHeader grid={gridFP} columnId="exigeBandeira" label="Exige bandeira" align="center" />
+              <DataGridColumnHeader grid={gridFP} columnId="ativo" label="Status" align="center" />
+              <DataGridColumnHeader grid={gridFP} columnId="repassaTaxaAoCliente" label="Cobrar do cliente" align="center" />
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {isLoading
+              ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
+              : gridFP.rows.length === 0 && !adicionando
+                ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma forma de pagamento cadastrada.</td></tr>
+                : gridFP.rows.map((f) =>
+                    editandoId === f.id ? (
+                      <EditRow key={f.id} rowKey={f.id} onSave={() => handleSalvar(f.id)} onCancel={() => setEditandoId(null)} />
+                    ) : confirmandoExcluirId === f.id ? (
+                      <tr key={f.id} className="bg-destructive/5">
+                        <td colSpan={6} className="px-4 py-3 text-sm">Excluir <strong>{f.nome}</strong>?</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="destructive" onClick={() => handleExcluir(f.id)}>Excluir</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmandoExcluirId(null)}>Cancelar</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={f.id} className="hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium">{f.nome}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{TIPOS_PAGAMENTO.find(t => t.value === f.tipo)?.label ?? f.tipo}</td>
+                        <td className="px-4 py-3 text-center text-xs">{f.permiteParcelamento ? "Sim" : "—"}</td>
+                        <td className="px-4 py-3 text-center text-xs">{f.exigeBandeira ? "Sim" : "—"}</td>
+                        <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={f.ativo} /></td>
+                        <td className="px-4 py-3 text-center text-xs">{f.repassaTaxaAoCliente ? "Sim" : "—"}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(f)}>Editar</Button>
+                            <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={() => setConfirmandoExcluirId(f.id)}>Excluir</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
                   )
-                )
-          }
-          {adicionando && <EditRow rowKey="new" onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
-        </tbody>
-      </table>
+            }
+            {adicionando && <EditRow rowKey="new" onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
@@ -576,6 +595,12 @@ function BandeirasTabela() {
   const [adicionando, setAdicionando] = useState(false);
   const [draft, setDraft] = useState<BandeiraCartaoSalvar>(BANDEIRA_PADRAO);
   const [confirmandoExcluirId, setConfirmandoExcluirId] = useState<string | null>(null);
+
+  const colunasBand = useMemo<DataGridColumn<BandeiraCartao>[]>(() => [
+    { id: "nome", label: "Nome", accessor: (b) => b.nome },
+    { id: "ativo", label: "Status", accessor: (b) => b.ativo ? "Ativo" : "Inativo" },
+  ], []);
+  const gridBand = useDataGrid(bandeiras, colunasBand);
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ["bandeiras-cartao"] });
 
@@ -610,10 +635,10 @@ function BandeirasTabela() {
     } catch { toast.error("Erro ao excluir bandeira."); }
   };
 
-  const EditRow = ({ rowKey, onSave, onCancel }: { rowKey: string; onSave: () => void; onCancel: () => void }) => (
+  const EditRowBand = ({ rowKey, onSave, onCancel }: { rowKey: string; onSave: () => void; onCancel: () => void }) => (
     <tr key={rowKey} className="bg-primary/5">
       <td className="px-4 py-2">
-        <Input value={draft.nome} onChange={e => setDraft(d => ({ ...d, nome: e.target.value }))} className="h-8 w-[180px]" placeholder="Ex: Visa" />
+        <Input value={draft.nome} onChange={e => setDraft(d => ({ ...d, nome: e.target.value }))} className="h-8 w-full" placeholder="Ex: Visa" />
       </td>
       <td className="px-4 py-2 text-center">
         <Switch checked={draft.ativo} onCheckedChange={v => setDraft(d => ({ ...d, ativo: v }))} />
@@ -635,22 +660,27 @@ function BandeirasTabela() {
           <Plus className="mr-1.5 h-4 w-4" />Adicionar
         </Button>
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm">
+        <colgroup>
+          <col />
+          <col className="w-36" />
+          <col className="w-40" />
+        </colgroup>
         <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
-            <th className="px-4 py-3">Nome</th>
-            <th className="px-4 py-3 text-center">Status</th>
+            <DataGridColumnHeader grid={gridBand} columnId="nome" label="Nome" />
+            <DataGridColumnHeader grid={gridBand} columnId="ativo" label="Status" align="center" />
             <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y">
           {isLoading
             ? <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
-            : bandeiras.length === 0 && !adicionando
+            : gridBand.rows.length === 0 && !adicionando
               ? <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma bandeira cadastrada.</td></tr>
-              : bandeiras.map((b) =>
+              : gridBand.rows.map((b) =>
                   editandoId === b.id ? (
-                    <EditRow key={b.id} rowKey={b.id} onSave={() => handleSalvar(b.id)} onCancel={() => setEditandoId(null)} />
+                    <EditRowBand key={b.id} rowKey={b.id} onSave={() => handleSalvar(b.id)} onCancel={() => setEditandoId(null)} />
                   ) : confirmandoExcluirId === b.id ? (
                     <tr key={b.id} className="bg-destructive/5">
                       <td colSpan={2} className="px-4 py-3 text-sm">Excluir <strong>{b.nome}</strong>?</td>
@@ -675,7 +705,7 @@ function BandeirasTabela() {
                   )
                 )
           }
-          {adicionando && <EditRow rowKey="new" onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
+          {adicionando && <EditRowBand rowKey="new" onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
         </tbody>
       </table>
     </Card>
@@ -704,6 +734,15 @@ function TaxasCartaoTabela() {
   const [draft, setDraft] = useState<ConfiguracaoTaxaCartaoSalvar>(CONFIG_PADRAO);
   const [parcelasDraft, setParcelasDraft] = useState<ParcelaDraft[]>([]);
   const [confirmandoExcluirId, setConfirmandoExcluirId] = useState<string | null>(null);
+
+  const colunasTaxa = useMemo<DataGridColumn<ConfiguracaoTaxaCartao>[]>(() => [
+    { id: "formaPagamentoNome", label: "Forma", accessor: (c) => c.formaPagamentoNome },
+    { id: "bandeiraNome", label: "Bandeira", accessor: (c) => c.bandeiraNome },
+    { id: "tipoCartao", label: "Tipo", accessor: (c) => c.tipoCartao },
+    { id: "parcelas", label: "Parcelas", accessor: (c) => String(c.parcelas.length) },
+    { id: "ativo", label: "Status", accessor: (c) => c.ativo ? "Ativo" : "Inativo" },
+  ], []);
+  const gridTaxa = useDataGrid(configs, colunasTaxa);
 
   const invalidar = () => queryClient.invalidateQueries({ queryKey: ["configuracoes-taxa-cartao"] });
 
@@ -844,85 +883,93 @@ function TaxasCartaoTabela() {
         </Button>
       </div>
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px] text-sm">
-        <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-4 py-3">Forma</th>
-            <th className="px-4 py-3">Bandeira</th>
-            <th className="px-4 py-3">Tipo</th>
-            <th className="px-4 py-3 text-center">Parcelas</th>
-            <th className="px-4 py-3 text-center">Status</th>
-            <th className="px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {adicionando && <FormEdicao onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
-          {isLoading
-            ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
-            : configs.length === 0 && !adicionando
-              ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma configuração de taxa cadastrada.</td></tr>
-              : configs.map((c) =>
-                  editandoId === c.id ? (
-                    <FormEdicao key={c.id} id={c.id} onSave={() => handleSalvar(c.id)} onCancel={() => setEditandoId(null)} />
-                  ) : confirmandoExcluirId === c.id ? (
-                    <tr key={c.id} className="bg-destructive/5">
-                      <td colSpan={5} className="px-4 py-3 text-sm">Excluir <strong>{c.formaPagamentoNome} + {c.bandeiraNome}</strong>?</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="destructive" onClick={() => handleExcluir(c.id)}>Excluir</Button>
-                          <Button size="sm" variant="ghost" onClick={() => setConfirmandoExcluirId(null)}>Cancelar</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    <React.Fragment key={c.id}>
-                      <tr className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandidoId(expandidoId === c.id ? null : c.id)}>
-                        <td className="px-4 py-3 font-medium">{c.formaPagamentoNome}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{c.bandeiraNome}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{c.tipoCartao}</td>
-                        <td className="px-4 py-3 text-center text-muted-foreground">{c.parcelas.length}x</td>
-                        <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={c.ativo} /></td>
+        <table className="w-full min-w-[600px] table-fixed text-sm">
+          <colgroup>
+            <col />
+            <col />
+            <col className="w-28" />
+            <col className="w-28" />
+            <col className="w-28" />
+            <col className="w-36" />
+          </colgroup>
+          <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <DataGridColumnHeader grid={gridTaxa} columnId="formaPagamentoNome" label="Forma" />
+              <DataGridColumnHeader grid={gridTaxa} columnId="bandeiraNome" label="Bandeira" />
+              <DataGridColumnHeader grid={gridTaxa} columnId="tipoCartao" label="Tipo" />
+              <DataGridColumnHeader grid={gridTaxa} columnId="parcelas" label="Parcelas" align="center" />
+              <DataGridColumnHeader grid={gridTaxa} columnId="ativo" label="Status" align="center" />
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {adicionando && <FormEdicao onSave={() => handleSalvar()} onCancel={() => setAdicionando(false)} />}
+            {isLoading
+              ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Carregando...</td></tr>
+              : gridTaxa.rows.length === 0 && !adicionando
+                ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma configuração de taxa cadastrada.</td></tr>
+                : gridTaxa.rows.map((c) =>
+                    editandoId === c.id ? (
+                      <FormEdicao key={c.id} id={c.id} onSave={() => handleSalvar(c.id)} onCancel={() => setEditandoId(null)} />
+                    ) : confirmandoExcluirId === c.id ? (
+                      <tr key={c.id} className="bg-destructive/5">
+                        <td colSpan={5} className="px-4 py-3 text-sm">Excluir <strong>{c.formaPagamentoNome} + {c.bandeiraNome}</strong>?</td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" className="h-8 px-3" onClick={e => { e.stopPropagation(); iniciarEdicao(c); }}>Editar</Button>
-                            <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); setConfirmandoExcluirId(c.id); }}>Excluir</Button>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="destructive" onClick={() => handleExcluir(c.id)}>Excluir</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setConfirmandoExcluirId(null)}>Cancelar</Button>
                           </div>
                         </td>
                       </tr>
-                      {expandidoId === c.id && (
-                        <tr className="bg-muted/10">
-                          <td colSpan={6} className="px-6 py-3">
-                            <div className="overflow-x-auto rounded-md border">
-                              <table className="w-full min-w-[400px] text-xs">
-                                <thead className="bg-muted/50 text-left uppercase tracking-wide text-muted-foreground">
-                                  <tr>
-                                    <th className="px-3 py-2 text-center">Parcelas</th>
-                                    <th className="px-3 py-2 text-right">Taxa (%)</th>
-                                    <th className="px-3 py-2 text-right">Taxa fixa</th>
-                                    <th className="px-3 py-2 text-right">Prazo</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                  {c.parcelas.map(p => (
-                                    <tr key={p.id} className="hover:bg-muted/20">
-                                      <td className="px-3 py-2 text-center font-semibold">{p.numeroParcelas}x</td>
-                                      <td className="px-3 py-2 text-right">{p.percentualTaxa.toFixed(2)}%</td>
-                                      <td className="px-3 py-2 text-right text-muted-foreground">{p.taxaFixa != null ? `R$ ${p.taxaFixa.toFixed(2)}` : "—"}</td>
-                                      <td className="px-3 py-2 text-right text-muted-foreground">{p.prazoRecebimentoDias} dias</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                    ) : (
+                      <React.Fragment key={c.id}>
+                        <tr className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandidoId(expandidoId === c.id ? null : c.id)}>
+                          <td className="px-4 py-3 font-medium">{c.formaPagamentoNome}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{c.bandeiraNome}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{c.tipoCartao}</td>
+                          <td className="px-4 py-3 text-center text-muted-foreground">{c.parcelas.length}x</td>
+                          <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={c.ativo} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" className="h-8 px-3" onClick={e => { e.stopPropagation(); iniciarEdicao(c); }}>Editar</Button>
+                              <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); setConfirmandoExcluirId(c.id); }}>Excluir</Button>
                             </div>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
+                        {expandidoId === c.id && (
+                          <tr className="bg-muted/10">
+                            <td colSpan={6} className="px-6 py-3">
+                              <div className="overflow-x-auto rounded-md border">
+                                <table className="w-full min-w-[400px] text-xs">
+                                  <thead className="bg-muted/50 text-left uppercase tracking-wide text-muted-foreground">
+                                    <tr>
+                                      <th className="px-3 py-2 text-center">Parcelas</th>
+                                      <th className="px-3 py-2 text-right">Taxa (%)</th>
+                                      <th className="px-3 py-2 text-right">Taxa fixa</th>
+                                      <th className="px-3 py-2 text-right">Prazo</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y">
+                                    {c.parcelas.map(p => (
+                                      <tr key={p.id} className="hover:bg-muted/20">
+                                        <td className="px-3 py-2 text-center font-semibold">{p.numeroParcelas}x</td>
+                                        <td className="px-3 py-2 text-right">{p.percentualTaxa.toFixed(2)}%</td>
+                                        <td className="px-3 py-2 text-right text-muted-foreground">{p.taxaFixa != null ? `R$ ${p.taxaFixa.toFixed(2)}` : "—"}</td>
+                                        <td className="px-3 py-2 text-right text-muted-foreground">{p.prazoRecebimentoDias} dias</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
                   )
-                )
-          }
-        </tbody>
-      </table>
+            }
+          </tbody>
+        </table>
       </div>
     </Card>
   );
