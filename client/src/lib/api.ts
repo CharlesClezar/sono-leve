@@ -497,6 +497,9 @@ export const api = {
 
   listarEntidadesSistema: () =>
     http.get<string[]>("/audit-logs/entidades"),
+
+  listarTimelineEntidade: (entidade: string, entidadeId: string) =>
+    http.get<AuditLogsResponse>(`/audit-logs?${buildQS({ entidade, entidadeId, pageSize: 500 })}`),
 };
 
 // ─── Auditoria ────────────────────────────────────────────────────────────────
@@ -509,7 +512,6 @@ export type AuditLog = {
   dadosAntes: string | null;
   dadosDepois: string | null;
   endpoint: string | null;
-  stackTrace: string | null;
   ocorridoEm: string;
 };
 

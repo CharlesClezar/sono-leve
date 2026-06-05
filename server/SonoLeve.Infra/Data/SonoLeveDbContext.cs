@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SonoLeve.Application.Interfaces;
 using SonoLeve.Domain.Entities;
-using System.Diagnostics;
 using System.Text.Json;
 
 namespace SonoLeve.Infra.Data;
@@ -45,11 +44,10 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var stackTrace = CapturarStackTrace();
         var pendentes = ColetarPendentes();
         var resultado = await base.SaveChangesAsync(cancellationToken);
         if (pendentes.Count > 0)
-            await GravarAuditLogsAsync(pendentes, stackTrace, cancellationToken);
+            await GravarAuditLogsAsync(pendentes, cancellationToken);
         return resultado;
     }
 
@@ -93,7 +91,7 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
             .ToList();
     }
 
-    private async Task GravarAuditLogsAsync(List<EntradaAudit> pendentes, string? stackTrace, CancellationToken ct)
+    private async Task GravarAuditLogsAsync(List<EntradaAudit> pendentes, CancellationToken ct)
     {
         var endpoint = _httpContextAccessor?.HttpContext?.Request is { } req
             ? $"{req.Method} {req.Path}"
@@ -107,7 +105,6 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
             DadosAntes = e.Antes,
             DadosDepois = e.Depois,
             Endpoint = endpoint,
-            StackTrace = stackTrace,
             OcorridoEm = DateTime.UtcNow,
         }));
 
@@ -120,18 +117,6 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
             p => p.Metadata.Name,
             p => original ? p.OriginalValue : p.CurrentValue);
         return JsonSerializer.Serialize(dict);
-    }
-
-    private static string? CapturarStackTrace()
-    {
-        var linhas = new StackTrace()
-            .GetFrames()
-            ?.Select(f => f.GetMethod())
-            .Where(m => m?.DeclaringType?.Namespace?.StartsWith("SonoLeve") == true)
-            .Select(m => $"{m!.DeclaringType!.FullName}.{m.Name}")
-            .ToArray();
-
-        return linhas?.Length > 0 ? string.Join("\n", linhas) : null;
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

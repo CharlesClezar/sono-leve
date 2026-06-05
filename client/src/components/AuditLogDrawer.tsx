@@ -52,28 +52,6 @@ function JsonExpandido({ label, json }: { label: string; json: string | null }) 
   );
 }
 
-function StackTraceExpandido({ stack }: { stack: string | null }) {
-  const [aberto, setAberto] = useState(false);
-  if (!stack) return null;
-
-  return (
-    <div className="mt-1">
-      <button
-        onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {aberto ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Stack trace
-      </button>
-      {aberto && (
-        <pre className="mt-1 rounded-md bg-muted/60 p-2 text-[10px] leading-relaxed overflow-x-auto whitespace-pre-wrap break-all border border-border/50 text-muted-foreground">
-          {stack}
-        </pre>
-      )}
-    </div>
-  );
-}
-
 function ItemAudit({ log }: { log: AuditLog }) {
   return (
     <div className="border-b border-border/60 px-4 py-3 last:border-0">
@@ -100,7 +78,6 @@ function ItemAudit({ log }: { log: AuditLog }) {
 
       <JsonExpandido label="Antes" json={log.dadosAntes} />
       <JsonExpandido label="Depois" json={log.dadosDepois} />
-      <StackTraceExpandido stack={log.stackTrace} />
     </div>
   );
 }

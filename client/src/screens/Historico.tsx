@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuditLogsPaginados, useEntidadesSistema, type AuditLog, type AuditLogsFiltros } from "@/lib/api";
+import { api, useAuditLogsPaginados, useEntidadesSistema, type AuditLog, type AuditLogsFiltros } from "@/lib/api";
 import { useServerPagination } from "@/hooks/usePagination";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 
@@ -296,11 +296,6 @@ function DialogDetalhe({
           </div>
         </div>
 
-        {log.stackTrace && (
-          <div className="mt-3">
-            <JsonExpandido label="Stack trace" json={log.stackTrace} />
-          </div>
-        )}
       </DialogHeader>
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -356,8 +351,8 @@ export default function Historico() {
 
   const { data: entidadesSistema = [] } = useEntidadesSistema();
 
-  const [detalheLogs, setDetalheLogs] = useState<AuditLog[] | null>(null);
-  const [detalheIndice, setDetalheIndice] = useState(0);
+  const [timeline, setTimeline] = useState<AuditLog[] | null>(null);
+  const [timelineIndice, setTimelineIndice] = useState(0);
 
   const filtros: AuditLogsFiltros = useMemo(() => ({
     entidade: entidade || undefined,
@@ -409,16 +404,25 @@ export default function Historico() {
     setPage(1);
   }
 
-  function abrirDetalhe(index: number) {
-    setDetalheLogs(grid.rows);
-    setDetalheIndice(index);
+  async function abrirDetalhe(log: AuditLog) {
+    // Abre imediatamente com o log clicado; busca o histórico completo em background
+    setTimeline([log]);
+    setTimelineIndice(0);
+
+    const res = await api.listarTimelineEntidade(log.entidade, log.entidadeId);
+    const ordenado = [...res.data].sort(
+      (a, b) => new Date(a.ocorridoEm).getTime() - new Date(b.ocorridoEm).getTime(),
+    );
+    const idx = ordenado.findIndex((r) => r.id === log.id);
+    setTimeline(ordenado);
+    setTimelineIndice(idx >= 0 ? idx : 0);
   }
 
   function fecharDetalhe() {
-    setDetalheLogs(null);
+    setTimeline(null);
   }
 
-  const logAtual = detalheLogs?.[detalheIndice] ?? null;
+  const logAtual = timeline?.[timelineIndice] ?? null;
 
   return (
     <AppShell>
@@ -540,7 +544,7 @@ export default function Historico() {
                     </td>
                   </tr>
                 ) : (
-                  grid.rows.map((log, idx) => (
+                  grid.rows.map((log) => (
                     <tr key={log.id} className="hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">{log.entidade}</td>
                       <td className="px-4 py-3">
@@ -562,7 +566,7 @@ export default function Historico() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => abrirDetalhe(idx)}
+                          onClick={() => abrirDetalhe(log)}
                           aria-label="Ver detalhes"
                         >
                           <Eye className="h-4 w-4" />
@@ -580,15 +584,15 @@ export default function Historico() {
 
       {/* Dialog de detalhe */}
       <Dialog open={!!logAtual} onOpenChange={(v) => { if (!v) fecharDetalhe(); }}>
-        {logAtual && detalheLogs && (
+        {logAtual && timeline && (
           <DialogDetalhe
             log={logAtual}
-            indiceAtual={detalheIndice}
-            totalRegistros={detalheLogs.length}
-            podePrevious={detalheIndice > 0}
-            podeNext={detalheIndice < detalheLogs.length - 1}
-            onPrevious={() => setDetalheIndice((i) => Math.max(0, i - 1))}
-            onNext={() => setDetalheIndice((i) => Math.min(detalheLogs.length - 1, i + 1))}
+            indiceAtual={timelineIndice}
+            totalRegistros={timeline.length}
+            podePrevious={timelineIndice > 0}
+            podeNext={timelineIndice < timeline.length - 1}
+            onPrevious={() => setTimelineIndice((i) => Math.max(0, i - 1))}
+            onNext={() => setTimelineIndice((i) => Math.min(timeline.length - 1, i + 1))}
             onClose={fecharDetalhe}
           />
         )}

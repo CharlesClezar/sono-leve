@@ -83,7 +83,6 @@ public class AuditLogController : ControllerBase
                 a.DadosAntes,
                 a.DadosDepois,
                 a.Endpoint,
-                a.StackTrace,
                 a.OcorridoEm,
             })
             .ToListAsync();
