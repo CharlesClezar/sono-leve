@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<IdempotencyFilter>();
 builder.Services.AddScoped<IIdempotencyService, SonoLeve.Infra.Repositories.IdempotencyService>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers(opcoes =>
     opcoes.Filters.Add(new ServiceFilterAttribute(typeof(IdempotencyFilter))));

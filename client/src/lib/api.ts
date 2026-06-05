@@ -480,6 +480,44 @@ export const api = {
 
   excluirConfiguracaoTaxaCartao: (id: string) =>
     http.delete<void>(`/configuracoes-taxa-cartao/${id}`),
+
+  // ─── Auditoria ─────────────────────────────────────────────────────────────
+
+  listarAuditLogs: (f: AuditLogsFiltros) =>
+    http.get<AuditLogsResponse>(`/audit-logs?${buildQS({
+      entidade: f.entidade, busca: f.busca,
+      page: f.page ?? 1, pageSize: f.pageSize ?? 30,
+    })}`),
+};
+
+// ─── Auditoria ────────────────────────────────────────────────────────────────
+
+export type AuditLog = {
+  id: number;
+  entidade: string;
+  entidadeId: string;
+  acao: string;
+  dadosAntes: string | null;
+  dadosDepois: string | null;
+  endpoint: string | null;
+  stackTrace: string | null;
+  ocorridoEm: string;
+};
+
+export type AuditLogsFiltros = {
+  entidade?: string;
+  busca?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+type AuditLogsResponse = {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  entidades: string[];
 };
 
 // ─── React Query Hooks ────────────────────────────────────────────────────────
@@ -675,6 +713,13 @@ export function useDashboard() {
     queryFn: () => http.get<DashboardKpis>("/dashboard"),
     staleTime: 5 * 60_000,
     placeholderData: DASHBOARD_KPIS_VAZIO,
+  });
+}
+
+export function useAuditLogsPaginados(filtros: AuditLogsFiltros) {
+  return useQuery({
+    queryKey: ["audit-logs", filtros],
+    queryFn: () => api.listarAuditLogs(filtros),
   });
 }
 

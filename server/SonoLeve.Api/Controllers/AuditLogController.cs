@@ -1,0 +1,79 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SonoLeve.Infra.Data;
+
+namespace SonoLeve.Api.Controllers;
+
+[ApiController]
+[Route("api/audit-logs")]
+public class AuditLogController : ControllerBase
+{
+    private readonly SonoLeveDbContext _db;
+
+    public AuditLogController(SonoLeveDbContext db)
+    {
+        _db = db;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Listar(
+        [FromQuery] string? entidade,
+        [FromQuery] string? busca,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 30)
+    {
+        pageSize = Math.Min(pageSize, 100);
+        page = Math.Max(page, 1);
+
+        var query = _db.AuditLogs.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(entidade) && entidade != "all")
+            query = query.Where(a => a.Entidade == entidade);
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var padrao = $"%{busca}%";
+            query = query.Where(a =>
+                EF.Functions.ILike(a.EntidadeId, padrao) ||
+                EF.Functions.ILike(a.Acao, padrao) ||
+                (a.Endpoint != null && EF.Functions.ILike(a.Endpoint, padrao)));
+        }
+
+        var total = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(a => a.OcorridoEm)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(a => new
+            {
+                a.Id,
+                a.Entidade,
+                a.EntidadeId,
+                a.Acao,
+                a.DadosAntes,
+                a.DadosDepois,
+                a.Endpoint,
+                a.StackTrace,
+                a.OcorridoEm,
+            })
+            .ToListAsync();
+
+        var entidades = await _db.AuditLogs
+            .AsNoTracking()
+            .Select(a => a.Entidade)
+            .Distinct()
+            .OrderBy(e => e)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = items,
+            total,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling(total / (double)pageSize),
+            entidades,
+        });
+    }
+}

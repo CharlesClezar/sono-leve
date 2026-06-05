@@ -21,6 +21,7 @@ import { getShortcutById, getShortcutDisplayValue, getShortcutPlatform } from "@
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -29,6 +30,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { AuditLogDrawer } from "@/components/AuditLogDrawer";
 
 const iconsByRoute = {
   "/": LayoutDashboard,
@@ -107,6 +109,10 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <AuditLogDrawer collapsed={collapsed} />
+      </SidebarFooter>
     </Sidebar>
   );
 }

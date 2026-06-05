@@ -12,7 +12,7 @@ server/**/obj/
 .env.local
 
 # Dados de produção (imagens de produtos)
-data/
+/data/
 
 # IDEs
 .idea/
