@@ -10,15 +10,32 @@ public class AuditLogController : ControllerBase
 {
     private readonly SonoLeveDbContext _db;
 
+    // Todas as entidades do domínio que podem aparecer no histórico
+    private static readonly string[] EntidadesSistema =
+    [
+        "BandeiraCartao", "Categoria", "Cliente", "Colecao",
+        "ConfiguracaoTaxaCartao", "ConfiguracaoTaxaCartaoParcela",
+        "Conta", "Encomenda", "Ficha", "FormaPagamento",
+        "ItemEncomenda", "ItemVenda", "Marca", "Produto",
+        "Subtipo", "Tipo", "Usuario", "Venda",
+    ];
+
     public AuditLogController(SonoLeveDbContext db)
     {
         _db = db;
     }
 
+    [HttpGet("entidades")]
+    public IActionResult ListarEntidades() => Ok(EntidadesSistema.OrderBy(e => e));
+
     [HttpGet]
     public async Task<IActionResult> Listar(
         [FromQuery] string? entidade,
+        [FromQuery] string? entidadeId,
+        [FromQuery] string? acao,
         [FromQuery] string? busca,
+        [FromQuery] DateOnly? dataInicio,
+        [FromQuery] DateOnly? dataFim,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 30)
     {
@@ -27,8 +44,20 @@ public class AuditLogController : ControllerBase
 
         var query = _db.AuditLogs.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(entidade) && entidade != "all")
+        if (!string.IsNullOrWhiteSpace(entidade))
             query = query.Where(a => a.Entidade == entidade);
+
+        if (!string.IsNullOrWhiteSpace(entidadeId))
+            query = query.Where(a => EF.Functions.ILike(a.EntidadeId, $"%{entidadeId}%"));
+
+        if (!string.IsNullOrWhiteSpace(acao))
+            query = query.Where(a => a.Acao == acao);
+
+        if (dataInicio.HasValue)
+            query = query.Where(a => a.OcorridoEm >= dataInicio.Value.ToDateTime(TimeOnly.MinValue));
+
+        if (dataFim.HasValue)
+            query = query.Where(a => a.OcorridoEm < dataFim.Value.AddDays(1).ToDateTime(TimeOnly.MinValue));
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
@@ -59,13 +88,6 @@ public class AuditLogController : ControllerBase
             })
             .ToListAsync();
 
-        var entidades = await _db.AuditLogs
-            .AsNoTracking()
-            .Select(a => a.Entidade)
-            .Distinct()
-            .OrderBy(e => e)
-            .ToListAsync();
-
         return Ok(new
         {
             data = items,
@@ -73,7 +95,6 @@ public class AuditLogController : ControllerBase
             page,
             pageSize,
             totalPages = (int)Math.Ceiling(total / (double)pageSize),
-            entidades,
         });
     }
 }

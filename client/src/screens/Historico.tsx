@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
 import { TableSkeleton } from "@/components/TableSkeleton";
-import { AppSelect } from "@/components/AppSelect";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,17 +25,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuditLogsPaginados, type AuditLog, type AuditLogsFiltros } from "@/lib/api";
+import { useAuditLogsPaginados, useEntidadesSistema, type AuditLog, type AuditLogsFiltros } from "@/lib/api";
 import { useServerPagination } from "@/hooks/usePagination";
 import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const ACOES = [
-  { value: "all", label: "Todas as ações" },
-  { value: "Criado", label: "Criado" },
-  { value: "Alterado", label: "Alterado" },
-  { value: "Excluído", label: "Excluído" },
+const ACOES_OPCOES = [
+  { label: "Criado", value: "Criado" },
+  { label: "Alterado", value: "Alterado" },
+  { label: "Excluído", value: "Excluído" },
 ];
 
 const ACAO_COR: Record<string, string> = {
@@ -44,6 +42,66 @@ const ACAO_COR: Record<string, string> = {
   Alterado: "bg-amber-500/15 text-amber-700 border-amber-200 dark:border-amber-800 dark:text-amber-400",
   Excluído: "bg-red-500/15 text-red-700 border-red-200 dark:border-red-800 dark:text-red-400",
 };
+
+// ── Combobox de entidade ──────────────────────────────────────────────────────
+
+function EntidadeCombobox({
+  value,
+  onChange,
+  entidades,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  entidades: string[];
+}) {
+  const [aberto, setAberto] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const sugestoes = value
+    ? entidades.filter((e) => e.toLowerCase().includes(value.toLowerCase()))
+    : entidades;
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setAberto(true); }}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setTimeout(() => setAberto(false), 120)}
+        placeholder="Entidade..."
+        autoComplete="off"
+        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      />
+      {value && (
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); onChange(""); inputRef.current?.focus(); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          tabIndex={-1}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+      {aberto && sugestoes.length > 0 && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border bg-popover shadow-md overflow-hidden">
+          <div className="max-h-52 overflow-y-auto py-1">
+            {sugestoes.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onMouseDown={() => { onChange(e); setAberto(false); }}
+                className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatarData(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", {
@@ -287,22 +345,24 @@ function DialogDetalhe({
 // ── Tela principal ────────────────────────────────────────────────────────────
 
 export default function Historico() {
-  const [entidade, setEntidade] = useState("all");
+  const [entidade, setEntidade] = useState("");
   const [entidadeId, setEntidadeId] = useState("");
-  const [acao, setAcao] = useState("all");
+  const [acao, setAcao] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [buscaInput, setBuscaInput] = useState("");
   const [buscaAtiva, setBuscaAtiva] = useState("");
   const [page, setPage] = useState(1);
 
+  const { data: entidadesSistema = [] } = useEntidadesSistema();
+
   const [detalheLogs, setDetalheLogs] = useState<AuditLog[] | null>(null);
   const [detalheIndice, setDetalheIndice] = useState(0);
 
   const filtros: AuditLogsFiltros = useMemo(() => ({
-    entidade: entidade === "all" ? undefined : entidade,
+    entidade: entidade || undefined,
     entidadeId: entidadeId || undefined,
-    acao: acao === "all" ? undefined : acao,
+    acao: acao || undefined,
     dataInicio: dataInicio || undefined,
     dataFim: dataFim || undefined,
     busca: buscaAtiva || undefined,
@@ -326,17 +386,17 @@ export default function Historico() {
   const grid = useDataGrid(paginacao.items, colunas);
 
   const temFiltros =
-    entidade !== "all" ||
+    entidade !== "" ||
     entidadeId !== "" ||
-    acao !== "all" ||
+    acao !== "" ||
     dataInicio !== "" ||
     dataFim !== "" ||
     buscaAtiva !== "";
 
   const resetFiltros = useCallback(() => {
-    setEntidade("all");
+    setEntidade("");
     setEntidadeId("");
-    setAcao("all");
+    setAcao("");
     setDataInicio("");
     setDataFim("");
     setBuscaInput("");
@@ -371,24 +431,51 @@ export default function Historico() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="shrink-0 border-b px-6 py-4">
           <Card className="p-4 space-y-3">
-            {/* Linha 1: busca + período + ações */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[200px] flex-1">
+            {/* Linha 1: busca por texto + botão buscar */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por endpoint, ID ou texto..."
+                  placeholder="Buscar por endpoint ou texto..."
                   className="pl-9"
                   value={buscaInput}
                   onChange={(e) => setBuscaInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && aplicarBusca()}
                 />
               </div>
+              <Button onClick={aplicarBusca} className="shrink-0">
+                <Search className="mr-1.5 h-4 w-4" />
+                Buscar
+              </Button>
+              {temFiltros && (
+                <Button variant="ghost" size="icon" onClick={resetFiltros} title="Limpar filtros" className="shrink-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Linha 2: entidade + ação badges + ID + datas */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="w-[180px] shrink-0">
+                <EntidadeCombobox
+                  value={entidade}
+                  onChange={(v) => { setEntidade(v); setPage(1); }}
+                  entidades={entidadesSistema}
+                />
+              </div>
+
+              <Input
+                className="w-[200px] shrink-0"
+                placeholder="Código / ID"
+                value={entidadeId}
+                onChange={(e) => { setEntidadeId(e.target.value); setPage(1); }}
+              />
 
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs text-muted-foreground whitespace-nowrap">De</span>
                 <Input
                   type="date"
-                  className="w-[150px]"
+                  className="w-[148px]"
                   value={dataInicio}
                   onChange={(e) => { setDataInicio(e.target.value); setPage(1); }}
                 />
@@ -398,53 +485,32 @@ export default function Historico() {
                 <span className="text-xs text-muted-foreground whitespace-nowrap">Até</span>
                 <Input
                   type="date"
-                  className="w-[150px]"
+                  className="w-[148px]"
                   value={dataFim}
                   onChange={(e) => { setDataFim(e.target.value); setPage(1); }}
                 />
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <Button onClick={aplicarBusca}>
-                  <Search className="mr-1.5 h-4 w-4" />
-                  Buscar
-                </Button>
-                {temFiltros && (
-                  <Button variant="ghost" size="icon" onClick={resetFiltros} title="Limpar filtros">
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+              {/* Toggle de ação */}
+              <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                {ACOES_OPCOES.map((op) => (
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => { setAcao(acao === op.value ? "" : op.value); setPage(1); }}
+                    className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                      acao === op.value
+                        ? ACAO_COR[op.value]
+                        : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                    }`}
+                  >
+                    {op.label}
+                  </button>
+                ))}
               </div>
-            </div>
-
-            {/* Linha 2: entidade + ação + ID */}
-            <div className="flex flex-wrap items-center gap-3">
-              <AppSelect
-                className="min-w-[180px] flex-1"
-                value={entidade}
-                onValueChange={(v) => { setEntidade(v); setPage(1); }}
-                options={[
-                  { value: "all", label: "Todas as entidades" },
-                  ...(response?.entidades ?? []).map((e) => ({ value: e, label: e })),
-                ]}
-              />
-
-              <AppSelect
-                className="w-[180px] shrink-0"
-                value={acao}
-                onValueChange={(v) => { setAcao(v); setPage(1); }}
-                options={ACOES}
-              />
-
-              <Input
-                className="w-[220px] shrink-0"
-                placeholder="Código / ID da entidade"
-                value={entidadeId}
-                onChange={(e) => { setEntidadeId(e.target.value); setPage(1); }}
-              />
 
               {response && (
-                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {response.total.toLocaleString("pt-BR")} registro{response.total !== 1 ? "s" : ""}
                 </span>
               )}

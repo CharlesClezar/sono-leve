@@ -171,9 +171,6 @@ export function AuditLogDrawer({ collapsed = false }: { collapsed?: boolean }) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as entidades</SelectItem>
-                {data?.entidades.map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
               </SelectContent>
             </Select>
 

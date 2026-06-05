@@ -494,6 +494,9 @@ export const api = {
       page: f.page ?? 1,
       pageSize: f.pageSize ?? 30,
     })}`),
+
+  listarEntidadesSistema: () =>
+    http.get<string[]>("/audit-logs/entidades"),
 };
 
 // ─── Auditoria ────────────────────────────────────────────────────────────────
@@ -527,7 +530,6 @@ type AuditLogsResponse = {
   page: number;
   pageSize: number;
   totalPages: number;
-  entidades: string[];
 };
 
 // ─── React Query Hooks ────────────────────────────────────────────────────────
@@ -730,6 +732,14 @@ export function useAuditLogsPaginados(filtros: AuditLogsFiltros) {
   return useQuery({
     queryKey: ["audit-logs", filtros],
     queryFn: () => api.listarAuditLogs(filtros),
+  });
+}
+
+export function useEntidadesSistema() {
+  return useQuery({
+    queryKey: ["audit-logs", "entidades"],
+    queryFn: api.listarEntidadesSistema,
+    staleTime: Infinity,
   });
 }
 
