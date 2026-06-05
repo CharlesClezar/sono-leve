@@ -370,10 +370,10 @@ export default function Historico() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="shrink-0 border-b px-6 py-4">
-          <Card className="p-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {/* Busca geral */}
-              <div className="relative sm:col-span-2 lg:col-span-1 xl:col-span-2">
+          <Card className="p-4 space-y-3">
+            {/* Linha 1: busca + período + ações */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative min-w-[200px] flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por endpoint, ID ou texto..."
@@ -384,57 +384,28 @@ export default function Historico() {
                 />
               </div>
 
-              {/* Entidade */}
-              <AppSelect
-                value={entidade}
-                onValueChange={(v) => { setEntidade(v); setPage(1); }}
-                options={[
-                  { value: "all", label: "Todas as entidades" },
-                  ...(response?.entidades ?? []).map((e) => ({ value: e, label: e })),
-                ]}
-              />
-
-              {/* Ação */}
-              <AppSelect
-                value={acao}
-                onValueChange={(v) => { setAcao(v); setPage(1); }}
-                options={ACOES}
-              />
-
-              {/* ID da entidade */}
-              <Input
-                placeholder="Código / ID da entidade"
-                value={entidadeId}
-                onChange={(e) => { setEntidadeId(e.target.value); setPage(1); }}
-              />
-
-              {/* Data início */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Data início
-                </label>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">De</span>
                 <Input
                   type="date"
+                  className="w-[150px]"
                   value={dataInicio}
                   onChange={(e) => { setDataInicio(e.target.value); setPage(1); }}
                 />
               </div>
 
-              {/* Data fim */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Data fim
-                </label>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">Até</span>
                 <Input
                   type="date"
+                  className="w-[150px]"
                   value={dataFim}
                   onChange={(e) => { setDataFim(e.target.value); setPage(1); }}
                 />
               </div>
 
-              {/* Botões busca / limpar */}
-              <div className="flex items-end gap-2">
-                <Button className="flex-1" onClick={aplicarBusca}>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button onClick={aplicarBusca}>
                   <Search className="mr-1.5 h-4 w-4" />
                   Buscar
                 </Button>
@@ -446,11 +417,38 @@ export default function Historico() {
               </div>
             </div>
 
-            {response && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                {response.total.toLocaleString("pt-BR")} registro{response.total !== 1 ? "s" : ""} encontrado{response.total !== 1 ? "s" : ""}
-              </p>
-            )}
+            {/* Linha 2: entidade + ação + ID */}
+            <div className="flex flex-wrap items-center gap-3">
+              <AppSelect
+                className="min-w-[180px] flex-1"
+                value={entidade}
+                onValueChange={(v) => { setEntidade(v); setPage(1); }}
+                options={[
+                  { value: "all", label: "Todas as entidades" },
+                  ...(response?.entidades ?? []).map((e) => ({ value: e, label: e })),
+                ]}
+              />
+
+              <AppSelect
+                className="w-[180px] shrink-0"
+                value={acao}
+                onValueChange={(v) => { setAcao(v); setPage(1); }}
+                options={ACOES}
+              />
+
+              <Input
+                className="w-[220px] shrink-0"
+                placeholder="Código / ID da entidade"
+                value={entidadeId}
+                onChange={(e) => { setEntidadeId(e.target.value); setPage(1); }}
+              />
+
+              {response && (
+                <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">
+                  {response.total.toLocaleString("pt-BR")} registro{response.total !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </Card>
         </div>
 
