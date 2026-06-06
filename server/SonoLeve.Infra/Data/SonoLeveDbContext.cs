@@ -19,26 +19,26 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
-    public DbSet<Cliente> Clientes => Set<Cliente>();
-    public DbSet<Produto> Produtos => Set<Produto>();
-    public DbSet<Venda> Vendas => Set<Venda>();
-    public DbSet<Encomenda> Encomendas => Set<Encomenda>();
-    public DbSet<ItemEncomenda> ItensEncomenda => Set<ItemEncomenda>();
-    public DbSet<ItemVenda> ItensVenda => Set<ItemVenda>();
-    public DbSet<Ficha> Fichas => Set<Ficha>();
-    public DbSet<Conta> Contas => Set<Conta>();
-    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
-    public DbSet<Marca> Marcas => Set<Marca>();
-    public DbSet<Categoria> Categorias => Set<Categoria>();
-    public DbSet<Tipo> Tipos => Set<Tipo>();
-    public DbSet<Subtipo> Subtipos => Set<Subtipo>();
-    public DbSet<Colecao> Colecoes => Set<Colecao>();
-    public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
-    public DbSet<BandeiraCartao> BandeirasCartao => Set<BandeiraCartao>();
-    public DbSet<ConfiguracaoTaxaCartao> ConfiguracoesTaxaCartao => Set<ConfiguracaoTaxaCartao>();
-    public DbSet<ConfiguracaoTaxaCartaoParcela> ConfiguracoesTaxaCartaoParcelas => Set<ConfiguracaoTaxaCartaoParcela>();
-    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Usuario> Usuario => Set<Usuario>();
+    public DbSet<Cliente> Cliente => Set<Cliente>();
+    public DbSet<Produto> Produto => Set<Produto>();
+    public DbSet<Venda> Venda => Set<Venda>();
+    public DbSet<Encomenda> Encomenda => Set<Encomenda>();
+    public DbSet<ItemEncomenda> ItemEncomenda => Set<ItemEncomenda>();
+    public DbSet<ItemVenda> ItemVenda => Set<ItemVenda>();
+    public DbSet<Ficha> Ficha => Set<Ficha>();
+    public DbSet<Conta> Conta => Set<Conta>();
+    public DbSet<IdempotencyRecord> IdempotencyRecord => Set<IdempotencyRecord>();
+    public DbSet<Marca> Marca => Set<Marca>();
+    public DbSet<Categoria> Categoria => Set<Categoria>();
+    public DbSet<Tipo> Tipo => Set<Tipo>();
+    public DbSet<Subtipo> Subtipo => Set<Subtipo>();
+    public DbSet<Colecao> Colecao => Set<Colecao>();
+    public DbSet<FormaPagamento> FormaPagamento => Set<FormaPagamento>();
+    public DbSet<BandeiraCartao> BandeiraCartao => Set<BandeiraCartao>();
+    public DbSet<ConfiguracaoTaxaCartao> ConfiguracaoTaxaCartao => Set<ConfiguracaoTaxaCartao>();
+    public DbSet<ConfiguracaoTaxaCartaoParcela> ConfiguracaoTaxaCartaoParcela => Set<ConfiguracaoTaxaCartaoParcela>();
+    public DbSet<AuditLog> AuditLog => Set<AuditLog>();
 
     public Task CommitAsync(CancellationToken ct = default) => SaveChangesAsync(ct);
 
@@ -63,8 +63,8 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
     {
         var modificadas = ChangeTracker.Entries()
             .Where(e => e.State == EntityState.Modified
-                     && e.Entity is not AuditLog
-                     && e.Entity is not IdempotencyRecord)
+                     && e.Entity.GetType() != typeof(AuditLog)
+                     && e.Entity.GetType() != typeof(IdempotencyRecord))
             .ToList();
 
         foreach (var entry in modificadas)
@@ -85,8 +85,8 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
     private List<EntradaAudit> ColetarPendentes()
     {
         return ChangeTracker.Entries()
-            .Where(e => e.Entity is not AuditLog
-                     && e.Entity is not IdempotencyRecord
+            .Where(e => e.Entity.GetType() != typeof(AuditLog)
+                     && e.Entity.GetType() != typeof(IdempotencyRecord)
                      && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
             .Select(e =>
             {
@@ -121,7 +121,7 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
             ? $"{req.Method} {req.Path}"
             : null;
 
-        AuditLogs.AddRange(pendentes.Select(e => new AuditLog
+        AuditLog.AddRange(pendentes.Select(e => new AuditLog
         {
             Entidade = e.Entidade,
             EntidadeId = e.EntidadeId,
@@ -147,6 +147,28 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SonoLeveDbContext).Assembly);
+
+        // Preserva nomes de tabela plurais existentes no banco
+        modelBuilder.Entity<Usuario>().ToTable("Usuarios");
+        modelBuilder.Entity<Cliente>().ToTable("Clientes");
+        modelBuilder.Entity<Produto>().ToTable("Produtos");
+        modelBuilder.Entity<Venda>().ToTable("Vendas");
+        modelBuilder.Entity<Encomenda>().ToTable("Encomendas");
+        modelBuilder.Entity<ItemEncomenda>().ToTable("ItensEncomenda");
+        modelBuilder.Entity<ItemVenda>().ToTable("ItensVenda");
+        modelBuilder.Entity<Ficha>().ToTable("Fichas");
+        modelBuilder.Entity<Conta>().ToTable("Contas");
+        modelBuilder.Entity<IdempotencyRecord>().ToTable("IdempotencyRecords");
+        modelBuilder.Entity<Marca>().ToTable("Marcas");
+        modelBuilder.Entity<Categoria>().ToTable("Categorias");
+        modelBuilder.Entity<Tipo>().ToTable("Tipos");
+        modelBuilder.Entity<Subtipo>().ToTable("Subtipos");
+        modelBuilder.Entity<Colecao>().ToTable("Colecoes");
+        modelBuilder.Entity<FormaPagamento>().ToTable("FormasPagamento");
+        modelBuilder.Entity<BandeiraCartao>().ToTable("BandeirasCartao");
+        modelBuilder.Entity<ConfiguracaoTaxaCartao>().ToTable("ConfiguracoesTaxaCartao");
+        modelBuilder.Entity<ConfiguracaoTaxaCartaoParcela>().ToTable("ConfiguracoesTaxaCartaoParcelas");
+        modelBuilder.Entity<AuditLog>().ToTable("AuditLogs");
 
         var gradeConverter = new ValueConverter<List<string>, string>(
             v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),

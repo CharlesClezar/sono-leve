@@ -16,17 +16,17 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<DashboardKpisResponse>> Obter()
     {
-        var vendasRaw = await _db.Vendas
+        var vendasRaw = await _db.Venda
             .AsNoTracking()
             .Select(v => new { v.Id, v.Data, v.Total, v.Status })
             .ToListAsync();
 
-        var fichasRaw = await _db.Fichas
+        var fichasRaw = await _db.Ficha
             .AsNoTracking()
             .Select(f => new { f.Id, f.DataAbertura, f.Status })
             .ToListAsync();
 
-        var contasRaw = await _db.Contas
+        var contasRaw = await _db.Conta
             .AsNoTracking()
             .Select(c => new { c.Id, c.Vencimento, c.Total, c.Recebido })
             .ToListAsync();
@@ -43,7 +43,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateOnly? inicio = null,
         [FromQuery] DateOnly? fim = null)
     {
-        var query = _db.Encomendas
+        var query = _db.Encomenda
             .AsNoTracking()
             .Where(e => e.Status != StatusEncomenda.Cancelada && e.Status != StatusEncomenda.Entregue);
 

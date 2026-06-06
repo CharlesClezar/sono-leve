@@ -15,7 +15,7 @@ public class EncomendaRepository : IEncomendaRepository
         string? search, string? status, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Encomenda> query = _db.Encomendas.AsNoTracking().Include(e => e.Cliente);
+        IQueryable<Encomenda> query = _db.Encomenda.AsNoTracking().Include(e => e.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e => e.Cliente != null && e.Cliente.Nome.Contains(search));
@@ -41,33 +41,33 @@ public class EncomendaRepository : IEncomendaRepository
     }
 
     public async Task<Encomenda> ObterPorIdAsync(Guid id) =>
-        await _db.Encomendas.Include(e => e.Cliente)
+        await _db.Encomenda.Include(e => e.Cliente)
             .FirstOrDefaultAsync(e => e.Id == id) ?? throw new KeyNotFoundException("Encomenda não encontrada.");
 
     public Task<Encomenda> CriarAsync(Encomenda encomenda)
     {
-        _db.Encomendas.Add(encomenda);
+        _db.Encomenda.Add(encomenda);
         return Task.FromResult(encomenda);
     }
 
     public Task<Encomenda> AtualizarAsync(Encomenda encomenda)
     {
         encomenda.AtualizadoEm = DateTime.UtcNow;
-        _db.Encomendas.Update(encomenda);
+        _db.Encomenda.Update(encomenda);
         return Task.FromResult(encomenda);
     }
 
     public async Task<IEnumerable<ItemEncomenda>> ObterItensAsync(Guid encomendaId) =>
-        await _db.ItensEncomenda.Include(i => i.Produto).Where(i => i.EncomendaId == encomendaId).ToListAsync();
+        await _db.ItemEncomenda.Include(i => i.Produto).Where(i => i.EncomendaId == encomendaId).ToListAsync();
 
     public async Task SalvarItensAsync(Guid encomendaId, IEnumerable<ItemEncomenda> itens)
     {
-        var existentes = await _db.ItensEncomenda.Where(i => i.EncomendaId == encomendaId).ToListAsync();
-        _db.ItensEncomenda.RemoveRange(existentes);
+        var existentes = await _db.ItemEncomenda.Where(i => i.EncomendaId == encomendaId).ToListAsync();
+        _db.ItemEncomenda.RemoveRange(existentes);
         foreach (var item in itens)
         {
             item.EncomendaId = encomendaId;
-            _db.ItensEncomenda.Add(item);
+            _db.ItemEncomenda.Add(item);
         }
     }
 

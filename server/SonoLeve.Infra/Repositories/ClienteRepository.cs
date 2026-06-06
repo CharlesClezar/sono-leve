@@ -19,7 +19,7 @@ public class ClienteRepository : IClienteRepository
         string? busca, string? tipo, string? status, int page, int pageSize)
     {
         busca = busca?.Length > 100 ? busca[..100] : busca;
-        var query = _db.Clientes.AsNoTracking().AsQueryable();
+        var query = _db.Cliente.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
@@ -51,20 +51,20 @@ public class ClienteRepository : IClienteRepository
     }
 
     public Task<Cliente?> ObterPorIdAsync(Guid id)
-        => _db.Clientes.FindAsync(id).AsTask();
+        => _db.Cliente.FindAsync(id).AsTask();
 
     public Task<Cliente> CriarAsync(Cliente cliente)
     {
         cliente.CriadoEm = DateTime.UtcNow;
         cliente.AtualizadoEm = DateTime.UtcNow;
-        _db.Clientes.Add(cliente);
+        _db.Cliente.Add(cliente);
         return Task.FromResult(cliente);
     }
 
     public Task<Cliente> AtualizarAsync(Cliente cliente)
     {
         cliente.AtualizadoEm = DateTime.UtcNow;
-        _db.Clientes.Update(cliente);
+        _db.Cliente.Update(cliente);
         return Task.FromResult(cliente);
     }
 }

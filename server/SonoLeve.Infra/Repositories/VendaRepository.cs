@@ -21,7 +21,7 @@ public class VendaRepository : IVendaRepository
         string? formaPagamento, string? periodo, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Venda> query = _db.Vendas.AsNoTracking()
+        IQueryable<Venda> query = _db.Venda.AsNoTracking()
             .Include(v => v.Cliente)
             .Include(v => v.FormaPagamento);
 
@@ -63,33 +63,33 @@ public class VendaRepository : IVendaRepository
     }
 
     public async Task<Venda> ObterPorIdAsync(Guid id) =>
-        await _db.Vendas.Include(v => v.Cliente).Include(v => v.FormaPagamento)
+        await _db.Venda.Include(v => v.Cliente).Include(v => v.FormaPagamento)
             .FirstOrDefaultAsync(v => v.Id == id) ?? throw new KeyNotFoundException("Venda não encontrada.");
 
     public Task<Venda> CriarAsync(Venda venda)
     {
-        _db.Vendas.Add(venda);
+        _db.Venda.Add(venda);
         return Task.FromResult(venda);
     }
 
     public Task<Venda> AtualizarAsync(Venda venda)
     {
         venda.AtualizadoEm = DateTime.UtcNow;
-        _db.Vendas.Update(venda);
+        _db.Venda.Update(venda);
         return Task.FromResult(venda);
     }
 
     public async Task<IEnumerable<ItemVenda>> ObterItensAsync(Guid vendaId) =>
-        await _db.ItensVenda.Include(i => i.Produto).Where(i => i.VendaId == vendaId).ToListAsync();
+        await _db.ItemVenda.Include(i => i.Produto).Where(i => i.VendaId == vendaId).ToListAsync();
 
     public async Task SalvarItensAsync(Guid vendaId, IEnumerable<ItemVenda> itens)
     {
-        var existentes = await _db.ItensVenda.Where(i => i.VendaId == vendaId).ToListAsync();
-        _db.ItensVenda.RemoveRange(existentes);
+        var existentes = await _db.ItemVenda.Where(i => i.VendaId == vendaId).ToListAsync();
+        _db.ItemVenda.RemoveRange(existentes);
         foreach (var item in itens)
         {
             item.VendaId = vendaId;
-            _db.ItensVenda.Add(item);
+            _db.ItemVenda.Add(item);
         }
     }
 }

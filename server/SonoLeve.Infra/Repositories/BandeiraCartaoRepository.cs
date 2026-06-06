@@ -11,28 +11,28 @@ public class BandeiraCartaoRepository : IBandeiraCartaoRepository
     public BandeiraCartaoRepository(SonoLeveDbContext db) => _db = db;
 
     public async Task<IEnumerable<BandeiraCartao>> ListarAsync() =>
-        await _db.BandeirasCartao.OrderBy(b => b.Nome).ToListAsync();
+        await _db.BandeiraCartao.OrderBy(b => b.Nome).ToListAsync();
 
     public async Task<BandeiraCartao?> ObterPorIdAsync(Guid id) =>
-        await _db.BandeirasCartao.FindAsync(id);
+        await _db.BandeiraCartao.FindAsync(id);
 
     public Task<BandeiraCartao> CriarAsync(BandeiraCartao bandeira)
     {
-        _db.BandeirasCartao.Add(bandeira);
+        _db.BandeiraCartao.Add(bandeira);
         return Task.FromResult(bandeira);
     }
 
     public Task<BandeiraCartao> AtualizarAsync(BandeiraCartao bandeira)
     {
         bandeira.AtualizadoEm = DateTime.UtcNow;
-        _db.BandeirasCartao.Update(bandeira);
+        _db.BandeiraCartao.Update(bandeira);
         return Task.FromResult(bandeira);
     }
 
     public async Task ExcluirAsync(Guid id)
     {
-        var bandeira = await _db.BandeirasCartao.FindAsync(id);
+        var bandeira = await _db.BandeiraCartao.FindAsync(id);
         if (bandeira != null)
-            _db.BandeirasCartao.Remove(bandeira);
+            _db.BandeiraCartao.Remove(bandeira);
     }
 }

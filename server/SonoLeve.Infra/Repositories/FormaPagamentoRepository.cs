@@ -11,28 +11,28 @@ public class FormaPagamentoRepository : IFormaPagamentoRepository
     public FormaPagamentoRepository(SonoLeveDbContext db) => _db = db;
 
     public async Task<IEnumerable<FormaPagamento>> ListarAsync() =>
-        await _db.FormasPagamento.OrderBy(f => f.CriadoEm).ToListAsync();
+        await _db.FormaPagamento.OrderBy(f => f.CriadoEm).ToListAsync();
 
     public async Task<FormaPagamento?> ObterPorIdAsync(Guid id) =>
-        await _db.FormasPagamento.FindAsync(id);
+        await _db.FormaPagamento.FindAsync(id);
 
     public Task<FormaPagamento> CriarAsync(FormaPagamento forma)
     {
-        _db.FormasPagamento.Add(forma);
+        _db.FormaPagamento.Add(forma);
         return Task.FromResult(forma);
     }
 
     public Task<FormaPagamento> AtualizarAsync(FormaPagamento forma)
     {
         forma.AtualizadoEm = DateTime.UtcNow;
-        _db.FormasPagamento.Update(forma);
+        _db.FormaPagamento.Update(forma);
         return Task.FromResult(forma);
     }
 
     public async Task ExcluirAsync(Guid id)
     {
-        var forma = await _db.FormasPagamento.FindAsync(id);
+        var forma = await _db.FormaPagamento.FindAsync(id);
         if (forma != null)
-            _db.FormasPagamento.Remove(forma);
+            _db.FormaPagamento.Remove(forma);
     }
 }

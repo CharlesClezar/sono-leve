@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SonoLeve.Infra.Data;
@@ -34,15 +35,15 @@ public class AuditLogController : ControllerBase
         [FromQuery] string? entidadeId,
         [FromQuery] string? acao,
         [FromQuery] string? busca,
-        [FromQuery] DateOnly? dataInicio,
-        [FromQuery] DateOnly? dataFim,
+        [FromQuery] string? dataInicio,
+        [FromQuery] string? dataFim,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 30)
     {
         pageSize = Math.Min(pageSize, 100);
         page = Math.Max(page, 1);
 
-        var query = _db.AuditLogs.AsNoTracking().AsQueryable();
+        var query = _db.AuditLog.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(entidade))
             query = query.Where(a => a.Entidade == entidade);
@@ -53,11 +54,11 @@ public class AuditLogController : ControllerBase
         if (!string.IsNullOrWhiteSpace(acao))
             query = query.Where(a => a.Acao == acao);
 
-        if (dataInicio.HasValue)
-            query = query.Where(a => a.OcorridoEm >= dataInicio.Value.ToDateTime(TimeOnly.MinValue));
+        if (DateOnly.TryParseExact(dataInicio, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var di))
+            query = query.Where(a => a.OcorridoEm >= di.ToDateTime(TimeOnly.MinValue));
 
-        if (dataFim.HasValue)
-            query = query.Where(a => a.OcorridoEm < dataFim.Value.AddDays(1).ToDateTime(TimeOnly.MinValue));
+        if (DateOnly.TryParseExact(dataFim, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var df))
+            query = query.Where(a => a.OcorridoEm < df.AddDays(1).ToDateTime(TimeOnly.MinValue));
 
         if (!string.IsNullOrWhiteSpace(busca))
         {

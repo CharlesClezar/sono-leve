@@ -730,9 +730,9 @@ export function useDashboard() {
   });
 }
 
-export function useAuditLogsPaginados(filtros: AuditLogsFiltros) {
+export function useAuditLogsPaginados(filtros: AuditLogsFiltros, buscarKey = 0) {
   return useQuery({
-    queryKey: ["audit-logs", filtros],
+    queryKey: ["audit-logs", filtros, buscarKey],
     queryFn: () => api.listarAuditLogs(filtros),
   });
 }

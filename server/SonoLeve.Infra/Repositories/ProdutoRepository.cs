@@ -11,7 +11,7 @@ public class ProdutoRepository : IProdutoRepository
     public ProdutoRepository(SonoLeveDbContext db) => _db = db;
 
     private IQueryable<Produto> ComIncludes() =>
-        _db.Produtos.AsNoTracking()
+        _db.Produto.AsNoTracking()
             .Include(p => p.Marca).Include(p => p.Tipo).Include(p => p.Subtipo)
             .Include(p => p.Categoria).Include(p => p.Colecao);
 
@@ -49,14 +49,14 @@ public class ProdutoRepository : IProdutoRepository
 
     public Task<Produto> CriarAsync(Produto produto)
     {
-        _db.Produtos.Add(produto);
+        _db.Produto.Add(produto);
         return Task.FromResult(produto);
     }
 
     public Task<Produto> AtualizarAsync(Produto produto)
     {
         produto.AtualizadoEm = DateTime.UtcNow;
-        _db.Produtos.Update(produto);
+        _db.Produto.Update(produto);
         return Task.FromResult(produto);
     }
 }

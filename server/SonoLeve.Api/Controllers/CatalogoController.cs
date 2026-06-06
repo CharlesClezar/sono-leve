@@ -16,14 +16,14 @@ public class CatalogoController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<CatalogoProdutosResponse>> Listar()
     {
-        var categorias = await _db.Categorias.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
-        var marcas    = await _db.Marcas.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
-        var tipos     = await _db.Tipos.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
-        var subtipos  = await _db.Subtipos.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
-        var colecoes  = await _db.Colecoes.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var categorias = await _db.Categoria.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var marcas    = await _db.Marca.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var tipos     = await _db.Tipo.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var subtipos  = await _db.Subtipo.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        var colecoes  = await _db.Colecao.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
 
         // Uma única query; dicionários em memória para lookup O(1) em vez de Count() O(n) por item
-        var produtos = await _db.Produtos.AsNoTracking()
+        var produtos = await _db.Produto.AsNoTracking()
             .Select(p => new { p.MarcaId, p.TipoId, p.SubtipoId, p.CategoriaId, p.ColecaoId })
             .ToListAsync();
 
@@ -48,7 +48,7 @@ public class CatalogoController : ControllerBase
     public async Task<ActionResult<CategoriaCatalogoResponse>> CriarCategoria([FromBody] CatalogoProdutoRequest request)
     {
         var entidade = new Categoria { Name = request.Name, Grade = request.Grade ?? [], Active = request.Active };
-        _db.Categorias.Add(entidade);
+        _db.Categoria.Add(entidade);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Listar), new CategoriaCatalogoResponse(entidade.Id, entidade.Name, entidade.Grade, 0, entidade.Active));
     }
@@ -56,31 +56,31 @@ public class CatalogoController : ControllerBase
     [HttpGet("categorias/{id:guid}")]
     public async Task<ActionResult<CategoriaCatalogoResponse>> ObterCategoria(Guid id)
     {
-        var item = await _db.Categorias.FindAsync(id);
+        var item = await _db.Categoria.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.CategoriaId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.CategoriaId == item.Id);
         return Ok(new CategoriaCatalogoResponse(item.Id, item.Name, item.Grade, count, item.Active));
     }
 
     [HttpPut("categorias/{id:guid}")]
     public async Task<ActionResult<CategoriaCatalogoResponse>> AtualizarCategoria(Guid id, [FromBody] CatalogoProdutoRequest request)
     {
-        var item = await _db.Categorias.FindAsync(id);
+        var item = await _db.Categoria.FindAsync(id);
         if (item == null) return NotFound();
         item.Name = request.Name;
         item.Grade = request.Grade ?? item.Grade;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.CategoriaId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.CategoriaId == item.Id);
         return Ok(new CategoriaCatalogoResponse(item.Id, item.Name, item.Grade, count, item.Active));
     }
 
     [HttpDelete("categorias/{id:guid}")]
     public async Task<IActionResult> ExcluirCategoria(Guid id)
     {
-        var item = await _db.Categorias.FindAsync(id);
+        var item = await _db.Categoria.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Categorias.Remove(item);
+        _db.Categoria.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -91,7 +91,7 @@ public class CatalogoController : ControllerBase
     public async Task<ActionResult<CatalogoSimplesResponse>> CriarMarca([FromBody] CatalogoProdutoRequest request)
     {
         var entidade = new Marca { Name = request.Name, Active = request.Active };
-        _db.Marcas.Add(entidade);
+        _db.Marca.Add(entidade);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Listar), new CatalogoSimplesResponse(entidade.Id, entidade.Name, 0, entidade.Active));
     }
@@ -99,30 +99,30 @@ public class CatalogoController : ControllerBase
     [HttpGet("marcas/{id:guid}")]
     public async Task<ActionResult<CatalogoSimplesResponse>> ObterMarca(Guid id)
     {
-        var item = await _db.Marcas.FindAsync(id);
+        var item = await _db.Marca.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.MarcaId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.MarcaId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpPut("marcas/{id:guid}")]
     public async Task<ActionResult<CatalogoSimplesResponse>> AtualizarMarca(Guid id, [FromBody] CatalogoProdutoRequest request)
     {
-        var item = await _db.Marcas.FindAsync(id);
+        var item = await _db.Marca.FindAsync(id);
         if (item == null) return NotFound();
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.MarcaId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.MarcaId == item.Id);
         return Ok(new CatalogoSimplesResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpDelete("marcas/{id:guid}")]
     public async Task<IActionResult> ExcluirMarca(Guid id)
     {
-        var item = await _db.Marcas.FindAsync(id);
+        var item = await _db.Marca.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Marcas.Remove(item);
+        _db.Marca.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -133,7 +133,7 @@ public class CatalogoController : ControllerBase
     public async Task<ActionResult<TipoCatalogoResponse>> CriarTipo([FromBody] CatalogoProdutoRequest request)
     {
         var entidade = new Tipo { Name = request.Name, Active = request.Active };
-        _db.Tipos.Add(entidade);
+        _db.Tipo.Add(entidade);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Listar), new TipoCatalogoResponse(entidade.Id, entidade.Name, 0, entidade.Active));
     }
@@ -141,30 +141,30 @@ public class CatalogoController : ControllerBase
     [HttpGet("tipos/{id:guid}")]
     public async Task<ActionResult<TipoCatalogoResponse>> ObterTipo(Guid id)
     {
-        var item = await _db.Tipos.FindAsync(id);
+        var item = await _db.Tipo.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.TipoId == item.Id);
         return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpPut("tipos/{id:guid}")]
     public async Task<ActionResult<TipoCatalogoResponse>> AtualizarTipo(Guid id, [FromBody] CatalogoProdutoRequest request)
     {
-        var item = await _db.Tipos.FindAsync(id);
+        var item = await _db.Tipo.FindAsync(id);
         if (item == null) return NotFound();
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.TipoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.TipoId == item.Id);
         return Ok(new TipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpDelete("tipos/{id:guid}")]
     public async Task<IActionResult> ExcluirTipo(Guid id)
     {
-        var item = await _db.Tipos.FindAsync(id);
+        var item = await _db.Tipo.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Tipos.Remove(item);
+        _db.Tipo.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -175,7 +175,7 @@ public class CatalogoController : ControllerBase
     public async Task<ActionResult<SubtipoCatalogoResponse>> CriarSubtipo([FromBody] CatalogoProdutoRequest request)
     {
         var entidade = new Subtipo { Name = request.Name, Active = request.Active };
-        _db.Subtipos.Add(entidade);
+        _db.Subtipo.Add(entidade);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Listar), new SubtipoCatalogoResponse(entidade.Id, entidade.Name, 0, entidade.Active));
     }
@@ -183,30 +183,30 @@ public class CatalogoController : ControllerBase
     [HttpGet("subtipos/{id:guid}")]
     public async Task<ActionResult<SubtipoCatalogoResponse>> ObterSubtipo(Guid id)
     {
-        var item = await _db.Subtipos.FindAsync(id);
+        var item = await _db.Subtipo.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.SubtipoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.SubtipoId == item.Id);
         return Ok(new SubtipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpPut("subtipos/{id:guid}")]
     public async Task<ActionResult<SubtipoCatalogoResponse>> AtualizarSubtipo(Guid id, [FromBody] CatalogoProdutoRequest request)
     {
-        var item = await _db.Subtipos.FindAsync(id);
+        var item = await _db.Subtipo.FindAsync(id);
         if (item == null) return NotFound();
         item.Name = request.Name;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.SubtipoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.SubtipoId == item.Id);
         return Ok(new SubtipoCatalogoResponse(item.Id, item.Name, count, item.Active));
     }
 
     [HttpDelete("subtipos/{id:guid}")]
     public async Task<IActionResult> ExcluirSubtipo(Guid id)
     {
-        var item = await _db.Subtipos.FindAsync(id);
+        var item = await _db.Subtipo.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Subtipos.Remove(item);
+        _db.Subtipo.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -217,7 +217,7 @@ public class CatalogoController : ControllerBase
     public async Task<ActionResult<ColecaoCatalogoResponse>> CriarColecao([FromBody] CatalogoProdutoRequest request)
     {
         var entidade = new Colecao { Name = request.Name, DataInicio = request.DataInicio, DataFim = request.DataFim, Active = request.Active };
-        _db.Colecoes.Add(entidade);
+        _db.Colecao.Add(entidade);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Listar), new ColecaoCatalogoResponse(entidade.Id, entidade.Name, 0, entidade.Active, entidade.DataInicio, entidade.DataFim));
     }
@@ -225,32 +225,32 @@ public class CatalogoController : ControllerBase
     [HttpGet("colecoes/{id:guid}")]
     public async Task<ActionResult<ColecaoCatalogoResponse>> ObterColecao(Guid id)
     {
-        var item = await _db.Colecoes.FindAsync(id);
+        var item = await _db.Colecao.FindAsync(id);
         if (item == null) return NotFound();
-        var count = await _db.Produtos.CountAsync(p => p.ColecaoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.ColecaoId == item.Id);
         return Ok(new ColecaoCatalogoResponse(item.Id, item.Name, count, item.Active, item.DataInicio, item.DataFim));
     }
 
     [HttpPut("colecoes/{id:guid}")]
     public async Task<ActionResult<ColecaoCatalogoResponse>> AtualizarColecao(Guid id, [FromBody] CatalogoProdutoRequest request)
     {
-        var item = await _db.Colecoes.FindAsync(id);
+        var item = await _db.Colecao.FindAsync(id);
         if (item == null) return NotFound();
         item.Name = request.Name;
         item.DataInicio = request.DataInicio;
         item.DataFim = request.DataFim;
         item.Active = request.Active;
         await _db.SaveChangesAsync();
-        var count = await _db.Produtos.CountAsync(p => p.ColecaoId == item.Id);
+        var count = await _db.Produto.CountAsync(p => p.ColecaoId == item.Id);
         return Ok(new ColecaoCatalogoResponse(item.Id, item.Name, count, item.Active, item.DataInicio, item.DataFim));
     }
 
     [HttpDelete("colecoes/{id:guid}")]
     public async Task<IActionResult> ExcluirColecao(Guid id)
     {
-        var item = await _db.Colecoes.FindAsync(id);
+        var item = await _db.Colecao.FindAsync(id);
         if (item == null) return NotFound();
-        _db.Colecoes.Remove(item);
+        _db.Colecao.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }

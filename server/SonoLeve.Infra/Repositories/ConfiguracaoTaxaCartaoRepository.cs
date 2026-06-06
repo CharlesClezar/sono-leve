@@ -11,7 +11,7 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
     public ConfiguracaoTaxaCartaoRepository(SonoLeveDbContext db) => _db = db;
 
     public async Task<IEnumerable<ConfiguracaoTaxaCartao>> ListarAsync() =>
-        await _db.ConfiguracoesTaxaCartao
+        await _db.ConfiguracaoTaxaCartao
             .Include(c => c.FormaPagamento)
             .Include(c => c.Bandeira)
             .Include(c => c.Parcelas.OrderBy(p => p.NumeroParcelas))
@@ -20,7 +20,7 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
             .ToListAsync();
 
     public async Task<ConfiguracaoTaxaCartao?> ObterPorIdAsync(Guid id) =>
-        await _db.ConfiguracoesTaxaCartao
+        await _db.ConfiguracaoTaxaCartao
             .Include(c => c.FormaPagamento)
             .Include(c => c.Bandeira)
             .Include(c => c.Parcelas.OrderBy(p => p.NumeroParcelas))
@@ -28,7 +28,7 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
 
     public Task<ConfiguracaoTaxaCartao> CriarAsync(ConfiguracaoTaxaCartao config)
     {
-        _db.ConfiguracoesTaxaCartao.Add(config);
+        _db.ConfiguracaoTaxaCartao.Add(config);
         return Task.FromResult(config);
     }
 
@@ -36,18 +36,18 @@ public class ConfiguracaoTaxaCartaoRepository : IConfiguracaoTaxaCartaoRepositor
     {
         config.AtualizadoEm = DateTime.UtcNow;
 
-        var parcelasExistentes = await _db.ConfiguracoesTaxaCartaoParcelas
+        var parcelasExistentes = await _db.ConfiguracaoTaxaCartaoParcela
             .Where(p => p.ConfiguracaoTaxaCartaoId == config.Id)
             .ToListAsync();
-        _db.ConfiguracoesTaxaCartaoParcelas.RemoveRange(parcelasExistentes);
-        _db.ConfiguracoesTaxaCartao.Update(config);
+        _db.ConfiguracaoTaxaCartaoParcela.RemoveRange(parcelasExistentes);
+        _db.ConfiguracaoTaxaCartao.Update(config);
         return config;
     }
 
     public async Task ExcluirAsync(Guid id)
     {
-        var config = await _db.ConfiguracoesTaxaCartao.FindAsync(id);
+        var config = await _db.ConfiguracaoTaxaCartao.FindAsync(id);
         if (config != null)
-            _db.ConfiguracoesTaxaCartao.Remove(config);
+            _db.ConfiguracaoTaxaCartao.Remove(config);
     }
 }

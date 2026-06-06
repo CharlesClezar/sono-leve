@@ -12,14 +12,14 @@ public class IdempotencyService : IIdempotencyService
 
     public async Task<IdempotencyRecord?> ObterAsync(string key)
     {
-        var registro = await _db.IdempotencyRecords.FindAsync(key);
+        var registro = await _db.IdempotencyRecord.FindAsync(key);
         if (registro == null || registro.ExpiraEm < DateTime.UtcNow) return null;
         return registro;
     }
 
     public async Task SalvarAsync(IdempotencyRecord registro)
     {
-        _db.IdempotencyRecords.Add(registro);
+        _db.IdempotencyRecord.Add(registro);
         await _db.SaveChangesAsync();
     }
 }

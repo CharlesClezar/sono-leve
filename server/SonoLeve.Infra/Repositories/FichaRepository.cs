@@ -15,7 +15,7 @@ public class FichaRepository : IFichaRepository
         string? search, string? status, int? minVendidas, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Ficha> query = _db.Fichas.AsNoTracking().Include(f => f.Cliente);
+        IQueryable<Ficha> query = _db.Ficha.AsNoTracking().Include(f => f.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(f => f.Cliente != null && f.Cliente.Nome.Contains(search));
@@ -44,19 +44,19 @@ public class FichaRepository : IFichaRepository
     }
 
     public async Task<Ficha> ObterPorIdAsync(Guid id) =>
-        await _db.Fichas.Include(f => f.Cliente)
+        await _db.Ficha.Include(f => f.Cliente)
             .FirstOrDefaultAsync(f => f.Id == id) ?? throw new KeyNotFoundException("Ficha não encontrada.");
 
     public Task<Ficha> CriarAsync(Ficha ficha)
     {
-        _db.Fichas.Add(ficha);
+        _db.Ficha.Add(ficha);
         return Task.FromResult(ficha);
     }
 
     public Task<Ficha> AtualizarAsync(Ficha ficha)
     {
         ficha.AtualizadoEm = DateTime.UtcNow;
-        _db.Fichas.Update(ficha);
+        _db.Ficha.Update(ficha);
         return Task.FromResult(ficha);
     }
 }

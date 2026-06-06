@@ -15,7 +15,7 @@ public class ContaRepository : IContaRepository
         string? search, string? status, int pagina, int tamanhoPagina)
     {
         search = search?.Length > 100 ? search[..100] : search;
-        IQueryable<Conta> query = _db.Contas.AsNoTracking().Include(c => c.Cliente);
+        IQueryable<Conta> query = _db.Conta.AsNoTracking().Include(c => c.Cliente);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(c => c.Cliente != null && c.Cliente.Nome.Contains(search));
@@ -34,23 +34,23 @@ public class ContaRepository : IContaRepository
     }
 
     public async Task<Conta> ObterPorIdAsync(Guid id) =>
-        await _db.Contas.Include(c => c.Cliente)
+        await _db.Conta.Include(c => c.Cliente)
             .FirstOrDefaultAsync(c => c.Id == id) ?? throw new KeyNotFoundException("Conta não encontrada.");
 
     public async Task<Conta?> ObterPorVendaIdAsync(Guid vendaId) =>
-        await _db.Contas.AsNoTracking().Include(c => c.Cliente)
+        await _db.Conta.AsNoTracking().Include(c => c.Cliente)
             .FirstOrDefaultAsync(c => c.VendaId == vendaId);
 
     public Task<Conta> CriarAsync(Conta conta)
     {
-        _db.Contas.Add(conta);
+        _db.Conta.Add(conta);
         return Task.FromResult(conta);
     }
 
     public Task<Conta> AtualizarAsync(Conta conta)
     {
         conta.AtualizadoEm = DateTime.UtcNow;
-        _db.Contas.Update(conta);
+        _db.Conta.Update(conta);
         return Task.FromResult(conta);
     }
 }

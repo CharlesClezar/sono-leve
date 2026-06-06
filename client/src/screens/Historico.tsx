@@ -328,6 +328,7 @@ export default function Historico() {
   const [dataFim, setDataFim] = useState("");
   const [buscaInput, setBuscaInput] = useState("");
   const [buscaAtiva, setBuscaAtiva] = useState("");
+  const [buscarKey, setBuscarKey] = useState(0);
   const [page, setPage] = useState(1);
 
   const { data: entidadesSistema = [] } = useEntidadesSistema();
@@ -346,7 +347,7 @@ export default function Historico() {
     pageSize: 30,
   }), [entidade, entidadeId, acao, dataInicio, dataFim, buscaAtiva, page]);
 
-  const { data: response, isLoading } = useAuditLogsPaginados(filtros);
+  const { data: response, isLoading } = useAuditLogsPaginados(filtros, buscarKey);
   const paginacao = useServerPagination(response, setPage);
 
   const colunas = useMemo<DataGridColumn<AuditLog>[]>(
@@ -378,11 +379,13 @@ export default function Historico() {
     setBuscaInput("");
     setBuscaAtiva("");
     setPage(1);
+    setBuscarKey((k) => k + 1);
   }, []);
 
   function aplicarBusca() {
     setBuscaAtiva(buscaInput);
     setPage(1);
+    setBuscarKey((k) => k + 1);
   }
 
   async function abrirDetalhe(log: AuditLog) {
