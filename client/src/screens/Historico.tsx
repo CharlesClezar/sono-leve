@@ -352,8 +352,10 @@ export default function Historico() {
 
   const colunas = useMemo<DataGridColumn<AuditLog>[]>(
     () => [
+      { id: "id", label: "Ordem", accessor: (l) => l.id },
       { id: "entidade", label: "Entidade", accessor: (l) => l.entidade },
       { id: "entidadeId", label: "ID", accessor: (l) => l.entidadeId },
+      { id: "endpoint", label: "Endpoint", accessor: (l) => l.endpoint ?? "" },
       { id: "acao", label: "Ação", accessor: (l) => l.acao },
       { id: "ocorridoEm", label: "Data", accessor: (l) => l.ocorridoEm },
     ],
@@ -511,8 +513,10 @@ export default function Historico() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
+                  <DataGridColumnHeader grid={grid} columnId="id" label="Ordem" />
                   <DataGridColumnHeader grid={grid} columnId="entidade" label="Entidade" />
                   <DataGridColumnHeader grid={grid} columnId="entidadeId" label="ID" />
+                  <DataGridColumnHeader grid={grid} columnId="endpoint" label="Endpoint" />
                   <DataGridColumnHeader grid={grid} columnId="acao" label="Ação" />
                   <DataGridColumnHeader grid={grid} columnId="ocorridoEm" label="Data / Hora" />
                   <th className="w-24 px-4 py-3 text-right">Detalhes</th>
@@ -520,16 +524,17 @@ export default function Historico() {
               </thead>
               <tbody className="divide-y">
                 {isLoading ? (
-                  <TableSkeleton cols={5} />
+                  <TableSkeleton cols={7} />
                 ) : grid.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
                       Nenhum registro encontrado.
                     </td>
                   </tr>
                 ) : (
                   grid.rows.map((log) => (
                     <tr key={log.id} className="hover:bg-muted/30">
+                      <td className="px-4 py-3 tabular-nums text-xs text-muted-foreground">{log.id}</td>
                       <td className="px-4 py-3 font-medium">{log.entidade}</td>
                       <td className="px-4 py-3">
                         <span
@@ -537,6 +542,14 @@ export default function Historico() {
                           title={log.entidadeId}
                         >
                           {log.entidadeId}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className="font-mono text-xs text-muted-foreground truncate max-w-[220px] block"
+                          title={log.endpoint ?? undefined}
+                        >
+                          {log.endpoint ?? <span className="italic opacity-40">—</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3">
