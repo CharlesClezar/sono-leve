@@ -83,7 +83,7 @@ public class ProdutoController : ControllerBase
         {
             var produto = await _service.ObterPorIdAsync(id);
 
-            var dir = Path.Combine(_env.WebRootPath, "imagens", "produtos");
+            var dir = Path.Combine(_env.WebRootPath, "imagens", "produto");
             Directory.CreateDirectory(dir);
 
             if (!string.IsNullOrEmpty(produto.ImagemUrl))
@@ -100,7 +100,7 @@ public class ProdutoController : ControllerBase
             await using var stream = new FileStream(caminho, FileMode.Create);
             await arquivo.CopyToAsync(stream);
 
-            produto.ImagemUrl = $"/imagens/produtos/{nomeArquivo}";
+            produto.ImagemUrl = $"/imagens/produto/{nomeArquivo}";
             await _service.AtualizarAsync(produto);
 
             return Ok(new { imagemUrl = produto.ImagemUrl });

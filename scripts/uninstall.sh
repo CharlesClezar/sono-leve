@@ -42,8 +42,14 @@ docker image prune -f >/dev/null 2>&1 || true
 # ─── Dados locais ─────────────────────────────────────────────────────────────
 sep "Dados e configurações"
 if [ -d "${PROJECT_DIR}/data" ]; then
-  rm -rf "${PROJECT_DIR}/data"
-  ok "Diretório data/ removido"
+  # O Docker cria data/ e subpastas como root; tenta rm normal e cai para sudo se necessário
+  if rm -rf "${PROJECT_DIR}/data" 2>/dev/null; then
+    ok "Diretório data/ removido"
+  elif command -v sudo &>/dev/null && sudo rm -rf "${PROJECT_DIR}/data"; then
+    ok "Diretório data/ removido (sudo)"
+  else
+    warn "Não foi possível remover data/ automaticamente. Execute: sudo rm -rf ${PROJECT_DIR}/data"
+  fi
 fi
 if [ -f "${PROJECT_DIR}/.env" ]; then
   rm -f "${PROJECT_DIR}/.env"

@@ -44,7 +44,7 @@ SELECT gen_random_uuid(), v."Nome", v."Tipo", v."Parcel"::bool, v."Exige"::bool,
 FROM (VALUES
   ('Pix',             'Pix',      'false', 'false', 'true'),
   ('Dinheiro',        'Dinheiro', 'false', 'false', 'true'),
-  ('Boleto',          'Boleto',   'false', 'false', 'false'),
+  ('Boleto',          'Boleto',   'false', 'false', 'true'),
   ('Cartão Débito',   'Debito',   'false', 'true',  'true'),
   ('Cartão Crédito',  'Credito',  'true',  'true',  'true'),
   ('Link Débito',     'Debito',   'false', 'true',  'true'),
