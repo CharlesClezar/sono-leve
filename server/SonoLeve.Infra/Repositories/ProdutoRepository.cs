@@ -56,7 +56,7 @@ public class ProdutoRepository : IProdutoRepository
     public Task<Produto> AtualizarAsync(Produto produto)
     {
         produto.AtualizadoEm = DateTime.UtcNow;
-        _db.Produto.Update(produto);
+        _db.Entry(produto).State = EntityState.Modified;
         return Task.FromResult(produto);
     }
 }
