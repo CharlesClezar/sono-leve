@@ -51,6 +51,7 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
         // Carrega valores originais do banco para entidades desconectadas (Update desanexado),
         // garantindo que ANTES reflita o estado real antes da alteração
         await CarregarValoresOriginaisAsync(cancellationToken);
+        DescartarSemAlteracao();
 
         var pendentes = ColetarPendentes();
         var resultado = await base.SaveChangesAsync(cancellationToken);
@@ -73,6 +74,30 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
             if (dbValues is not null)
                 entry.OriginalValues.SetValues(dbValues);
         }
+    }
+
+    // Entidades marcadas como Modified via Update() mas sem nenhuma propriedade
+    // efetivamente alterada (ex.: navigation properties carregadas via AsNoTracking)
+    // são revertidas para Unchanged — evita SQL UPDATE e auditoria desnecessários.
+    private void DescartarSemAlteracao()
+    {
+        foreach (var entry in ChangeTracker.Entries()
+            .Where(e => e.State == EntityState.Modified
+                     && e.Entity.GetType() != typeof(AuditLog)
+                     && e.Entity.GetType() != typeof(IdempotencyRecord))
+            .ToList())
+        {
+            if (!entry.Properties.Any(PropriedadeMudou))
+                entry.State = EntityState.Unchanged;
+        }
+    }
+
+    private static bool PropriedadeMudou(PropertyEntry p)
+    {
+        var comparer = p.Metadata.GetValueComparer();
+        return comparer != null
+            ? !comparer.Equals(p.OriginalValue, p.CurrentValue)
+            : !object.Equals(p.OriginalValue, p.CurrentValue);
     }
 
     private record EntradaAudit(
