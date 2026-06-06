@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -12,7 +13,27 @@ namespace SonoLeve.Infra.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "BandeirasCartao",
+                name: "AuditLog",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Entidade = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    EntidadeId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Acao = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    DadosAntes = table.Column<string>(type: "text", nullable: true),
+                    DadosDepois = table.Column<string>(type: "text", nullable: true),
+                    Endpoint = table.Column<string>(type: "text", nullable: true),
+                    StackTrace = table.Column<string>(type: "text", nullable: true),
+                    OcorridoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLog", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BandeiraCartao",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -23,11 +44,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BandeirasCartao", x => x.Id);
+                    table.PrimaryKey("PK_BandeiraCartao", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Categorias",
+                name: "Categoria",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -37,11 +58,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Categorias", x => x.Id);
+                    table.PrimaryKey("PK_Categoria", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Clientes",
+                name: "Cliente",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -56,11 +77,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Clientes", x => x.Id);
+                    table.PrimaryKey("PK_Cliente", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Colecoes",
+                name: "Colecao",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -71,11 +92,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Colecoes", x => x.Id);
+                    table.PrimaryKey("PK_Colecao", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "FormasPagamento",
+                name: "FormaPagamento",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -84,17 +105,17 @@ namespace SonoLeve.Infra.Migrations
                     PermiteParcelamento = table.Column<bool>(type: "boolean", nullable: false),
                     ExigeBandeira = table.Column<bool>(type: "boolean", nullable: false),
                     Ativo = table.Column<bool>(type: "boolean", nullable: false),
-                    RepassaTaxaAoCliente = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    RepassaTaxaAoCliente = table.Column<bool>(type: "boolean", nullable: false),
                     CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_FormasPagamento", x => x.Id);
+                    table.PrimaryKey("PK_FormaPagamento", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "IdempotencyRecords",
+                name: "IdempotencyRecord",
                 columns: table => new
                 {
                     Key = table.Column<string>(type: "text", nullable: false),
@@ -106,11 +127,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_IdempotencyRecords", x => x.Key);
+                    table.PrimaryKey("PK_IdempotencyRecord", x => x.Key);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Marcas",
+                name: "Marca",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -119,11 +140,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Marcas", x => x.Id);
+                    table.PrimaryKey("PK_Marca", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Subtipos",
+                name: "Subtipo",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -132,11 +153,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Subtipos", x => x.Id);
+                    table.PrimaryKey("PK_Subtipo", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tipos",
+                name: "Tipo",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -145,11 +166,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Tipos", x => x.Id);
+                    table.PrimaryKey("PK_Tipo", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Usuarios",
+                name: "Usuario",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -162,43 +183,11 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Usuarios", x => x.Id);
+                    table.PrimaryKey("PK_Usuario", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Contas",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
-                    EhManual = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    Origem = table.Column<string>(type: "text", nullable: false),
-                    Descricao = table.Column<string>(type: "text", nullable: true),
-                    VendaId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Total = table.Column<decimal>(type: "numeric", nullable: false),
-                    Recebido = table.Column<decimal>(type: "numeric", nullable: false),
-                    Vencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    NumeroParcelas = table.Column<int>(type: "integer", nullable: true),
-                    PercentualTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
-                    TaxaFixaCartao = table.Column<decimal>(type: "numeric", nullable: true),
-                    ValorTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
-                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Contas", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Contas_Clientes_ClienteId",
-                        column: x => x.ClienteId,
-                        principalTable: "Clientes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Encomendas",
+                name: "Encomenda",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -213,17 +202,17 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Encomendas", x => x.Id);
+                    table.PrimaryKey("PK_Encomenda", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Encomendas_Clientes_ClienteId",
+                        name: "FK_Encomenda_Cliente_ClienteId",
                         column: x => x.ClienteId,
-                        principalTable: "Clientes",
+                        principalTable: "Cliente",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Fichas",
+                name: "Ficha",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -239,17 +228,17 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Fichas", x => x.Id);
+                    table.PrimaryKey("PK_Ficha", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Fichas_Clientes_ClienteId",
+                        name: "FK_Ficha_Cliente_ClienteId",
                         column: x => x.ClienteId,
-                        principalTable: "Clientes",
+                        principalTable: "Cliente",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConfiguracoesTaxaCartao",
+                name: "ConfiguracaoTaxaCartao",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -262,23 +251,23 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ConfiguracoesTaxaCartao", x => x.Id);
+                    table.PrimaryKey("PK_ConfiguracaoTaxaCartao", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ConfiguracoesTaxaCartao_BandeirasCartao_BandeiraId",
+                        name: "FK_ConfiguracaoTaxaCartao_BandeiraCartao_BandeiraId",
                         column: x => x.BandeiraId,
-                        principalTable: "BandeirasCartao",
+                        principalTable: "BandeiraCartao",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ConfiguracoesTaxaCartao_FormasPagamento_FormaPagamentoId",
+                        name: "FK_ConfiguracaoTaxaCartao_FormaPagamento_FormaPagamentoId",
                         column: x => x.FormaPagamentoId,
-                        principalTable: "FormasPagamento",
+                        principalTable: "FormaPagamento",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Vendas",
+                name: "Venda",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -294,22 +283,22 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Vendas", x => x.Id);
+                    table.PrimaryKey("PK_Venda", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Vendas_Clientes_ClienteId",
+                        name: "FK_Venda_Cliente_ClienteId",
                         column: x => x.ClienteId,
-                        principalTable: "Clientes",
+                        principalTable: "Cliente",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Vendas_FormasPagamento_FormaPagamentoId",
+                        name: "FK_Venda_FormaPagamento_FormaPagamentoId",
                         column: x => x.FormaPagamentoId,
-                        principalTable: "FormasPagamento",
+                        principalTable: "FormaPagamento",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "Produtos",
+                name: "Produto",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -330,36 +319,36 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Produtos", x => x.Id);
+                    table.PrimaryKey("PK_Produto", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Produtos_Categorias_CategoriaId",
+                        name: "FK_Produto_Categoria_CategoriaId",
                         column: x => x.CategoriaId,
-                        principalTable: "Categorias",
+                        principalTable: "Categoria",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Produtos_Colecoes_ColecaoId",
+                        name: "FK_Produto_Colecao_ColecaoId",
                         column: x => x.ColecaoId,
-                        principalTable: "Colecoes",
+                        principalTable: "Colecao",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Produtos_Marcas_MarcaId",
+                        name: "FK_Produto_Marca_MarcaId",
                         column: x => x.MarcaId,
-                        principalTable: "Marcas",
+                        principalTable: "Marca",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Produtos_Subtipos_SubtipoId",
+                        name: "FK_Produto_Subtipo_SubtipoId",
                         column: x => x.SubtipoId,
-                        principalTable: "Subtipos",
+                        principalTable: "Subtipo",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Produtos_Tipos_TipoId",
+                        name: "FK_Produto_Tipo_TipoId",
                         column: x => x.TipoId,
-                        principalTable: "Tipos",
+                        principalTable: "Tipo",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConfiguracoesTaxaCartaoParcelas",
+                name: "ConfiguracaoTaxaCartaoParcela",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -373,17 +362,55 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ConfiguracoesTaxaCartaoParcelas", x => x.Id);
+                    table.PrimaryKey("PK_ConfiguracaoTaxaCartaoParcela", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ConfiguracoesTaxaCartaoParcelas_ConfiguracoesTaxaCartao_Con~",
+                        name: "FK_ConfiguracaoTaxaCartaoParcela_ConfiguracaoTaxaCartao_Config~",
                         column: x => x.ConfiguracaoTaxaCartaoId,
-                        principalTable: "ConfiguracoesTaxaCartao",
+                        principalTable: "ConfiguracaoTaxaCartao",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "ItensEncomenda",
+                name: "Conta",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
+                    EhManual = table.Column<bool>(type: "boolean", nullable: false),
+                    Origem = table.Column<string>(type: "text", nullable: false),
+                    Descricao = table.Column<string>(type: "text", nullable: true),
+                    VendaId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Total = table.Column<decimal>(type: "numeric", nullable: false),
+                    Recebido = table.Column<decimal>(type: "numeric", nullable: false),
+                    Vencimento = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    NumeroParcelas = table.Column<int>(type: "integer", nullable: true),
+                    PercentualTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
+                    TaxaFixaCartao = table.Column<decimal>(type: "numeric", nullable: true),
+                    ValorTaxaCartao = table.Column<decimal>(type: "numeric", nullable: true),
+                    CriadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AtualizadoEm = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Conta", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Conta_Cliente_ClienteId",
+                        column: x => x.ClienteId,
+                        principalTable: "Cliente",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Conta_Venda_VendaId",
+                        column: x => x.VendaId,
+                        principalTable: "Venda",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ItemEncomenda",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -395,23 +422,23 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ItensEncomenda", x => x.Id);
+                    table.PrimaryKey("PK_ItemEncomenda", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ItensEncomenda_Encomendas_EncomendaId",
+                        name: "FK_ItemEncomenda_Encomenda_EncomendaId",
                         column: x => x.EncomendaId,
-                        principalTable: "Encomendas",
+                        principalTable: "Encomenda",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ItensEncomenda_Produtos_ProdutoId",
+                        name: "FK_ItemEncomenda_Produto_ProdutoId",
                         column: x => x.ProdutoId,
-                        principalTable: "Produtos",
+                        principalTable: "Produto",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "ItensVenda",
+                name: "ItemVenda",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -425,147 +452,184 @@ namespace SonoLeve.Infra.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ItensVenda", x => x.Id);
+                    table.PrimaryKey("PK_ItemVenda", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ItensVenda_Produtos_ProdutoId",
+                        name: "FK_ItemVenda_Produto_ProdutoId",
                         column: x => x.ProdutoId,
-                        principalTable: "Produtos",
+                        principalTable: "Produto",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ItensVenda_Vendas_VendaId",
+                        name: "FK_ItemVenda_Venda_VendaId",
                         column: x => x.VendaId,
-                        principalTable: "Vendas",
+                        principalTable: "Venda",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            // FK Contas → Vendas (VendaId) adicionada após criação de ambas as tabelas
-            migrationBuilder.AddForeignKey(
-                name: "FK_Contas_Vendas_VendaId",
-                table: "Contas",
-                column: "VendaId",
-                principalTable: "Vendas",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLog_Entidade",
+                table: "AuditLog",
+                column: "Entidade");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ConfiguracoesTaxaCartao_BandeiraId",
-                table: "ConfiguracoesTaxaCartao",
+                name: "IX_AuditLog_OcorridoEm",
+                table: "AuditLog",
+                column: "OcorridoEm");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConfiguracaoTaxaCartao_BandeiraId",
+                table: "ConfiguracaoTaxaCartao",
                 column: "BandeiraId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ConfiguracoesTaxaCartao_FormaPagamentoId",
-                table: "ConfiguracoesTaxaCartao",
+                name: "IX_ConfiguracaoTaxaCartao_FormaPagamentoId",
+                table: "ConfiguracaoTaxaCartao",
                 column: "FormaPagamentoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ConfiguracoesTaxaCartaoParcelas_ConfiguracaoTaxaCartaoId",
-                table: "ConfiguracoesTaxaCartaoParcelas",
+                name: "IX_ConfiguracaoTaxaCartaoParcela_ConfiguracaoTaxaCartaoId",
+                table: "ConfiguracaoTaxaCartaoParcela",
                 column: "ConfiguracaoTaxaCartaoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Contas_ClienteId",
-                table: "Contas",
+                name: "IX_Conta_ClienteId",
+                table: "Conta",
                 column: "ClienteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Contas_VendaId",
-                table: "Contas",
+                name: "IX_Conta_VendaId",
+                table: "Conta",
                 column: "VendaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Encomendas_ClienteId",
-                table: "Encomendas",
+                name: "IX_Encomenda_ClienteId",
+                table: "Encomenda",
                 column: "ClienteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Fichas_ClienteId",
-                table: "Fichas",
+                name: "IX_Ficha_ClienteId",
+                table: "Ficha",
                 column: "ClienteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ItensEncomenda_EncomendaId",
-                table: "ItensEncomenda",
+                name: "IX_ItemEncomenda_EncomendaId",
+                table: "ItemEncomenda",
                 column: "EncomendaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ItensEncomenda_ProdutoId",
-                table: "ItensEncomenda",
+                name: "IX_ItemEncomenda_ProdutoId",
+                table: "ItemEncomenda",
                 column: "ProdutoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ItensVenda_ProdutoId",
-                table: "ItensVenda",
+                name: "IX_ItemVenda_ProdutoId",
+                table: "ItemVenda",
                 column: "ProdutoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ItensVenda_VendaId",
-                table: "ItensVenda",
+                name: "IX_ItemVenda_VendaId",
+                table: "ItemVenda",
                 column: "VendaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Produtos_CategoriaId",
-                table: "Produtos",
+                name: "IX_Produto_CategoriaId",
+                table: "Produto",
                 column: "CategoriaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Produtos_ColecaoId",
-                table: "Produtos",
+                name: "IX_Produto_ColecaoId",
+                table: "Produto",
                 column: "ColecaoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Produtos_MarcaId",
-                table: "Produtos",
+                name: "IX_Produto_MarcaId",
+                table: "Produto",
                 column: "MarcaId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Produtos_SubtipoId",
-                table: "Produtos",
+                name: "IX_Produto_SubtipoId",
+                table: "Produto",
                 column: "SubtipoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Produtos_TipoId",
-                table: "Produtos",
+                name: "IX_Produto_TipoId",
+                table: "Produto",
                 column: "TipoId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Vendas_ClienteId",
-                table: "Vendas",
+                name: "IX_Venda_ClienteId",
+                table: "Venda",
                 column: "ClienteId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Vendas_FormaPagamentoId",
-                table: "Vendas",
+                name: "IX_Venda_FormaPagamentoId",
+                table: "Venda",
                 column: "FormaPagamentoId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Contas_Vendas_VendaId",
-                table: "Contas");
+            migrationBuilder.DropTable(
+                name: "AuditLog");
 
-            migrationBuilder.DropTable(name: "ConfiguracoesTaxaCartaoParcelas");
-            migrationBuilder.DropTable(name: "IdempotencyRecords");
-            migrationBuilder.DropTable(name: "ItensEncomenda");
-            migrationBuilder.DropTable(name: "ItensVenda");
-            migrationBuilder.DropTable(name: "Usuarios");
-            migrationBuilder.DropTable(name: "Contas");
-            migrationBuilder.DropTable(name: "Fichas");
-            migrationBuilder.DropTable(name: "ConfiguracoesTaxaCartao");
-            migrationBuilder.DropTable(name: "Encomendas");
-            migrationBuilder.DropTable(name: "Produtos");
-            migrationBuilder.DropTable(name: "Vendas");
-            migrationBuilder.DropTable(name: "BandeirasCartao");
-            migrationBuilder.DropTable(name: "Categorias");
-            migrationBuilder.DropTable(name: "Colecoes");
-            migrationBuilder.DropTable(name: "Marcas");
-            migrationBuilder.DropTable(name: "Subtipos");
-            migrationBuilder.DropTable(name: "Tipos");
-            migrationBuilder.DropTable(name: "Clientes");
-            migrationBuilder.DropTable(name: "FormasPagamento");
+            migrationBuilder.DropTable(
+                name: "ConfiguracaoTaxaCartaoParcela");
+
+            migrationBuilder.DropTable(
+                name: "Conta");
+
+            migrationBuilder.DropTable(
+                name: "Ficha");
+
+            migrationBuilder.DropTable(
+                name: "IdempotencyRecord");
+
+            migrationBuilder.DropTable(
+                name: "ItemEncomenda");
+
+            migrationBuilder.DropTable(
+                name: "ItemVenda");
+
+            migrationBuilder.DropTable(
+                name: "Usuario");
+
+            migrationBuilder.DropTable(
+                name: "ConfiguracaoTaxaCartao");
+
+            migrationBuilder.DropTable(
+                name: "Encomenda");
+
+            migrationBuilder.DropTable(
+                name: "Produto");
+
+            migrationBuilder.DropTable(
+                name: "Venda");
+
+            migrationBuilder.DropTable(
+                name: "BandeiraCartao");
+
+            migrationBuilder.DropTable(
+                name: "Categoria");
+
+            migrationBuilder.DropTable(
+                name: "Colecao");
+
+            migrationBuilder.DropTable(
+                name: "Marca");
+
+            migrationBuilder.DropTable(
+                name: "Subtipo");
+
+            migrationBuilder.DropTable(
+                name: "Tipo");
+
+            migrationBuilder.DropTable(
+                name: "Cliente");
+
+            migrationBuilder.DropTable(
+                name: "FormaPagamento");
         }
     }
 }

@@ -119,7 +119,7 @@ echo ""
 ask "Dados iniciais"
 echo ""
 echo -n "  Aguardando migrations..."
-until docker exec sono-leve-postgres psql -U postgres -d sono_leve -c "SELECT 1 FROM \"Clientes\" LIMIT 1" >/dev/null 2>&1; do
+until docker exec sono-leve-postgres psql -U postgres -d sono_leve -c "SELECT 1 FROM \"Cliente\" LIMIT 1" >/dev/null 2>&1; do
   echo -n "."; sleep 2
 done
 echo ""

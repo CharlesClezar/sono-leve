@@ -66,7 +66,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("OcorridoEm");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLog");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.BandeiraCartao", b =>
@@ -90,7 +90,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BandeirasCartao");
+                    b.ToTable("BandeiraCartao");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Categoria", b =>
@@ -112,7 +112,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Categorias");
+                    b.ToTable("Categoria");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Cliente", b =>
@@ -151,7 +151,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Clientes");
+                    b.ToTable("Cliente");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Colecao", b =>
@@ -175,7 +175,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Colecoes");
+                    b.ToTable("Colecao");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.ConfiguracaoTaxaCartao", b =>
@@ -209,7 +209,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("FormaPagamentoId");
 
-                    b.ToTable("ConfiguracoesTaxaCartao");
+                    b.ToTable("ConfiguracaoTaxaCartao");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.ConfiguracaoTaxaCartaoParcela", b =>
@@ -243,7 +243,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("ConfiguracaoTaxaCartaoId");
 
-                    b.ToTable("ConfiguracoesTaxaCartaoParcelas");
+                    b.ToTable("ConfiguracaoTaxaCartaoParcela");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Conta", b =>
@@ -304,7 +304,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("VendaId");
 
-                    b.ToTable("Contas");
+                    b.ToTable("Conta");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Encomenda", b =>
@@ -341,7 +341,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("ClienteId");
 
-                    b.ToTable("Encomendas");
+                    b.ToTable("Encomenda");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Ficha", b =>
@@ -381,7 +381,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("ClienteId");
 
-                    b.ToTable("Fichas");
+                    b.ToTable("Ficha");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.FormaPagamento", b =>
@@ -418,7 +418,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("FormasPagamento");
+                    b.ToTable("FormaPagamento");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.IdempotencyRecord", b =>
@@ -445,7 +445,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Key");
 
-                    b.ToTable("IdempotencyRecords");
+                    b.ToTable("IdempotencyRecord");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.ItemEncomenda", b =>
@@ -476,7 +476,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("ProdutoId");
 
-                    b.ToTable("ItensEncomenda");
+                    b.ToTable("ItemEncomenda");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.ItemVenda", b =>
@@ -513,7 +513,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("VendaId");
 
-                    b.ToTable("ItensVenda");
+                    b.ToTable("ItemVenda");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Marca", b =>
@@ -531,7 +531,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Marcas");
+                    b.ToTable("Marca");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Produto", b =>
@@ -596,7 +596,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("TipoId");
 
-                    b.ToTable("Produtos");
+                    b.ToTable("Produto");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Subtipo", b =>
@@ -614,7 +614,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Subtipos");
+                    b.ToTable("Subtipo");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Tipo", b =>
@@ -632,7 +632,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tipos");
+                    b.ToTable("Tipo");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Usuario", b =>
@@ -664,7 +664,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Usuarios");
+                    b.ToTable("Usuario");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.Venda", b =>
@@ -706,7 +706,7 @@ namespace SonoLeve.Infra.Migrations
 
                     b.HasIndex("FormaPagamentoId");
 
-                    b.ToTable("Vendas");
+                    b.ToTable("Venda");
                 });
 
             modelBuilder.Entity("SonoLeve.Domain.Entities.ConfiguracaoTaxaCartao", b =>

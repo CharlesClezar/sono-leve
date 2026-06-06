@@ -173,28 +173,6 @@ public class SonoLeveDbContext : DbContext, IUnitOfWork
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SonoLeveDbContext).Assembly);
 
-        // Preserva nomes de tabela plurais existentes no banco
-        modelBuilder.Entity<Usuario>().ToTable("Usuarios");
-        modelBuilder.Entity<Cliente>().ToTable("Clientes");
-        modelBuilder.Entity<Produto>().ToTable("Produtos");
-        modelBuilder.Entity<Venda>().ToTable("Vendas");
-        modelBuilder.Entity<Encomenda>().ToTable("Encomendas");
-        modelBuilder.Entity<ItemEncomenda>().ToTable("ItensEncomenda");
-        modelBuilder.Entity<ItemVenda>().ToTable("ItensVenda");
-        modelBuilder.Entity<Ficha>().ToTable("Fichas");
-        modelBuilder.Entity<Conta>().ToTable("Contas");
-        modelBuilder.Entity<IdempotencyRecord>().ToTable("IdempotencyRecords");
-        modelBuilder.Entity<Marca>().ToTable("Marcas");
-        modelBuilder.Entity<Categoria>().ToTable("Categorias");
-        modelBuilder.Entity<Tipo>().ToTable("Tipos");
-        modelBuilder.Entity<Subtipo>().ToTable("Subtipos");
-        modelBuilder.Entity<Colecao>().ToTable("Colecoes");
-        modelBuilder.Entity<FormaPagamento>().ToTable("FormasPagamento");
-        modelBuilder.Entity<BandeiraCartao>().ToTable("BandeirasCartao");
-        modelBuilder.Entity<ConfiguracaoTaxaCartao>().ToTable("ConfiguracoesTaxaCartao");
-        modelBuilder.Entity<ConfiguracaoTaxaCartaoParcela>().ToTable("ConfiguracoesTaxaCartaoParcelas");
-        modelBuilder.Entity<AuditLog>().ToTable("AuditLogs");
-
         var gradeConverter = new ValueConverter<List<string>, string>(
             v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
             v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>()

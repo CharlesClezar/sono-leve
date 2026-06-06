@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Boxes,
   ClipboardList,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { useShortcutSettings } from "@/hooks/useShortcutSettings";
 import { isActiveModuleRoute, moduleNavigationItems } from "@/lib/navigation";
-import { getShortcutById, getShortcutDisplayValue, getShortcutPlatform } from "@/lib/shortcuts";
+import { getShortcutById, getShortcutDisplayValue, getShortcutPlatform, type ShortcutPlatform } from "@/lib/shortcuts";
 import {
   Sidebar,
   SidebarContent,
@@ -49,7 +50,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = usePathname() ?? "/";
   const shortcuts = useShortcutSettings();
-  const platform = getShortcutPlatform();
+  const [platform, setPlatform] = useState<ShortcutPlatform>("windows");
+  useEffect(() => { setPlatform(getShortcutPlatform()); }, []);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">

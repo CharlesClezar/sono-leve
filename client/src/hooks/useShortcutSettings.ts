@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStoredShortcuts, subscribeToShortcutSettings, type ShortcutDefinition } from "@/lib/shortcuts";
+import { getShortcutDefaults, getStoredShortcuts, subscribeToShortcutSettings, type ShortcutDefinition } from "@/lib/shortcuts";
 
 export function useShortcutSettings() {
-  const [shortcuts, setShortcuts] = useState<ShortcutDefinition[]>(() => getStoredShortcuts());
+  const [shortcuts, setShortcuts] = useState<ShortcutDefinition[]>(getShortcutDefaults);
 
   useEffect(() => {
     setShortcuts(getStoredShortcuts());
