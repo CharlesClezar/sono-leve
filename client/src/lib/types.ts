@@ -57,6 +57,8 @@ export interface Sale {
   clienteNome: string;
   formaPagamentoId?: string;
   formaPagamentoNome?: string;
+  bandeiraId?: string;
+  numeroParcelas?: number;
   data: string;
   pecas: number;
   total: number;

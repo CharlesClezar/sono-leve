@@ -185,6 +185,8 @@ export default function NovaVenda() {
     vendaPreenchida.current = true;
     setClienteId(venda.clienteId);
     setFormaPagamentoId(venda.formaPagamentoId ?? "");
+    setBandeiraId(venda.bandeiraId ?? "");
+    setNumeroParcelas(venda.numeroParcelas ?? null);
     setDataVenda(venda.data?.substring(0, 10) ?? dataHoje());
   }, [venda]);
 
@@ -291,11 +293,35 @@ export default function NovaVenda() {
         origem,
         items: itensValidos.map((item) => {
           const desc = descontosPorProduto[item.produtoId] ?? ZERO_DESC;
+          const precoEfetivoProduto = calcPrecoEfetivo(item.preco, desc);
+
+          // Mescla desconto global nos itens para garantir restauração na edição
+          if (modoDescontoGlobal === "percentual" && descontoGlobalPct > 0) {
+            const pctCombinado = 100 - (1 - (desc.pct > 0 ? desc.pct : 0) / 100) * (1 - descontoGlobalPct / 100) * 100;
+            return {
+              produtoId: item.produtoId, tamanho: item.tamanho, quantidade: item.quantidade,
+              precoUnitario: item.preco * (1 - pctCombinado / 100),
+              descontoPct: pctCombinado > 0 ? Number(pctCombinado.toFixed(4)) : undefined,
+              descontoVal: undefined,
+            };
+          }
+          if (modoDescontoGlobal === "fixo" && descontoGlobal > 0 && subtotal > 0) {
+            const globalPorUnidade = (precoEfetivoProduto * item.quantidade / subtotal) * descontoGlobal / item.quantidade;
+            const precoFinal = Math.max(0, precoEfetivoProduto - globalPorUnidade);
+            const pctFinal = item.preco > 0 ? (1 - precoFinal / item.preco) * 100 : 0;
+            return {
+              produtoId: item.produtoId, tamanho: item.tamanho, quantidade: item.quantidade,
+              precoUnitario: precoFinal,
+              descontoPct: pctFinal > 0 ? Number(pctFinal.toFixed(4)) : undefined,
+              descontoVal: undefined,
+            };
+          }
+
           return {
             produtoId: item.produtoId,
             tamanho: item.tamanho,
             quantidade: item.quantidade,
-            precoUnitario: calcPrecoEfetivo(item.preco, desc),
+            precoUnitario: precoEfetivoProduto,
             descontoPct: desc.pct > 0 ? desc.pct : undefined,
             descontoVal: desc.val > 0 ? desc.val : undefined,
           };

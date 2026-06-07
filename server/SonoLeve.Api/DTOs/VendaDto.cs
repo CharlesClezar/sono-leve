@@ -55,5 +55,7 @@ public record VendaResponse(
     decimal Total,
     string Status,
     string Origem,
-    DateTime CriadoEm
+    DateTime CriadoEm,
+    Guid? BandeiraId = null,
+    int? NumeroParcelas = null
 );

@@ -10,6 +10,9 @@ public class Venda : EntidadeBase
     public Guid? FormaPagamentoId { get; set; }
     public FormaPagamento? FormaPagamento { get; set; }
 
+    public Guid? BandeiraId { get; set; }
+    public int? NumeroParcelas { get; set; }
+
     public DateTime Data { get; set; }
     public int Pecas { get; set; }
     public decimal Total { get; set; }

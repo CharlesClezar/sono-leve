@@ -82,13 +82,15 @@ public class VendaController : ControllerBase
         try
         {
             var existente = await _service.ObterPorIdAsync(id);
-            existente.ClienteId       = request.ClienteId;
+            existente.ClienteId        = request.ClienteId;
             existente.FormaPagamentoId = request.FormaPagamentoId;
-            existente.Data            = request.Data ?? existente.Data;
-            existente.Pecas           = request.Pecas;
-            existente.Total           = request.Total;
-            existente.Status          = Enum.Parse<StatusVenda>(request.Status, true);
-            existente.Origem          = ParseOrigem(request.Origem);
+            existente.BandeiraId       = request.BandeiraId;
+            existente.NumeroParcelas   = request.NumeroParcelas;
+            existente.Data             = request.Data ?? existente.Data;
+            existente.Pecas            = request.Pecas;
+            existente.Total            = request.Total;
+            existente.Status           = Enum.Parse<StatusVenda>(request.Status, true);
+            existente.Origem           = ParseOrigem(request.Origem);
             var itens      = MapearItensRequest(request.Items);
             var atualizado = await _service.AtualizarAsync(existente, itens);
 
@@ -135,19 +137,22 @@ public class VendaController : ControllerBase
 
     private static Venda MapearEntidade(VendaRequest r) => new()
     {
-        ClienteId       = r.ClienteId,
+        ClienteId        = r.ClienteId,
         FormaPagamentoId = r.FormaPagamentoId,
-        Data            = r.Data ?? DateTime.UtcNow,
-        Pecas           = r.Pecas,
-        Total           = r.Total,
-        Status          = Enum.Parse<StatusVenda>(r.Status, true),
-        Origem          = ParseOrigem(r.Origem),
+        BandeiraId       = r.BandeiraId,
+        NumeroParcelas   = r.NumeroParcelas,
+        Data             = r.Data ?? DateTime.UtcNow,
+        Pecas            = r.Pecas,
+        Total            = r.Total,
+        Status           = Enum.Parse<StatusVenda>(r.Status, true),
+        Origem           = ParseOrigem(r.Origem),
     };
 
     private static VendaResponse Mapear(Venda v) => new(
         v.Id, v.ClienteId, v.Cliente?.Nome ?? "", v.FormaPagamentoId,
         v.FormaPagamento?.Nome, v.Data, v.Pecas, v.Total,
-        v.Status.ToString(), OrigemPt(v.Origem), v.CriadoEm
+        v.Status.ToString(), OrigemPt(v.Origem), v.CriadoEm,
+        v.BandeiraId, v.NumeroParcelas
     );
 
     private static ItemVendaResponse MapearItem(ItemVenda i) => new(
