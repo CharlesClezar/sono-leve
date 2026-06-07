@@ -111,6 +111,7 @@ export default function NovaVenda() {
   const { data: itensVendaOrigem } = useItensVenda(editando ? (params.id ?? "") : "");
   const itensPreenchidos = useRef(false);
   const itensVendaPreenchidos = useRef(false);
+  const vendaPreenchida = useRef(false);
 
   const { data: clienteSelecionado } = useClientePorId(clienteId ?? undefined);
 
@@ -179,6 +180,15 @@ export default function NovaVenda() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
+
+  // ── Preencher campos da venda ao editar (necessário para acesso direto via link) ──
+  useEffect(() => {
+    if (!venda || vendaPreenchida.current) return;
+    vendaPreenchida.current = true;
+    setClienteId(venda.clienteId);
+    setFormaPagamentoId(venda.formaPagamentoId ?? "");
+    setDataVenda(venda.data?.substring(0, 10) ?? dataHoje());
+  }, [venda]);
 
   // ── Preencher itens da venda ao editar ───────────────────────────────────
   useEffect(() => {
@@ -603,7 +613,7 @@ export default function NovaVenda() {
               {cliente ? (
                 <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
                   <div>
-                    <div className="font-medium">{cliente.nome}</div>
+                    <div className="text-sm font-medium">{cliente.nome}</div>
                     <div className="text-xs text-muted-foreground">
                       {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
                     </div>

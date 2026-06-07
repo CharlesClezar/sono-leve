@@ -38,7 +38,7 @@ public class ContaRepository : IContaRepository
             .FirstOrDefaultAsync(c => c.Id == id) ?? throw new KeyNotFoundException("Conta não encontrada.");
 
     public async Task<Conta?> ObterPorVendaIdAsync(Guid vendaId) =>
-        await _db.Conta.AsNoTracking().Include(c => c.Cliente)
+        await _db.Conta.AsNoTracking()
             .FirstOrDefaultAsync(c => c.VendaId == vendaId);
 
     public Task<Conta> CriarAsync(Conta conta)
