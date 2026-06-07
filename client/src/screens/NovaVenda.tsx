@@ -473,7 +473,102 @@ export default function NovaVenda() {
 
       {/* Conteúdo: ocupa o restante da tela sem scroll externo */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
+        <div className="flex h-full flex-col gap-4 overflow-hidden p-6">
+
+          {/* ── Linha de topo: Cliente + Data ── */}
+          <Card className="shrink-0 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+
+              {/* Cliente */}
+              <div className="flex-1 min-w-0">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Cliente <span className="text-destructive">*</span>
+                </h3>
+                {cliente ? (
+                  <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
+                    <div>
+                      <div className="text-sm font-medium">{cliente.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
+                  </div>
+                ) : (
+                  <div ref={refDropdownCliente} className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      ref={refBuscaCliente}
+                      placeholder="Buscar cliente..."
+                      className={`pl-9${tentouSalvar && !cliente ? " border-destructive focus-visible:ring-destructive" : ""}`}
+                      value={buscaCliente}
+                      onChange={(e) => setBuscaCliente(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Escape") setBuscaCliente(""); }}
+                    />
+                    {buscaCliente.trim().length >= 2 && (
+                      <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
+                        {buscandoCliente && clientesVisiveis.length === 0 ? (
+                          <div className="divide-y">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="flex animate-pulse items-center justify-between px-3 py-2.5">
+                                <div className="space-y-1.5">
+                                  <div className="h-3 w-32 rounded bg-muted" />
+                                  <div className="h-2.5 w-20 rounded bg-muted" />
+                                </div>
+                                <div className="h-2.5 w-12 rounded bg-muted" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : clientesVisiveis.length > 0 ? (
+                          <div className={`transition-opacity duration-150 ${buscandoCliente ? "opacity-50" : "opacity-100"}`}>
+                            {clientesVisiveis.map((c) => (
+                              <button
+                                key={c.id}
+                                onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
+                                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                              >
+                                <span>{c.nome}</span>
+                                <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
+                              </button>
+                            ))}
+                            <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
+                              <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                            Nenhum cliente encontrado para &quot;{termoCliente}&quot;
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Origem da venda */}
+                {encomendaOrigem && (
+                  <div className="mt-2.5 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs">
+                    <span className="font-medium text-primary">Encomenda</span>
+                    <span className="mx-1 text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">{encomendaOrigem.status}</span>
+                    {encomendaOrigem.status === "Fabricado parcialmente" && saldoRestante > 0 && (
+                      <span className="ml-1 text-warning">· saldo {formatBRL(saldoRestante)}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Data */}
+              <div className="shrink-0">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Data</h3>
+                <Input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} className="h-9 w-36 text-sm" />
+              </div>
+
+            </div>
+          </Card>
+
+          {/* ── Linha inferior: Produtos (esq) + Resumo/Pagamento (dir) ── */}
+          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden lg:flex-row">
 
           {/* ── Coluna esquerda: produtos com scroll interno ── */}
           <Card className="flex min-h-0 flex-col overflow-hidden p-5 lg:flex-1">
@@ -623,96 +718,11 @@ export default function NovaVenda() {
           </Card>
 
           {/* ── Coluna direita: resumo + pagamento (scroll próprio) ── */}
-          <div className="flex flex-col gap-3 overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
-            {/* Resumo (inclui cliente) */}
+          <div className="flex flex-col gap-3 overflow-y-auto pb-2 lg:w-[300px] lg:shrink-0">
+            {/* Resumo */}
             <Card className="shrink-0 p-4">
-              {/* Cliente */}
-              <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Cliente <span className="text-destructive">*</span>
-              </h3>
-              {cliente ? (
-                <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
-                  <div>
-                    <div className="text-sm font-medium">{cliente.nome}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
-                </div>
-              ) : (
-                <div ref={refDropdownCliente} className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    ref={refBuscaCliente}
-                    placeholder="Buscar cliente..."
-                    className={`pl-9${tentouSalvar && !cliente ? " border-destructive focus-visible:ring-destructive" : ""}`}
-                    value={buscaCliente}
-                    onChange={(e) => setBuscaCliente(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Escape") setBuscaCliente(""); }}
-                  />
-                  {buscaCliente.trim().length >= 2 && (
-                    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg">
-                      {buscandoCliente && clientesVisiveis.length === 0 ? (
-                        <div className="divide-y">
-                          {[1, 2, 3].map((i) => (
-                            <div key={i} className="flex animate-pulse items-center justify-between px-3 py-2.5">
-                              <div className="space-y-1.5">
-                                <div className="h-3 w-32 rounded bg-muted" />
-                                <div className="h-2.5 w-20 rounded bg-muted" />
-                              </div>
-                              <div className="h-2.5 w-12 rounded bg-muted" />
-                            </div>
-                          ))}
-                        </div>
-                      ) : clientesVisiveis.length > 0 ? (
-                        <div className={`transition-opacity duration-150 ${buscandoCliente ? "opacity-50" : "opacity-100"}`}>
-                          {clientesVisiveis.map((c) => (
-                            <button
-                              key={c.id}
-                              onClick={() => { setClienteId(c.id); setBuscaCliente(""); }}
-                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                            >
-                              <span>{c.nome}</span>
-                              <span className="text-xs uppercase text-muted-foreground">{c.tipo}</span>
-                            </button>
-                          ))}
-                          <button className="flex w-full items-center gap-2 border-t px-3 py-2 text-left text-sm font-medium text-primary hover:bg-primary-soft">
-                            <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                          Nenhum cliente encontrado para &quot;{termoCliente}&quot;
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Origem da venda */}
-              {encomendaOrigem && (
-                <div className="mt-3 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs">
-                  <span className="font-medium text-primary">Encomenda</span>
-                  <span className="mx-1 text-muted-foreground">·</span>
-                  <span className="text-muted-foreground">{encomendaOrigem.status}</span>
-                  {encomendaOrigem.status === "Fabricado parcialmente" && saldoRestante > 0 && (
-                    <span className="ml-1 text-warning">· saldo {formatBRL(saldoRestante)}</span>
-                  )}
-                </div>
-              )}
-
-              <div className="my-3 border-t" />
-
               <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumo</h3>
               <div className="space-y-1.5 text-sm">
-                {/* Data */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Data</span>
-                  <Input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} className="h-7 w-36 text-right text-xs" />
-                </div>
-
                 {/* Subtotal + Peças */}
                 <div className="rounded-md bg-muted/30 px-2.5 py-2 space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -828,6 +838,7 @@ export default function NovaVenda() {
               </div>
             </Card>
           </div>
+          </div>{/* fim linha inferior */}
         </div>
       </div>
 
