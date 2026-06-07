@@ -824,9 +824,6 @@ export default function NovaVenda() {
                   </div>
                 )}
               </div>
-              <Button className="mt-4 w-full" size="default" onClick={handleGerar} disabled={gerando}>
-                {gerando ? "Salvando..." : editando ? "Salvar alterações" : "Gerar venda"}
-              </Button>
             </Card>
           </div>
         </div>
