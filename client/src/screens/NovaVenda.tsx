@@ -485,14 +485,10 @@ export default function NovaVenda() {
                   Cliente <span className="text-destructive">*</span>
                 </h3>
                 {cliente ? (
-                  <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
-                    <div>
-                      <div className="text-sm font-medium">{cliente.nome}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {cliente.telefone} · <span className="font-medium uppercase text-primary">{cliente.tipo}</span>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setClienteId(null)}>Trocar</Button>
+                  <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/30 px-3">
+                    <span className="flex-1 min-w-0 truncate text-sm font-medium">{cliente.nome}</span>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">{cliente.tipo}</span>
+                    <Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" onClick={() => setClienteId(null)}>Trocar</Button>
                   </div>
                 ) : (
                   <div ref={refDropdownCliente} className="relative">
@@ -669,12 +665,12 @@ export default function NovaVenda() {
                             {/* Desconto compacto */}
                             <div className="shrink-0 flex items-center gap-1">
                               <span className="text-[10px] text-muted-foreground">Desc.</span>
-                              <div className="relative w-[60px]">
+                              <div className="relative w-16">
                                 <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
-                                <Input type="number" min={0} value={descProduto.val || ""} onChange={(e) => { const v = Math.max(0, Number(e.target.value) || 0); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } })); }} disabled={descProduto.pct > 0} placeholder="0" className="h-7 pl-7 pr-1 text-right text-xs disabled:opacity-40" />
+                                <Input type="number" min={0} value={descProduto.val || ""} onChange={(e) => { const v = Math.max(0, Number(e.target.value) || 0); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } })); }} disabled={descProduto.pct > 0} placeholder="0" className="h-6 pl-7 pr-1 text-right text-[11px] disabled:opacity-40" />
                               </div>
-                              <div className="relative w-[46px]">
-                                <Input type="number" min={0} max={100} step={1} value={descProduto.pct || ""} onChange={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value) || 0)); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } })); }} disabled={descProduto.val > 0} placeholder="0" className="h-7 pl-1.5 pr-5 text-right text-xs disabled:opacity-40" />
+                              <div className="relative w-14">
+                                <Input type="number" min={0} max={100} step={1} value={descProduto.pct || ""} onChange={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value) || 0)); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } })); }} disabled={descProduto.val > 0} placeholder="0%" className="h-6 pl-1.5 pr-5 text-right text-[11px] disabled:opacity-40" />
                                 <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                               </div>
                             </div>
@@ -684,30 +680,24 @@ export default function NovaVenda() {
                             </button>
                           </div>
 
-                          {/* Grade de tamanhos */}
-                          <div className="flex gap-1 overflow-x-auto pb-0.5">
-                            {grupo.map((it) => {
-                              const idx = itens.indexOf(it);
-                              return (
-                                <div key={it.tamanho} className="shrink-0 w-11 text-center">
-                                  <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
-                                  <Input type="number" min={0} value={it.quantidade || ""} onChange={(e) => atualizarQuantidade(idx, e.target.value)} className="mt-0.5 h-7 border-muted/60 px-1 text-center text-sm font-semibold" />
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {/* Total do item */}
-                          {grupo.some((it) => it.quantidade > 0) && (
-                            <div className="flex items-center justify-between border-t pt-1.5">
-                              <span className="text-[11px] text-muted-foreground">
-                                {grupo.filter((it) => it.quantidade > 0).map((it) => `${it.quantidade}× ${it.tamanho}`).join(" + ")}
-                              </span>
-                              <span className="text-xs font-semibold">
-                                {formatBRL(grupo.reduce((s, it) => s + it.quantidade * precoEfetivo, 0))}
-                              </span>
+                          {/* Grade de tamanhos + total fixo na mesma linha */}
+                          <div className="flex items-end gap-2">
+                            <div className="flex flex-1 gap-1 overflow-x-auto pb-0.5">
+                              {grupo.map((it) => {
+                                const idx = itens.indexOf(it);
+                                return (
+                                  <div key={it.tamanho} className="shrink-0 w-11 text-center">
+                                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
+                                    <Input type="number" min={0} value={it.quantidade || ""} onChange={(e) => atualizarQuantidade(idx, e.target.value)} className="mt-0.5 h-7 border-muted/60 px-1 text-center text-sm font-semibold" />
+                                  </div>
+                                );
+                              })}
                             </div>
-                          )}
+                            <div className="shrink-0 min-w-[58px] pb-0.5 text-right">
+                              <div className="text-[10px] text-muted-foreground">Total</div>
+                              <div className="text-xs font-semibold">{formatBRL(grupo.reduce((s, it) => s + it.quantidade * precoEfetivo, 0))}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
