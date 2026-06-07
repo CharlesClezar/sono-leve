@@ -99,11 +99,9 @@ export default function NovaVenda() {
   const [formaPagamentoId, setFormaPagamentoId] = useState(venda?.formaPagamentoId ?? "");
   const [bandeiraId, setBandeiraId] = useState("");
   const [numeroParcelas, setNumeroParcelas] = useState<number | null>(null);
-  const [valorPago, setValorPago] = useState(0);
   const [dataVenda, setDataVenda] = useState(venda?.data?.substring(0, 10) ?? dataHoje());
   const [modalPagamento, setModalPagamento] = useState(false);
   const [fpModal, setFpModal] = useState("");
-  const [valorModal, setValorModal] = useState(0);
   const idempotencyKey = useRef(gerarUUID());
   const [gerando, setGerando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
@@ -266,8 +264,6 @@ export default function NovaVenda() {
   );
   const descontoEfetivo = modoDescontoGlobal === "percentual" ? subtotal * (descontoGlobalPct / 100) : descontoGlobal;
   const total = Math.max(0, subtotal - descontoEfetivo);
-  const saldo = Math.max(0, total - valorPago);
-  const troco = Math.max(0, valorPago - total);
 
   const agrupados = useMemo(() => {
     const map = new Map<string, Item[]>();
@@ -280,7 +276,7 @@ export default function NovaVenda() {
 
   const saldoRestante = encomendaOrigem ? Math.max(0, encomendaOrigem.total - total) : 0;
 
-  const executarGerar = async (fpId: string, vPago: number) => {
+  const executarGerar = async (fpId: string) => {
     setGerando(true);
     try {
       const origem: Sale["origem"] = encomendaOrigem ? "Encomenda" : fichaOrigem ? "Ficha" : "Balcão";
@@ -311,7 +307,6 @@ export default function NovaVenda() {
         taxaFixaCartao:        parcelaSelecionada?.taxaFixa ?? undefined,
         valorTaxaCartao:       parcelaSelecionada ? valorTaxa : undefined,
         prazoRecebimentoDias:  parcelaSelecionada?.prazoRecebimentoDias,
-        valorPago:             vPago > 0 ? vPago : undefined,
       };
 
       if (editando) await api.atualizarVenda({ ...payload, id: venda!.id });
@@ -335,7 +330,7 @@ export default function NovaVenda() {
       await queryClient.invalidateQueries({ queryKey: ["vendas"] });
       await queryClient.invalidateQueries({ queryKey: ["encomendas"] });
       if (!editando) {
-        setItens([]); setValorPago(0); setDescontoGlobal(0); setDescontosPorProduto({} as Record<string, DescProduto>);
+        setItens([]); setDescontoGlobal(0); setDescontosPorProduto({} as Record<string, DescProduto>);
       }
       router.push("/vendas");
     } catch {
@@ -351,11 +346,10 @@ export default function NovaVenda() {
     if (itensValidos.length === 0) return toast.error("Adicione ao menos um item");
     if (!formaPagamentoId) {
       setFpModal("");
-      setValorModal(0);
       setModalPagamento(true);
       return;
     }
-    executarGerar(formaPagamentoId, valorPago);
+    executarGerar(formaPagamentoId);
   };
 
   const formasPagamentoAtivas = formasPagamento.filter((f) => f.ativo);
@@ -805,24 +799,6 @@ export default function NovaVenda() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Valor pago</span>
-                  <Input type="number" min={0} value={valorPago || ""} onChange={(e) => setValorPago(+e.target.value || 0)} placeholder="0" className="h-7 w-24 text-right text-xs" />
-                </div>
-                {(valorPago > 0 || saldo > 0) && (
-                  <div className="rounded-md bg-muted/30 px-2.5 py-2 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className={saldo > 0 ? "text-warning" : "text-muted-foreground"}>Saldo em aberto</span>
-                      <span className={`font-medium ${saldo > 0 ? "text-warning" : "text-muted-foreground"}`}>{formatBRL(saldo)}</span>
-                    </div>
-                    {troco > 0 && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[hsl(var(--success))]">Troco</span>
-                        <span className="font-medium text-[hsl(var(--success))]">{formatBRL(troco)}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </Card>
           </div>
@@ -848,24 +824,13 @@ export default function NovaVenda() {
                 options={formasPagamentoAtivas.map((f) => ({ value: f.id, label: f.nome }))}
               />
             </label>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Valor pago</span>
-              <Input
-                type="number"
-                min={0}
-                value={valorModal || ""}
-                onChange={(e) => setValorModal(+e.target.value || 0)}
-                placeholder="0"
-                className="h-8 w-28 text-right"
-              />
-            </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="ghost"
               onClick={() => {
                 setModalPagamento(false);
-                executarGerar("", 0);
+                executarGerar("");
               }}
               disabled={gerando}
             >
@@ -874,9 +839,8 @@ export default function NovaVenda() {
             <Button
               onClick={() => {
                 setFormaPagamentoId(fpModal);
-                setValorPago(valorModal);
                 setModalPagamento(false);
-                executarGerar(fpModal, valorModal);
+                executarGerar(fpModal);
               }}
               disabled={gerando || !fpModal}
             >
