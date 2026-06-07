@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,13 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CardsSkeleton } from "@/components/TableSkeleton";
 import { formatBRL, formatDate, type Ficha } from "@/lib/types";
 import { useFichasPaginadas } from "@/lib/api";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
-import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -48,16 +48,24 @@ export default function Fichas() {
     pageSize: 30,
   });
 
-  const columns = useMemo<DataGridColumn<Ficha>[]>(
+  const columns = useMemo<GridColumnDef<Ficha>[]>(
     () => [
-      { id: "id", label: "Ficha", accessor: (ficha) => ficha.id },
-      { id: "revendedora", label: "Revendedora", accessor: (ficha) => ficha.revendedoraNome },
-      { id: "dataAbertura", label: "Abertura", accessor: (ficha) => ficha.dataAbertura, filterAccessor: (ficha) => formatDate(ficha.dataAbertura) },
-      { id: "enviadas", label: "Enviadas", accessor: (ficha) => ficha.enviadas },
-      { id: "devolvidas", label: "Devolvidas", accessor: (ficha) => ficha.devolvidas },
-      { id: "vendidas", label: "Vendidas", accessor: (ficha) => ficha.vendidas },
-      { id: "totalVendido", label: "Total vendido", accessor: (ficha) => ficha.totalVendido },
-      { id: "status", label: "Status", accessor: (ficha) => ficha.status },
+      { id: "id", label: "Ficha", accessor: (f) => f.id, render: (f) => <span className="font-mono text-xs">{f.id}</span> },
+      { id: "revendedora", label: "Revendedora", accessor: (f) => f.revendedoraNome, render: (f) => <span className="font-medium">{f.revendedoraNome}</span> },
+      {
+        id: "dataAbertura", label: "Abertura", accessor: (f) => f.dataAbertura,
+        filterAccessor: (f) => formatDate(f.dataAbertura),
+        render: (f) => <span className="text-muted-foreground">{formatDate(f.dataAbertura)}</span>,
+      },
+      { id: "enviadas", label: "Enviadas", accessor: (f) => f.enviadas, align: "center" },
+      { id: "devolvidas", label: "Devolvidas", accessor: (f) => f.devolvidas, align: "center", render: (f) => <span className="text-muted-foreground">{f.devolvidas}</span> },
+      { id: "vendidas", label: "Vendidas", accessor: (f) => f.vendidas, align: "center", render: (f) => <span className="font-semibold text-primary">{f.vendidas}</span> },
+      {
+        id: "totalVendido", label: "Total vendido", accessor: (f) => f.totalVendido,
+        align: "right",
+        render: (f) => <span className="font-semibold">{formatBRL(f.totalVendido)}</span>,
+      },
+      { id: "status", label: "Status", accessor: (f) => f.status, render: (f) => <StatusBadge status={f.status} /> },
     ],
     [],
   );
@@ -88,23 +96,23 @@ export default function Fichas() {
         <div className="shrink-0 space-y-4 border-b px-6 py-4">
           <IndexedTabsNav tabs={tabs} activeTab={tab} onSelect={selectTab} getTabButtonProps={indexedTabs.getTabButtonProps} getShortcutLabel={indexedTabs.getShortcutLabel} />
           <Card className="p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por revendedora ou código" className="pl-9" value={query} onChange={(e) => setTabQuery(e.target.value)} />
+            <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Buscar por revendedora ou código" className="pl-9" value={query} onChange={(e) => setTabQuery(e.target.value)} />
+              </div>
             </div>
-          </div>
           </Card>
         </div>
 
         <div {...indexedTabs.getTabPanelProps(tab)} className="flex-1 overflow-y-auto p-6">
-        <div className="grid gap-3 lg:hidden">
-          {isLoading ? (
-            <CardsSkeleton />
-          ) : pagination.items.length === 0 ? (
-            <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</Card>
-          ) : (
-            pagination.items.map((f) => (
+          {/* Mobile */}
+          <div className="grid gap-3 lg:hidden">
+            {isLoading ? (
+              <CardsSkeleton />
+            ) : pagination.items.length === 0 ? (
+              <Card className="p-6 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</Card>
+            ) : pagination.items.map((f) => (
               <Card key={f.id} className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -126,55 +134,22 @@ export default function Fichas() {
                   </Button>
                 </div>
               </Card>
-            ))
-          )}
-        </div>
-        <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
-
-        <Card className="hidden overflow-hidden lg:block">
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {columns.map((column) => (
-                  <DataGridColumnHeader
-                    key={column.id}
-                    grid={grid}
-                    columnId={column.id}
-                    label={column.label}
-                    align={["enviadas", "devolvidas", "vendidas"].includes(column.id) ? "center" : column.id === "totalVendido" ? "right" : "left"}
-                  />
-                ))}
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {isLoading ? (
-                <TableSkeleton cols={9} />
-              ) : grid.rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma ficha encontrada</td></tr>
-              ) : grid.rows.map((f) => (
-                <tr key={f.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{f.id}</td>
-                  <td className="px-4 py-3 font-medium">{f.revendedoraNome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(f.dataAbertura)}</td>
-                  <td className="px-4 py-3 text-center">{f.enviadas}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">{f.devolvidas}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-primary">{f.vendidas}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(f.totalVendido)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={f.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="icon" asChild aria-label={`Editar ${f.id}`}>
-                      <Link {...indexedTabs.getActionProps(tab)} href={`/fichas/${f.id}/editar`}><Pencil className="h-4 w-4" /></Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationFooter pagination={pagination} />
+            ))}
           </div>
-        </Card>
+          <PaginationFooter pagination={pagination} className="mt-3 rounded-md border lg:hidden" />
+
+          {/* Desktop */}
+          <div className="hidden lg:block">
+            <DataGrid
+              grid={grid}
+              columns={columns}
+              isLoading={isLoading}
+              emptyMessage="Nenhuma ficha encontrada"
+              editHref={(f) => `/fichas/${f.id}/editar`}
+              actionLinkProps={indexedTabs.getActionProps(tab)}
+              footer={<PaginationFooter pagination={pagination} />}
+            />
+          </div>
         </div>
       </div>
     </AppShell>

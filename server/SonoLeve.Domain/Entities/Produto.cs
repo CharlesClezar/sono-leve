@@ -1,3 +1,5 @@
+using SonoLeve.Domain.Enums;
+
 namespace SonoLeve.Domain.Entities;
 
 public class Produto : EntidadeBase
@@ -23,6 +25,7 @@ public class Produto : EntidadeBase
     public decimal PrecoVarejo { get; set; }
     public decimal PrecoAtacado { get; set; }
     public bool Ativo { get; set; } = true;
+    public ModalidadeProduto Modalidade { get; set; } = ModalidadeProduto.Aberto;
     public int Estoque { get; set; }
     public string? ImagemUrl { get; set; }
 }

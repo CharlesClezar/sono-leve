@@ -5,23 +5,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { AppSelect } from "@/components/AppSelect";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
 import { usePagination, useServerPagination } from "@/hooks/usePagination";
 import { formatBRL, type Product } from "@/lib/types";
 import { api, useCatalogoProdutos, useProdutosPaginados, type CatalogSlug, type CategoriaCatalogo, type ColecaoCatalogo } from "@/lib/api";
 import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { TableSkeleton } from "@/components/TableSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Info, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Info, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 const abas = [
@@ -110,17 +109,22 @@ export default function Produtos() {
   });
 
   const nomesMarcas = useMemo(() => marcas.map((item) => item.name), [marcas]);
-  const colunasProdutos = useMemo<DataGridColumn<Product>[]>(
+
+  const colunasProdutos = useMemo<GridColumnDef<Product>[]>(
     () => [
-      { id: "nome", label: "Nome", accessor: (p) => p.nome },
-      { id: "ref", label: "Ref.", accessor: (p) => p.ref },
+      { id: "nome", label: "Nome", accessor: (p) => p.nome, render: (p) => <span className="font-medium">{p.nome}</span> },
+      { id: "ref", label: "Ref.", accessor: (p) => p.ref, render: (p) => <span className="font-mono text-xs text-muted-foreground">{p.ref}</span> },
       { id: "marcaNome", label: "Marca", accessor: (p) => p.marcaNome ?? "" },
-      { id: "tipo", label: "Tipo", accessor: (p) => `${p.tipoNome ?? ""} / ${p.subtipoNome ?? ""}` },
-      { id: "categoriaNome", label: "Categoria", accessor: (p) => p.categoriaNome ?? "" },
-      { id: "colecaoNome", label: "Coleção", accessor: (p) => p.colecaoNome ?? "" },
-      { id: "precoVarejo", label: "Varejo", accessor: (p) => p.precoVarejo },
-      { id: "precoAtacado", label: "Atacado", accessor: (p) => p.precoAtacado },
-      { id: "estoque", label: "Saldo", accessor: (p) => p.estoque },
+      { id: "tipo", label: "Tipo", accessor: (p) => `${p.tipoNome ?? ""} / ${p.subtipoNome ?? ""}`, render: (p) => <span className="text-muted-foreground">{p.tipoNome} / {p.subtipoNome}</span> },
+      { id: "categoriaNome", label: "Categoria", accessor: (p) => p.categoriaNome ?? "", render: (p) => <span className="text-muted-foreground">{p.categoriaNome}</span> },
+      { id: "colecaoNome", label: "Coleção", accessor: (p) => p.colecaoNome ?? "", render: (p) => <span className="text-muted-foreground">{p.colecaoNome}</span> },
+      { id: "precoVarejo", label: "Varejo", accessor: (p) => p.precoVarejo, align: "right", render: (p) => formatBRL(p.precoVarejo) },
+      { id: "precoAtacado", label: "Atacado", accessor: (p) => p.precoAtacado, align: "right", render: (p) => <span className="text-muted-foreground">{formatBRL(p.precoAtacado)}</span> },
+      {
+        id: "estoque", label: "Saldo", accessor: (p) => p.estoque,
+        align: "center",
+        render: (p) => <span className={`font-semibold ${p.estoque === 0 ? "text-destructive" : ""}`}>{p.estoque}</span>,
+      },
     ],
     [],
   );
@@ -137,11 +141,11 @@ export default function Produtos() {
 
   const gridProdutos = useDataGrid(responseProdutos?.data ?? [], colunasProdutos);
   const paginacaoProdutos = useServerPagination(responseProdutos, setPage);
-  const colunasCategoria = useMemo<DataGridColumn<CategoriaCatalogo>[]>(
+  const colunasCategoria = useMemo<GridColumnDef<CategoriaCatalogo>[]>(
     () => [
-      { id: "name", label: "Categoria", accessor: (item) => item.name },
-      { id: "grade", label: "Grade", accessor: (item) => item.grade.join(", ") },
-      { id: "products", label: "Produtos", accessor: (item) => item.products },
+      { id: "name", label: "Categoria", accessor: (item) => item.name, render: (item) => <span className="font-medium">{item.name}</span> },
+      { id: "grade", label: "Grade", accessor: (item) => item.grade.join(", "), render: (item) => <span className="text-xs text-muted-foreground">{item.grade.join(", ")}</span> },
+      { id: "products", label: "Produtos", accessor: (item) => item.products, align: "center" },
     ],
     [],
   );
@@ -229,86 +233,30 @@ export default function Produtos() {
         <div className="flex-1 overflow-y-auto p-6">
         {aba === "Produtos" && (
           <div {...indexedTabs.getTabPanelProps("Produtos")} className="space-y-4">
-            <Card className="overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="w-14 px-4 py-3" />
-                    {colunasProdutos.map((coluna) => (
-                      <DataGridColumnHeader
-                        key={coluna.id}
-                        grid={gridProdutos}
-                        columnId={coluna.id}
-                        label={coluna.label}
-                        align={["precoVarejo", "precoAtacado"].includes(coluna.id) ? "right" : coluna.id === "estoque" ? "center" : "left"}
-                      />
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {carregandoProdutos ? (
-                    <TableSkeleton cols={11} />
-                  ) : paginacaoProdutos.items.length === 0 ? (
-                    <tr><td colSpan={11} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum produto encontrado</td></tr>
-                  ) : paginacaoProdutos.items.map((p) => (
-                    <tr key={p.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3">
-                        <ProdutoImagem imagemUrl={p.imagemUrl} className="h-10 w-10 rounded object-cover" />
-                      </td>
-                      <td className="px-4 py-3 font-medium">{p.nome}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.ref}</td>
-                      <td className="px-4 py-3">{p.marcaNome}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.tipoNome} / {p.subtipoNome}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.categoriaNome}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.colecaoNome}</td>
-                      <td className="px-4 py-3 text-right">{formatBRL(p.precoVarejo)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(p.precoAtacado)}</td>
-                      <td className={`px-4 py-3 text-center font-semibold ${p.estoque === 0 ? "text-destructive" : ""}`}>{p.estoque}</td>
-                      <td className="px-4 py-3 text-right">
-                        <Button variant="ghost" size="icon" asChild aria-label={`Editar ${p.nome}`}>
-                          <Link {...indexedTabs.getActionProps("Produtos")} href={`/produtos/${p.id}/editar?tab=Produtos`}><Pencil className="h-4 w-4" /></Link>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <PaginationFooter pagination={paginacaoProdutos} />
-            </Card>
+            <DataGrid
+              grid={gridProdutos}
+              columns={colunasProdutos}
+              isLoading={carregandoProdutos}
+              emptyMessage="Nenhum produto encontrado"
+              editHref={(p) => `/produtos/${p.id}/editar?tab=Produtos`}
+              leadingHeaderCell={<span />}
+              leadingCell={(p) => <ProdutoImagem imagemUrl={p.imagemUrl} className="h-10 w-10 rounded object-cover" />}
+              footer={<PaginationFooter pagination={paginacaoProdutos} />}
+            />
           </div>
         )}
 
         {aba === "Categorias" && (
           <div {...indexedTabs.getTabPanelProps("Categorias")} className="space-y-4">
-            <Card className="overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    {colunasCategoria.map((coluna) => (
-                      <DataGridColumnHeader key={coluna.id} grid={gridCategoria} columnId={coluna.id} label={coluna.label} align={coluna.id === "products" ? "center" : "left"} />
-                    ))}
-                    <th className="px-4 py-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {carregandoCatalogo ? (
-                    <TableSkeleton cols={4} />
-                  ) : paginacaoCategoria.items.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma categoria cadastrada</td></tr>
-                  ) : paginacaoCategoria.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">{item.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{item.grade.join(", ")}</td>
-                      <td className="px-4 py-3 text-center">{item.products}</td>
-                      <td className="px-4 py-3 text-right">
-                        <BotoesAcaoCatalogo item={item} tipo="categorias" aba={aba} onExcluir={handleExcluir} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <PaginationFooter pagination={paginacaoCategoria} />
-            </Card>
+            <DataGrid
+              grid={gridCategoria}
+              columns={colunasCategoria}
+              isLoading={carregandoCatalogo}
+              emptyMessage="Nenhuma categoria cadastrada"
+              editHref={(item) => `/produtos/catalogo/categorias/${item.id}/editar?tab=Categorias`}
+              onDelete={async (item) => { if (item.id) await handleExcluir("categorias", String(item.id)); }}
+              footer={<PaginationFooter pagination={paginacaoCategoria} />}
+            />
 
             <Card className="p-5">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Grade por categoria</h3>
@@ -350,47 +298,6 @@ export default function Produtos() {
 type ItemCatalogo = { id?: string; name: string; products: number; active: boolean; grade?: string[] };
 type OnExcluir = (tipo: CatalogSlug, id: string) => Promise<void>;
 
-function BotoesAcaoCatalogo({ item, tipo, aba, onExcluir }: { item: ItemCatalogo; tipo: CatalogSlug; aba: AbaProduto; onExcluir: OnExcluir }) {
-  const [confirmando, setConfirmando] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
-
-  if (!item.id) return null;
-  const editHref = `/produtos/catalogo/${tipo}/${item.id}/editar${aba ? `?tab=${aba}` : ""}`;
-
-  const aoExcluir = async () => {
-    if (!confirmando) { setConfirmando(true); return; }
-    setExcluindo(true);
-    await onExcluir(tipo, item.id!);
-    setExcluindo(false);
-    setConfirmando(false);
-  };
-
-  if (confirmando) {
-    return (
-      <div className="flex items-center justify-end gap-1">
-        <span className="mr-1 text-xs text-muted-foreground">Confirmar?</span>
-        <Button variant="destructive" size="sm" className="h-7 px-2 text-xs" onClick={aoExcluir} disabled={excluindo}>
-          {excluindo ? "..." : "Excluir"}
-        </Button>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setConfirmando(false)}>
-          Cancelar
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-end gap-0.5">
-      <Button variant="ghost" size="icon" asChild aria-label={`Editar ${item.name}`}>
-        <Link href={editHref}><Pencil className="h-4 w-4" /></Link>
-      </Button>
-      <Button variant="ghost" size="icon" onClick={aoExcluir} aria-label={`Excluir ${item.name}`} className="text-muted-foreground hover:text-destructive">
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
-
 function TabelaCatalogoSimples({
   linhas, rotuloNome, rotuloMeio = "Produtos", chaveMeio = "products", sinalLimparFiltros, tipo, aba, onExcluir, carregando = false,
 }: {
@@ -398,93 +305,69 @@ function TabelaCatalogoSimples({
   rotuloNome: string; rotuloMeio?: string; chaveMeio?: string; sinalLimparFiltros: number;
   tipo: CatalogSlug; aba: AbaProduto; onExcluir: OnExcluir; carregando?: boolean;
 }) {
-  const colunas = useMemo<DataGridColumn<ItemCatalogo>[]>(
+  const colunas = useMemo<GridColumnDef<ItemCatalogo>[]>(
     () => [
-      { id: "name", label: rotuloNome, accessor: (item) => item.name },
-      { id: chaveMeio, label: rotuloMeio, accessor: (item) => item[chaveMeio as keyof ItemCatalogo] as string ?? "" },
+      { id: "name", label: rotuloNome, accessor: (item) => item.name, render: (item) => <span className="font-medium">{item.name}</span> },
+      {
+        id: chaveMeio, label: rotuloMeio, accessor: (item) => item[chaveMeio as keyof ItemCatalogo] as string ?? "",
+        align: chaveMeio === "products" ? "center" : "left",
+        render: (item) => <span className="text-muted-foreground">{item[chaveMeio as keyof ItemCatalogo] as string}</span>,
+      },
     ],
     [chaveMeio, rotuloMeio, rotuloNome],
   );
   const grid = useDataGrid(linhas, colunas);
   useEffect(() => { grid.clearFilters(); }, [sinalLimparFiltros]);
   const paginacao = usePagination(grid.rows);
+  const editHref = useCallback(
+    (item: ItemCatalogo) => `/produtos/catalogo/${tipo}/${item.id}/editar?tab=${aba}`,
+    [tipo, aba],
+  );
+  const handleDelete = useCallback(
+    async (item: ItemCatalogo) => { if (item.id) await onExcluir(tipo, item.id); },
+    [tipo, onExcluir],
+  );
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            {colunas.map((coluna) => (
-              <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label} align={coluna.id === "products" ? "center" : "left"} />
-            ))}
-            <th className="px-4 py-3 text-right">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {carregando ? (
-            <TableSkeleton cols={3} />
-          ) : paginacao.items.length === 0 ? (
-            <tr><td colSpan={3} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro cadastrado</td></tr>
-          ) : paginacao.items.map((item) => (
-            <tr key={item.id ?? item.name} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className={`px-4 py-3 text-muted-foreground ${chaveMeio === "products" ? "text-center" : ""}`}>
-                {item[chaveMeio as keyof ItemCatalogo] as string}
-              </td>
-              <td className="px-4 py-3">
-                <BotoesAcaoCatalogo item={item} tipo={tipo} aba={aba} onExcluir={onExcluir} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <PaginationFooter pagination={paginacao} />
-    </Card>
+    <DataGrid
+      grid={grid}
+      columns={colunas}
+      isLoading={carregando}
+      emptyMessage="Nenhum registro cadastrado"
+      editHref={editHref}
+      onDelete={handleDelete}
+      footer={<PaginationFooter pagination={paginacao} />}
+    />
   );
 }
 
 function TabelaColecoes({ linhas, sinalLimparFiltros, aba, onExcluir, carregando = false }: { linhas: ColecaoCatalogo[]; sinalLimparFiltros: number; aba: AbaProduto; onExcluir: OnExcluir; carregando?: boolean }) {
-  const colunas = useMemo<DataGridColumn<ColecaoCatalogo>[]>(
+  const colunas = useMemo<GridColumnDef<ColecaoCatalogo>[]>(
     () => [
-      { id: "name", label: "Coleção", accessor: (item) => item.name },
-      { id: "periodo", label: "Período", accessor: (item) => formatarDataColecao(item.dataInicio, item.dataFim) },
-      { id: "products", label: "Produtos", accessor: (item) => item.products },
+      { id: "name", label: "Coleção", accessor: (item) => item.name, render: (item) => <span className="font-medium">{item.name}</span> },
+      {
+        id: "periodo", label: "Período", accessor: (item) => formatarDataColecao(item.dataInicio, item.dataFim),
+        render: (item) => <span className="text-muted-foreground">{formatarDataColecao(item.dataInicio, item.dataFim)}</span>,
+      },
+      { id: "products", label: "Produtos", accessor: (item) => item.products, align: "center" },
     ],
     [],
   );
   const grid = useDataGrid(linhas, colunas);
   useEffect(() => { grid.clearFilters(); }, [sinalLimparFiltros]);
   const paginacao = usePagination(grid.rows);
+  const editHref = useCallback((item: ColecaoCatalogo) => `/produtos/catalogo/colecoes/${item.id}/editar?tab=${aba}`, [aba]);
+  const handleDelete = useCallback(async (item: ColecaoCatalogo) => { if (item.id) await onExcluir("colecoes", item.id); }, [onExcluir]);
 
   return (
-    <Card className="overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            {colunas.map((coluna) => (
-              <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label} align={coluna.id === "products" ? "center" : "left"} />
-            ))}
-            <th className="px-4 py-3 text-right">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {carregando ? (
-            <TableSkeleton cols={4} />
-          ) : paginacao.items.length === 0 ? (
-            <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma coleção cadastrada</td></tr>
-          ) : paginacao.items.map((item) => (
-            <tr key={item.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatarDataColecao(item.dataInicio, item.dataFim)}</td>
-              <td className="px-4 py-3 text-center">{item.products}</td>
-              <td className="px-4 py-3">
-                <BotoesAcaoCatalogo item={item} tipo="colecoes" aba={aba} onExcluir={onExcluir} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <PaginationFooter pagination={paginacao} />
-    </Card>
+    <DataGrid
+      grid={grid}
+      columns={colunas}
+      isLoading={carregando}
+      emptyMessage="Nenhuma coleção cadastrada"
+      editHref={editHref}
+      onDelete={handleDelete}
+      footer={<PaginationFooter pagination={paginacao} />}
+    />
   );
 }

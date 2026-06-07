@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { formatBRL, type Customer, type ItemVenda, type Product, type Sale } from "@/lib/types";
-import { api, useBandeirasCartao, useBuscarClientes, useBuscarProdutos, useClientePorId, useConfiguracoesTaxaCartao, useDadosOperacionais, useFormasPagamento, useItensEncomenda, type VendaSalvar } from "@/lib/api";
+import { api, useBandeirasCartao, useBuscarClientes, useBuscarProdutos, useClientePorId, useConfiguracoesTaxaCartao, useDadosOperacionais, useFormasPagamento, useItensEncomenda, useItensVenda, type VendaSalvar } from "@/lib/api";
 import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { Search, X, UserPlus, CreditCard } from "lucide-react";
@@ -71,8 +71,6 @@ export default function NovaVenda() {
       : fichaOrigem
         ? fichaOrigem.clienteId
       : null;
-  const primeiroProduto = produtos[0];
-
   // ── Refs de foco ──────────────────────────────────────────────────────────
   const refBuscaProduto  = useRef<HTMLInputElement>(null);
   const refBuscaCliente  = useRef<HTMLInputElement>(null);
@@ -91,12 +89,10 @@ export default function NovaVenda() {
 
   // ── Itens e descontos ─────────────────────────────────────────────────────
   const [produtosAdicionados, setProdutosAdicionados] = useState<Record<string, Product>>({});
-  const [itens, setItens] = useState<Item[]>(
-    venda && primeiroProduto
-      ? [{ produtoId: primeiroProduto.id, tamanho: "M", quantidade: venda.pecas, preco: primeiroProduto.precoVarejo }]
-      : []
-  );
+  const [itens, setItens] = useState<Item[]>([]);
   const [descontoGlobal, setDescontoGlobal] = useState(0);
+  const [modoDescontoGlobal, setModoDescontoGlobal] = useState<"fixo" | "percentual">("fixo");
+  const [descontoGlobalPct, setDescontoGlobalPct] = useState(0);
   const [descontosPorProduto, setDescontosPorProduto] = useState<Record<string, DescProduto>>({});
 
   // ── Pagamento / datas ─────────────────────────────────────────────────────
@@ -112,7 +108,9 @@ export default function NovaVenda() {
   const [gerando, setGerando] = useState(false);
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const { data: itensEncomendaOrigem } = useItensEncomenda(encomendaOrigemId ?? "");
+  const { data: itensVendaOrigem } = useItensVenda(editando ? (params.id ?? "") : "");
   const itensPreenchidos = useRef(false);
+  const itensVendaPreenchidos = useRef(false);
 
   const { data: clienteSelecionado } = useClientePorId(clienteId ?? undefined);
 
@@ -182,6 +180,27 @@ export default function NovaVenda() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
+  // ── Preencher itens da venda ao editar ───────────────────────────────────
+  useEffect(() => {
+    if (!editando || !itensVendaOrigem || itensVendaOrigem.length === 0) return;
+    if (itensVendaPreenchidos.current) return;
+    itensVendaPreenchidos.current = true;
+    const novosDescontos: Record<string, DescProduto> = {};
+    const novosItens: Item[] = itensVendaOrigem.map((iv) => {
+      const pct = iv.descontoPct ?? 0;
+      const val = iv.descontoVal ?? 0;
+      if (pct > 0) novosDescontos[iv.produtoId] = { pct, val: 0 };
+      else if (val > 0) novosDescontos[iv.produtoId] = { pct: 0, val };
+      // Reconstrói o preço original a partir do preço efetivo e do desconto
+      let preco = iv.precoUnitario;
+      if (pct > 0) preco = iv.precoUnitario / (1 - pct / 100);
+      else if (val > 0) preco = iv.precoUnitario + val;
+      return { produtoId: iv.produtoId, tamanho: iv.tamanho, quantidade: iv.quantidade, preco };
+    });
+    setItens(novosItens);
+    if (Object.keys(novosDescontos).length > 0) setDescontosPorProduto(novosDescontos);
+  }, [itensVendaOrigem, editando]);
+
   // ── Preencher itens da encomenda/sessão ───────────────────────────────────
   useEffect(() => {
     if (itensPreenchidos.current) return;
@@ -235,7 +254,8 @@ export default function NovaVenda() {
       }, 0),
     [itensValidos, descontosPorProduto]
   );
-  const total = Math.max(0, subtotal - descontoGlobal);
+  const descontoEfetivo = modoDescontoGlobal === "percentual" ? subtotal * (descontoGlobalPct / 100) : descontoGlobal;
+  const total = Math.max(0, subtotal - descontoEfetivo);
   const saldo = Math.max(0, total - valorPago);
   const troco = Math.max(0, valorPago - total);
 
@@ -500,98 +520,69 @@ export default function NovaVenda() {
                     const precoEfetivo = calcPrecoEfetivo(grupo[0].preco, descProduto);
                     return (
                       <div key={pid} className="rounded-md border overflow-hidden flex">
-                        {/* Imagem — ocupa toda a altura do card */}
-                        <ProdutoImagem imagemUrl={p.imagemUrl} className="w-20 shrink-0 self-stretch object-cover" />
+                        <ProdutoImagem imagemUrl={p.imagemUrl} className="w-16 shrink-0 self-stretch object-cover" />
 
-                        {/* Conteúdo */}
-                        <div className="flex-1 min-w-0 p-3 flex flex-col gap-2.5">
-                          {/* Linha superior: nome/preço + desconto + X */}
+                        <div className="flex-1 min-w-0 p-2.5 flex flex-col gap-2">
+                          {/* Linha superior: nome + desconto + X */}
                           <div className="flex items-start gap-2">
-                            {/* Nome e preço */}
                             <div className="flex-1 min-w-0">
-                              <div className="truncate font-semibold leading-tight">{p.nome}</div>
+                              <div className="truncate text-sm font-semibold leading-tight">{p.nome}</div>
                               <div className="mt-0.5 text-xs text-muted-foreground">
                                 {p.ref} ·{" "}
                                 {temDesconto ? (
                                   <>
                                     <span className="line-through opacity-50">{formatBRL(grupo[0].preco)}</span>
                                     {" "}
-                                    <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}</span>
+                                    <span className="font-medium text-[hsl(var(--success))]">{formatBRL(precoEfetivo)}/un</span>
                                   </>
                                 ) : (
-                                  formatBRL(grupo[0].preco)
+                                  <span>{formatBRL(grupo[0].preco)}/un</span>
                                 )}
                               </div>
                             </div>
 
-                            {/* Desconto */}
-                            <div className="shrink-0">
-                              <div className="mb-1 text-right text-[10px] font-semibold text-muted-foreground">Desconto</div>
-                              <div className="flex gap-1">
-                                {/* R$ */}
-                                <div className="relative w-[72px]">
-                                  <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={descProduto.val || ""}
-                                    onChange={(e) => {
-                                      const v = Math.max(0, Number(e.target.value) || 0);
-                                      setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } }));
-                                    }}
-                                    disabled={descProduto.pct > 0}
-                                    placeholder="0"
-                                    className="h-8 pl-8 pr-1 text-right text-sm disabled:opacity-40"
-                                  />
-                                </div>
-                                {/* % */}
-                                <div className="relative w-[54px]">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    step={1}
-                                    value={descProduto.pct || ""}
-                                    onChange={(e) => {
-                                      const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                      setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } }));
-                                    }}
-                                    disabled={descProduto.val > 0}
-                                    placeholder="0"
-                                    className="h-8 pl-2 pr-6 text-right text-sm disabled:opacity-40"
-                                  />
-                                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
-                                </div>
+                            {/* Desconto compacto */}
+                            <div className="shrink-0 flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground">Desc.</span>
+                              <div className="relative w-[60px]">
+                                <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">R$</span>
+                                <Input type="number" min={0} value={descProduto.val || ""} onChange={(e) => { const v = Math.max(0, Number(e.target.value) || 0); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: 0, val: v } })); }} disabled={descProduto.pct > 0} placeholder="0" className="h-7 pl-7 pr-1 text-right text-xs disabled:opacity-40" />
+                              </div>
+                              <div className="relative w-[46px]">
+                                <Input type="number" min={0} max={100} step={1} value={descProduto.pct || ""} onChange={(e) => { const v = Math.min(100, Math.max(0, Number(e.target.value) || 0)); setDescontosPorProduto((prev) => ({ ...prev, [pid]: { pct: v, val: 0 } })); }} disabled={descProduto.val > 0} placeholder="0" className="h-7 pl-1.5 pr-5 text-right text-xs disabled:opacity-40" />
+                                <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
                               </div>
                             </div>
 
-                            {/* Remover */}
-                            <button
-                              onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))}
-                              className="shrink-0 text-muted-foreground hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
+                            <button onClick={() => setItens((prev) => prev.filter((i) => i.produtoId !== pid))} className="shrink-0 text-muted-foreground hover:text-destructive">
+                              <X className="h-3.5 w-3.5" />
                             </button>
                           </div>
 
-                          {/* Grade de tamanhos — linha completa */}
-                          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                          {/* Grade de tamanhos */}
+                          <div className="flex gap-1 overflow-x-auto pb-0.5">
                             {grupo.map((it) => {
                               const idx = itens.indexOf(it);
                               return (
-                                <div key={it.tamanho} className="shrink-0 w-12 text-center">
+                                <div key={it.tamanho} className="shrink-0 w-11 text-center">
                                   <div className="text-[10px] font-semibold uppercase text-muted-foreground">{it.tamanho}</div>
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={it.quantidade || ""}
-                                    onChange={(e) => atualizarQuantidade(idx, e.target.value)}
-                                    className="mt-0.5 h-8 border-muted/60 px-1 text-center text-sm font-semibold"
-                                  />
+                                  <Input type="number" min={0} value={it.quantidade || ""} onChange={(e) => atualizarQuantidade(idx, e.target.value)} className="mt-0.5 h-7 border-muted/60 px-1 text-center text-sm font-semibold" />
                                 </div>
                               );
                             })}
                           </div>
+
+                          {/* Total do item */}
+                          {grupo.some((it) => it.quantidade > 0) && (
+                            <div className="flex items-center justify-between border-t pt-1.5">
+                              <span className="text-[11px] text-muted-foreground">
+                                {grupo.filter((it) => it.quantidade > 0).map((it) => `${it.quantidade}× ${it.tamanho}`).join(" + ")}
+                              </span>
+                              <span className="text-xs font-semibold">
+                                {formatBRL(grupo.reduce((s, it) => s + it.quantidade * precoEfetivo, 0))}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -602,11 +593,11 @@ export default function NovaVenda() {
           </Card>
 
           {/* ── Coluna direita: resumo + pagamento (scroll próprio) ── */}
-          <div className="flex flex-col gap-4 overflow-y-auto pb-2 lg:w-[360px] lg:shrink-0">
+          <div className="flex flex-col gap-3 overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
             {/* Resumo (inclui cliente) */}
-            <Card className="shrink-0 p-5">
+            <Card className="shrink-0 p-4">
               {/* Cliente */}
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Cliente <span className="text-destructive">*</span>
               </h3>
               {cliente ? (
@@ -682,34 +673,56 @@ export default function NovaVenda() {
                 </div>
               )}
 
-              <div className="my-4 border-t" />
+              <div className="my-3 border-t" />
 
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resumo</h3>
-              <div className="space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Data da venda</span>
-                  <Input
-                    type="date"
-                    value={dataVenda}
-                    onChange={(e) => setDataVenda(e.target.value)}
-                    className="h-8 w-44 text-right"
-                  />
+              <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumo</h3>
+              <div className="space-y-1.5 text-sm">
+                {/* Data */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Data</span>
+                  <Input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} className="h-7 w-36 text-right text-xs" />
                 </div>
-                <Linha label="Subtotal" valor={formatBRL(subtotal)} />
-                <Linha label="Peças" valor={itensValidos.reduce((s, i) => s + i.quantidade, 0).toString()} />
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Desconto (R$)</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={descontoGlobal || ""}
-                    onChange={(e) => setDescontoGlobal(+e.target.value || 0)}
-                    placeholder="0"
-                    className="h-8 w-28 text-right"
-                  />
+
+                {/* Subtotal + Peças */}
+                <div className="rounded-md bg-muted/30 px-2.5 py-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatBRL(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Peças</span>
+                    <span>{itensValidos.reduce((s, i) => s + i.quantidade, 0)}</span>
+                  </div>
                 </div>
-                <div className="my-3 border-t" />
-                <Linha label="Total" valor={formatBRL(total)} negrito />
+
+                {/* Desconto com toggle R$/% */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs text-muted-foreground">Desconto</span>
+                    <div className="flex rounded border text-[10px] overflow-hidden">
+                      <button type="button" onClick={() => setModoDescontoGlobal("fixo")} className={`px-2 py-0.5 transition-colors ${modoDescontoGlobal === "fixo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>R$</button>
+                      <button type="button" onClick={() => setModoDescontoGlobal("percentual")} className={`px-2 py-0.5 border-l transition-colors ${modoDescontoGlobal === "percentual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>%</button>
+                    </div>
+                  </div>
+                  {modoDescontoGlobal === "fixo" ? (
+                    <Input type="number" min={0} value={descontoGlobal || ""} onChange={(e) => setDescontoGlobal(+e.target.value || 0)} placeholder="0" className="h-7 w-24 text-right text-xs" />
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      {descontoEfetivo > 0 && <span className="text-xs text-muted-foreground">{formatBRL(descontoEfetivo)}</span>}
+                      <div className="relative w-20">
+                        <Input type="number" min={0} max={100} step={0.5} value={descontoGlobalPct || ""} onChange={(e) => setDescontoGlobalPct(Math.min(100, +e.target.value || 0))} placeholder="0" className="h-7 pr-6 text-right text-xs" />
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Total */}
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-base font-semibold">{formatBRL(total)}</span>
+                </div>
+
                 {encomendaOrigem?.status === "Fabricado parcialmente" && (
                   <Linha label="Restante na nova encomenda" valor={formatBRL(saldoRestante)} tom={saldoRestante > 0 ? "aviso" : "mudo"} />
                 )}
@@ -717,11 +730,11 @@ export default function NovaVenda() {
             </Card>
 
             {/* Pagamento */}
-            <Card className="shrink-0 p-5">
-              <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                <CreditCard className="h-4 w-4" /> Pagamento
+            <Card className="shrink-0 p-4">
+              <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <CreditCard className="h-3.5 w-3.5" /> Pagamento
               </h3>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2.5 text-sm">
                 <label className="space-y-1.5">
                   <span className="text-xs text-muted-foreground">Forma de pagamento</span>
                   <AppSelect
@@ -782,26 +795,26 @@ export default function NovaVenda() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Valor pago</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={valorPago || ""}
-                    onChange={(e) => setValorPago(+e.target.value || 0)}
-                    placeholder="0"
-                    className="h-8 w-28 text-right"
-                  />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Valor pago</span>
+                  <Input type="number" min={0} value={valorPago || ""} onChange={(e) => setValorPago(+e.target.value || 0)} placeholder="0" className="h-7 w-24 text-right text-xs" />
                 </div>
                 {(valorPago > 0 || saldo > 0) && (
-                  <>
-                    <div className="border-t pt-2" />
-                    <Linha label="Saldo em aberto" valor={formatBRL(saldo)} tom={saldo > 0 ? "aviso" : "mudo"} />
-                    {troco > 0 && <Linha label="Troco" valor={formatBRL(troco)} tom="sucesso" />}
-                  </>
+                  <div className="rounded-md bg-muted/30 px-2.5 py-2 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={saldo > 0 ? "text-warning" : "text-muted-foreground"}>Saldo em aberto</span>
+                      <span className={`font-medium ${saldo > 0 ? "text-warning" : "text-muted-foreground"}`}>{formatBRL(saldo)}</span>
+                    </div>
+                    {troco > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[hsl(var(--success))]">Troco</span>
+                        <span className="font-medium text-[hsl(var(--success))]">{formatBRL(troco)}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-              <Button className="mt-5 w-full" size="lg" onClick={handleGerar} disabled={gerando}>
+              <Button className="mt-4 w-full" size="default" onClick={handleGerar} disabled={gerando}>
                 {gerando ? "Salvando..." : editando ? "Salvar alterações" : "Gerar venda"}
               </Button>
             </Card>

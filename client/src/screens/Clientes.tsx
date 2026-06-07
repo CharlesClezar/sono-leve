@@ -1,19 +1,19 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { AppSelect } from "@/components/AppSelect";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
-import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
+import { CardsSkeleton } from "@/components/TableSkeleton";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBRL, type Customer } from "@/lib/types";
 import { useClientesPaginados } from "@/lib/api";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
 import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
@@ -42,13 +42,22 @@ export default function Clientes() {
     pageSize: 30,
   });
 
-  const colunas = useMemo<DataGridColumn<Customer>[]>(
+  const colunas = useMemo<GridColumnDef<Customer>[]>(
     () => [
-      { id: "nome", label: "Nome", accessor: (c) => c.nome },
-      { id: "telefone", label: "Telefone", accessor: (c) => c.telefone },
-      { id: "cpf", label: "CPF", accessor: (c) => c.cpf },
-      { id: "tipo", label: "Tipo", accessor: (c) => c.tipo },
-      { id: "credito", label: "Crédito", accessor: (c) => c.credito },
+      { id: "nome", label: "Nome", accessor: (c) => c.nome, render: (c) => <span className="font-medium">{c.nome}</span> },
+      { id: "telefone", label: "Telefone", accessor: (c) => c.telefone, render: (c) => <span className="text-muted-foreground">{c.telefone}</span> },
+      { id: "cpf", label: "CPF", accessor: (c) => c.cpf, render: (c) => <span className="font-mono text-xs">{c.cpf}</span> },
+      {
+        id: "tipo", label: "Tipo", accessor: (c) => c.tipo,
+        render: (c) => (
+          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium uppercase">{c.tipo}</span>
+        ),
+      },
+      {
+        id: "credito", label: "Crédito", accessor: (c) => c.credito,
+        align: "right",
+        render: (c) => formatBRL(c.credito),
+      },
     ],
     [],
   );
@@ -113,6 +122,7 @@ export default function Clientes() {
         </div>
 
         <div {...indexedTabs.getTabPanelProps(aba)} className="flex-1 overflow-y-auto p-6">
+          {/* Mobile */}
           <div className="grid gap-3 lg:hidden">
             {isLoading ? (
               <CardsSkeleton />
@@ -136,47 +146,18 @@ export default function Clientes() {
           </div>
           <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
-          <Card className="hidden overflow-hidden lg:block">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  {colunas.map((coluna) => (
-                    <DataGridColumnHeader
-                      key={coluna.id}
-                      grid={grid}
-                      columnId={coluna.id}
-                      label={coluna.label}
-                      align={coluna.id === "credito" ? "right" : "left"}
-                    />
-                  ))}
-                  <th className="px-4 py-3 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {isLoading ? (
-                  <TableSkeleton cols={6} />
-                ) : grid.rows.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum cliente encontrado</td></tr>
-                ) : grid.rows.map((c) => (
-                  <tr key={c.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{c.nome}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.telefone}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{c.cpf}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium uppercase">{c.tipo}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">{formatBRL(c.credito)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="icon" asChild aria-label={`Editar ${c.nome}`}>
-                        <Link {...indexedTabs.getActionProps(aba)} href={`/clientes/${c.id}/editar`}><Pencil className="h-4 w-4" /></Link>
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <PaginationFooter pagination={paginacao} />
-          </Card>
+          {/* Desktop */}
+          <div className="hidden lg:block">
+            <DataGrid
+              grid={grid}
+              columns={colunas}
+              isLoading={isLoading}
+              emptyMessage="Nenhum cliente encontrado"
+              editHref={(c) => `/clientes/${c.id}/editar`}
+              actionLinkProps={indexedTabs.getActionProps(aba)}
+              footer={<PaginationFooter pagination={paginacao} />}
+            />
+          </div>
         </div>
       </div>
     </AppShell>

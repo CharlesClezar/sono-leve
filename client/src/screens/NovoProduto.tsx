@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { api, useCatalogoProdutos, useProdutoPorId, useProdutos } from "@/lib/api";
+import type { ModalidadeProduto } from "@/lib/types";
 import { BASE_URL } from "@/lib/http";
 import { ProdutoImagem } from "@/components/ProdutoImagem";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
@@ -46,10 +47,12 @@ export default function NovoProduto() {
     precoAtacado: "",
   });
   const [ativo, setAtivo] = useState(true);
+  const [modalidade, setModalidade] = useState<ModalidadeProduto>(0);
+  const [modoAtacado, setModoAtacado] = useState<"fixo" | "percentual">("fixo");
+  const [descontoAtacadoPct, setDescontoAtacadoPct] = useState("");
   const [saldoPorTamanho, setSaldoPorTamanho] = useState<Record<string, string>>({});
   const [imagemUrl, setImagemUrl] = useState<string | undefined>(produto?.imagemUrl);
   const [imagemPendente, setImagemPendente] = useState<File | null>(null);
-  const [uploadando, setUploadando] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categorias = catalogo.categorias;
@@ -77,6 +80,7 @@ export default function NovoProduto() {
       precoAtacado: String(produto.precoAtacado),
     });
     setAtivo(produto.ativo);
+    setModalidade(produto.modalidade ?? 0);
   }, [produto]);
 
   // Campos não são pré-selecionados: usuário escolhe explicitamente
@@ -85,37 +89,28 @@ export default function NovoProduto() {
     setForm((atual) => ({ ...atual, [campo]: valor }));
   };
 
-  const handleArquivoSelecionado = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleArquivoSelecionado = (event: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = event.target.files?.[0];
     event.target.value = "";
     if (!arquivo) return;
-    if (editando && produto) {
-      setUploadando(true);
-      try {
-        const resultado = await api.uploadImagemProduto(produto.id, arquivo);
-        setImagemUrl(resultado.imagemUrl);
-        await queryClient.invalidateQueries({ queryKey: ["produtos"] });
-        toast.success("Imagem atualizada.");
-      } catch {
-        toast.error("Falha no upload da imagem.");
-      } finally {
-        setUploadando(false);
-      }
-    } else {
-      setImagemPendente(arquivo);
-      setImagemUrl(URL.createObjectURL(arquivo));
-    }
+    setImagemPendente(arquivo);
+    setImagemUrl(URL.createObjectURL(arquivo));
   };
 
   const handleRemoverImagem = async () => {
     if (editando && produto) {
-      try {
-        await api.removerImagemProduto(produto.id);
+      setImagemPendente(null);
+      if (produto.imagemUrl) {
+        try {
+          await api.removerImagemProduto(produto.id);
+          setImagemUrl(undefined);
+          await queryClient.invalidateQueries({ queryKey: ["produtos"] });
+          toast.success("Imagem removida.");
+        } catch {
+          toast.error("Não foi possível remover a imagem.");
+        }
+      } else {
         setImagemUrl(undefined);
-        await queryClient.invalidateQueries({ queryKey: ["produtos"] });
-        toast.success("Imagem removida.");
-      } catch {
-        toast.error("Não foi possível remover a imagem.");
       }
     } else {
       setImagemUrl(undefined);
@@ -153,12 +148,16 @@ export default function NovoProduto() {
         categoriaId: form.categoriaId || undefined,
         colecaoId: form.colecaoId || undefined,
         precoVarejo: Number(form.precoVarejo || 0),
-        precoAtacado: Number(form.precoAtacado || 0),
+        precoAtacado: modoAtacado === "percentual"
+          ? Number(form.precoVarejo || 0) * (1 - Number(descontoAtacadoPct || 0) / 100)
+          : Number(form.precoAtacado || 0),
         ativo,
+        modalidade,
         estoque: editando ? produto?.estoque ?? 0 : saldoInicial,
       };
       if (editando) {
         await api.atualizarProduto(dadosProduto);
+        if (imagemPendente) await api.uploadImagemProduto(produto!.id, imagemPendente);
       } else {
         const criado = await api.salvarProduto(dadosProduto, idempotencyKey.current);
         if (imagemPendente) await api.uploadImagemProduto(criado.id, imagemPendente);
@@ -258,10 +257,54 @@ export default function NovoProduto() {
                 <span className="text-sm font-medium">Varejo</span>
                 <Input type="number" min={0} step="0.01" value={form.precoVarejo} onChange={(event) => atualizarCampo("precoVarejo", event.target.value)} placeholder="0,00" />
               </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-medium">Atacado</span>
-                <Input type="number" min={0} step="0.01" value={form.precoAtacado} onChange={(event) => atualizarCampo("precoAtacado", event.target.value)} placeholder="0,00" />
-              </label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Atacado</span>
+                  <div className="flex rounded-md border text-xs overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setModoAtacado("fixo")}
+                      className={`px-2.5 py-1 transition-colors ${modoAtacado === "fixo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                    >
+                      R$
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModoAtacado("percentual")}
+                      className={`px-2.5 py-1 transition-colors border-l ${modoAtacado === "percentual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                    >
+                      %
+                    </button>
+                  </div>
+                </div>
+                {modoAtacado === "fixo" ? (
+                  <Input type="number" min={0} step="0.01" value={form.precoAtacado} onChange={(event) => atualizarCampo("precoAtacado", event.target.value)} placeholder="0,00" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={descontoAtacadoPct}
+                        onChange={(e) => setDescontoAtacadoPct(e.target.value)}
+                        placeholder="0"
+                        className="pr-8"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                    </div>
+                    <span className="shrink-0 text-sm text-muted-foreground">
+                      ={" "}
+                      <span className="font-medium text-foreground">
+                        {Number(form.precoVarejo || 0) > 0 && Number(descontoAtacadoPct || 0) > 0
+                          ? `R$ ${(Number(form.precoVarejo) * (1 - Number(descontoAtacadoPct) / 100)).toFixed(2).replace(".", ",")}`
+                          : "—"}
+                      </span>
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -287,31 +330,18 @@ export default function NovoProduto() {
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleArquivoSelecionado} />
             <div
               className="relative flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 border-dashed hover:border-primary/50 transition-colors"
-              onClick={() => !uploadando && fileInputRef.current?.click()}
+              onClick={() => fileInputRef.current?.click()}
             >
               {imagemUrl ? (
-                <>
-                  <ProdutoImagem imagemUrl={imagemUrl} alt="Imagem do produto" className="h-full w-full object-cover" />
-                  {uploadando && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-                      <span className="text-sm text-muted-foreground">Enviando...</span>
-                    </div>
-                  )}
-                </>
+                <ProdutoImagem imagemUrl={imagemUrl} alt="Imagem do produto" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  {uploadando ? (
-                    <span className="text-sm">Enviando...</span>
-                  ) : (
-                    <>
-                      <Camera className="h-8 w-8 opacity-40" />
-                      <span className="text-xs">Clique para adicionar imagem</span>
-                    </>
-                  )}
+                  <Camera className="h-8 w-8 opacity-40" />
+                  <span className="text-xs">Clique para adicionar imagem</span>
                 </div>
               )}
             </div>
-            {imagemUrl && !uploadando && (
+            {imagemUrl && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -322,6 +352,33 @@ export default function NovoProduto() {
                 <X className="mr-1.5 h-3.5 w-3.5" />Remover imagem
               </Button>
             )}
+          </div>
+
+          <div>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Modalidade</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {([0, 1] as const).map((valor) => {
+                const selecionado = modalidade === valor;
+                const label = valor === 0 ? "Aberto" : "Fechado";
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => setModalidade(valor)}
+                    className={`flex items-center justify-between rounded-md border p-3 text-left transition-colors ${selecionado ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+                  >
+                    <span className={`text-sm font-medium ${selecionado ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+                    {selecionado && (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-sm border-2 border-primary bg-primary">
+                        <svg className="h-2.5 w-2.5 text-primary-foreground" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                          <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div>

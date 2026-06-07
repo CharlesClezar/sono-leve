@@ -9,6 +9,5 @@ public class AuditLog
     public string? DadosAntes { get; set; }
     public string? DadosDepois { get; set; }
     public string? Endpoint { get; set; }
-    public string? StackTrace { get; set; }
     public DateTime OcorridoEm { get; set; } = DateTime.UtcNow;
 }

@@ -62,6 +62,7 @@ public class ProdutoController : ControllerBase
             existente.PrecoVarejo = request.PrecoVarejo;
             existente.PrecoAtacado = request.PrecoAtacado;
             existente.Ativo = request.Ativo;
+            existente.Modalidade = request.Modalidade;
             existente.Estoque = request.Estoque;
             return Ok(Mapear(await _service.AtualizarAsync(existente)));
         }
@@ -134,7 +135,7 @@ public class ProdutoController : ControllerBase
         MarcaId = r.MarcaId, TipoId = r.TipoId, SubtipoId = r.SubtipoId,
         CategoriaId = r.CategoriaId, ColecaoId = r.ColecaoId,
         PrecoVarejo = r.PrecoVarejo, PrecoAtacado = r.PrecoAtacado,
-        Ativo = r.Ativo, Estoque = r.Estoque,
+        Ativo = r.Ativo, Modalidade = r.Modalidade, Estoque = r.Estoque,
     };
 
     private static ProdutoResponse Mapear(Produto p) => new(
@@ -144,6 +145,6 @@ public class ProdutoController : ControllerBase
         p.SubtipoId, p.Subtipo?.Name,
         p.CategoriaId, p.Categoria?.Name, p.Categoria?.Grade?.ToArray(),
         p.ColecaoId, p.Colecao?.Name,
-        p.PrecoVarejo, p.PrecoAtacado, p.Ativo, p.Estoque, p.CriadoEm, p.ImagemUrl
+        p.PrecoVarejo, p.PrecoAtacado, p.Ativo, p.Modalidade, p.Estoque, p.CriadoEm, p.ImagemUrl
     );
 }

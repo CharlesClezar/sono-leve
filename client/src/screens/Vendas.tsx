@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AppSelect } from "@/components/AppSelect";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,19 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PiecesDetailsDialog } from "@/components/PiecesDetailsDialog";
+import { CardsSkeleton } from "@/components/TableSkeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatBRL, formatDate, type Ficha, type Order, type Sale } from "@/lib/types";
 import {
   useVendasPaginadas, useEncomendasPaginadas, useFichasPaginadas,
   useItensVenda,
 } from "@/lib/api";
-import { TableSkeleton, CardsSkeleton } from "@/components/TableSkeleton";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ClipboardList, FileClock, Info, Package2, Pencil, Plus, Receipt, Search } from "lucide-react";
+import { ClipboardList, FileClock, Info, Package2, Plus, Receipt, Search } from "lucide-react";
 
 const abas = ["Histórico", "Faturar encomendas", "Faturar fichas"] as const;
 type AbaVendas = (typeof abas)[number];
@@ -75,7 +75,6 @@ export default function Vendas() {
   const ehAbaHistorico = aba === "Histórico";
   const f = filtrosPorAba["Histórico"];
 
-  // ── Histórico ────────────────────────────────────────────────────────────────
   const { data: resVendas, isLoading: carregandoVendas } = useVendasPaginadas({
     search: f.busca || undefined,
     status: f.status !== "all" ? f.status : undefined,
@@ -86,7 +85,6 @@ export default function Vendas() {
     pageSize: 30,
   });
 
-  // ── Faturar encomendas ───────────────────────────────────────────────────────
   const fEncomendas = filtrosPorAba["Faturar encomendas"];
   const { data: resEncomendas, isLoading: carregandoEncomendas } = useEncomendasPaginadas(
     {
@@ -98,7 +96,6 @@ export default function Vendas() {
     aba === "Faturar encomendas",
   );
 
-  // ── Faturar fichas ───────────────────────────────────────────────────────────
   const fFichas = filtrosPorAba["Faturar fichas"];
   const { data: resFichas, isLoading: carregandoFichas } = useFichasPaginadas(
     {
@@ -324,15 +321,22 @@ function VisualizacaoHistorico({
   sinalLimparFiltros: number;
   carregando: boolean;
 }) {
-  const colunas = useMemo<DataGridColumn<Sale>[]>(
+  const colunas = useMemo<GridColumnDef<Sale>[]>(
     () => [
-      { id: "clienteNome", label: "Cliente", accessor: (v) => v.clienteNome },
-      { id: "origem", label: "Origem", accessor: (v) => v.origem },
-      { id: "data", label: "Data", accessor: (v) => v.data, filterAccessor: (v) => formatDate(v.data) },
-      { id: "pecas", label: "Peças", accessor: (v) => v.pecas },
-      { id: "formaPagamentoNome", label: "Pagamento", accessor: (v) => v.formaPagamentoNome },
-      { id: "total", label: "Total", accessor: (v) => v.total },
-      { id: "status", label: "Status", accessor: (v) => v.status },
+      { id: "clienteNome", label: "Cliente", accessor: (v) => v.clienteNome, render: (v) => <span className="font-medium">{v.clienteNome}</span> },
+      { id: "origem", label: "Origem", accessor: (v) => v.origem, render: (v) => <span className="text-muted-foreground">{v.origem}</span> },
+      {
+        id: "data", label: "Data", accessor: (v) => v.data, filterAccessor: (v) => formatDate(v.data),
+        render: (v) => <span className="text-muted-foreground">{formatDate(v.data)}</span>,
+      },
+      {
+        id: "pecas", label: "Peças", accessor: (v) => v.pecas,
+        align: "center",
+        render: (v) => <DetalhePecasVenda venda={v} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />,
+      },
+      { id: "formaPagamentoNome", label: "Pagamento", accessor: (v) => v.formaPagamentoNome, render: (v) => <span className="text-muted-foreground">{v.formaPagamentoNome}</span> },
+      { id: "total", label: "Total", accessor: (v) => v.total, align: "right", render: (v) => <span className="font-semibold">{formatBRL(v.total)}</span> },
+      { id: "status", label: "Status", accessor: (v) => v.status, render: (v) => <StatusBadge status={v.status} /> },
     ],
     [],
   );
@@ -343,6 +347,7 @@ function VisualizacaoHistorico({
 
   return (
     <>
+      {/* Mobile */}
       <div className="grid gap-3 lg:hidden">
         {carregando ? (
           <CardsSkeleton />
@@ -383,8 +388,8 @@ function VisualizacaoHistorico({
                   <FileClock className="h-3.5 w-3.5" />
                   {venda.origem}
                 </span>
-                <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${venda.id}`}>
-                  <Link {...actionProps} href={`/vendas/${venda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
+                <Button variant="ghost" size="icon" asChild>
+                  <Link {...actionProps} href={`/vendas/${venda.id}/editar`} aria-label="Editar venda" />
                 </Button>
               </div>
             </Card>
@@ -393,55 +398,18 @@ function VisualizacaoHistorico({
       </div>
       <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
-      <Card className="hidden overflow-hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {colunas.map((coluna) => (
-                  <DataGridColumnHeader
-                    key={coluna.id}
-                    grid={grid}
-                    columnId={coluna.id}
-                    label={coluna.label}
-                    align={coluna.id === "pecas" ? "center" : coluna.id === "total" ? "right" : "left"}
-                  />
-                ))}
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {carregando ? (
-                <TableSkeleton cols={8} />
-              ) : grid.rows.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Nenhuma venda encontrada com esses filtros
-                  </td>
-                </tr>
-              ) : grid.rows.map((venda) => (
-                <tr key={venda.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{venda.clienteNome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{venda.origem}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(venda.data)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <DetalhePecasVenda venda={venda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{venda.formaPagamentoNome}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(venda.total)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={venda.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="icon" asChild aria-label={`Editar venda ${venda.id}`}>
-                      <Link {...actionProps} href={`/vendas/${venda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationFooter pagination={paginacao} />
-        </div>
-      </Card>
+      {/* Desktop */}
+      <div className="hidden lg:block">
+        <DataGrid
+          grid={grid}
+          columns={colunas}
+          isLoading={carregando}
+          emptyMessage="Nenhuma venda encontrada com esses filtros"
+          editHref={(v) => `/vendas/${v.id}/editar`}
+          actionLinkProps={actionProps}
+          footer={<PaginationFooter pagination={paginacao} />}
+        />
+      </div>
     </>
   );
 }
@@ -476,16 +444,29 @@ function VisualizacaoFaturarEncomendas({
   sinalLimparFiltros: number;
   carregando: boolean;
 }) {
-  const colunas = useMemo<DataGridColumn<Order>[]>(
+  const colunas = useMemo<GridColumnDef<Order>[]>(
     () => [
-      { id: "id", label: "Encomenda", accessor: (e) => e.id },
-      { id: "clienteNome", label: "Cliente", accessor: (e) => e.clienteNome },
-      { id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm) },
-      { id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao) },
-      { id: "pecas", label: "Peças", accessor: (e) => pecasPorEncomenda(e.total) },
-      { id: "total", label: "Total", accessor: (e) => e.total },
-      { id: "saldo", label: "Saldo", accessor: (e) => e.total - e.entrada },
-      { id: "status", label: "Status", accessor: (e) => e.status },
+      { id: "id", label: "Encomenda", accessor: (e) => e.id, render: (e) => <span className="font-mono text-xs">{e.id}</span> },
+      { id: "clienteNome", label: "Cliente", accessor: (e) => e.clienteNome, render: (e) => <span className="font-medium">{e.clienteNome}</span> },
+      {
+        id: "criadoEm", label: "Cadastro", accessor: (e) => e.criadoEm, filterAccessor: (e) => formatDate(e.criadoEm),
+        render: (e) => <span className="text-muted-foreground">{formatDate(e.criadoEm)}</span>,
+      },
+      {
+        id: "previsao", label: "Entrega", accessor: (e) => e.previsao, filterAccessor: (e) => formatDate(e.previsao),
+        render: (e) => <span className="text-muted-foreground">{formatDate(e.previsao)}</span>,
+      },
+      { id: "pecas", label: "Peças", accessor: (e) => pecasPorEncomenda(e.total), align: "center", render: (e) => <span className="font-semibold">{pecasPorEncomenda(e.total)}</span> },
+      { id: "total", label: "Total", accessor: (e) => e.total, align: "right", render: (e) => <span className="font-semibold">{formatBRL(e.total)}</span> },
+      { id: "saldo", label: "Saldo", accessor: (e) => e.total - e.entrada, align: "right", render: (e) => <span className="text-muted-foreground">{formatBRL(e.total - e.entrada)}</span> },
+      {
+        id: "status", label: "Status", accessor: (e) => e.status,
+        render: (e) => (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${e.status === "Pronta" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+            <Package2 className="h-3.5 w-3.5" />{e.status === "Pronta" ? "Pronta" : "Fabricado parcialmente"}
+          </span>
+        ),
+      },
     ],
     [],
   );
@@ -496,6 +477,7 @@ function VisualizacaoFaturarEncomendas({
 
   return (
     <>
+      {/* Mobile */}
       <div className="grid gap-3 lg:hidden">
         {carregando ? (
           <CardsSkeleton />
@@ -511,7 +493,9 @@ function VisualizacaoFaturarEncomendas({
                   <div className="font-medium">{encomenda.clienteNome}</div>
                   <div className="font-mono text-xs text-muted-foreground">{encomenda.id}</div>
                 </div>
-                <StatusEncomendaFatura status={encomenda.status} />
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${encomenda.status === "Pronta" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                  <Package2 className="h-3.5 w-3.5" />{encomenda.status}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Cadastro</div><div>{formatDate(encomenda.criadoEm)}</div></div>
@@ -520,71 +504,35 @@ function VisualizacaoFaturarEncomendas({
                 <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Saldo</div><div>{formatBRL(encomenda.total - encomenda.entrada)}</div></div>
                 <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">Total</div><div className="font-semibold">{formatBRL(encomenda.total)}</div></div>
               </div>
-              <BotaoAcaoFatura href={`/vendas/nova?from=encomenda&id=${encomenda.id}`} className="w-full" actionProps={actionProps}>
-                <><Receipt className="h-4 w-4" />Gerar venda</>
-              </BotaoAcaoFatura>
+              <Button asChild className="w-full" size="sm">
+                <Link {...actionProps} href={`/vendas/nova?from=encomenda&id=${encomenda.id}`}>
+                  <Receipt className="h-4 w-4" />Gerar venda
+                </Link>
+              </Button>
             </Card>
           ))
         )}
       </div>
       <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
-      <Card className="hidden overflow-hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {colunas.map((coluna) => (
-                  <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label}
-                    align={coluna.id === "pecas" ? "center" : ["total", "saldo"].includes(coluna.id) ? "right" : "left"}
-                  />
-                ))}
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {carregando ? (
-                <TableSkeleton cols={9} />
-              ) : grid.rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma encomenda pronta para faturar</td></tr>
-              ) : grid.rows.map((encomenda) => (
-                <tr key={encomenda.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{encomenda.id}</td>
-                  <td className="px-4 py-3 font-medium">{encomenda.clienteNome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.previsao)}</td>
-                  <td className="px-4 py-3 text-center font-semibold">{pecasPorEncomenda(encomenda.total)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
-                  <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
-                  <td className="px-4 py-3"><StatusEncomendaFatura status={encomenda.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <BotaoAcaoFatura href={`/vendas/nova?from=encomenda&id=${encomenda.id}`} size="sm" actionProps={actionProps}>
-                      <><Receipt className="h-4 w-4" />Gerar venda</>
-                    </BotaoAcaoFatura>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationFooter pagination={paginacao} />
-        </div>
-      </Card>
+      {/* Desktop */}
+      <div className="hidden lg:block">
+        <DataGrid
+          grid={grid}
+          columns={colunas}
+          isLoading={carregando}
+          emptyMessage="Nenhuma encomenda pronta para faturar"
+          renderActions={(e) => (
+            <Button asChild size="sm">
+              <Link {...actionProps} href={`/vendas/nova?from=encomenda&id=${e.id}`}>
+                <Receipt className="h-4 w-4" />Gerar venda
+              </Link>
+            </Button>
+          )}
+          footer={<PaginationFooter pagination={paginacao} />}
+        />
+      </div>
     </>
-  );
-}
-
-function StatusEncomendaFatura({ status }: { status: Order["status"] }) {
-  if (status === "Pronta") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-        <Package2 className="h-3.5 w-3.5" />Pronta
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-      <Package2 className="h-3.5 w-3.5" />Fabricado parcialmente
-    </span>
   );
 }
 
@@ -601,16 +549,26 @@ function VisualizacaoFaturarFichas({
   sinalLimparFiltros: number;
   carregando: boolean;
 }) {
-  const colunas = useMemo<DataGridColumn<Ficha>[]>(
+  const colunas = useMemo<GridColumnDef<Ficha>[]>(
     () => [
-      { id: "id", label: "Ficha", accessor: (f) => f.id },
-      { id: "revendedoraNome", label: "Revendedora", accessor: (f) => f.revendedoraNome },
-      { id: "dataAbertura", label: "Abertura", accessor: (f) => f.dataAbertura, filterAccessor: (f) => formatDate(f.dataAbertura) },
-      { id: "vendidas", label: "Vendidas", accessor: (f) => f.vendidas },
-      { id: "enviadas", label: "Enviadas", accessor: (f) => f.enviadas },
-      { id: "devolvidas", label: "Devolvidas", accessor: (f) => f.devolvidas },
-      { id: "totalVendido", label: "Total vendido", accessor: (f) => f.totalVendido },
-      { id: "status", label: "Status", accessor: (f) => f.status },
+      { id: "id", label: "Ficha", accessor: (f) => f.id, render: (f) => <span className="font-mono text-xs">{f.id}</span> },
+      { id: "revendedoraNome", label: "Revendedora", accessor: (f) => f.revendedoraNome, render: (f) => <span className="font-medium">{f.revendedoraNome}</span> },
+      {
+        id: "dataAbertura", label: "Abertura", accessor: (f) => f.dataAbertura, filterAccessor: (f) => formatDate(f.dataAbertura),
+        render: (f) => <span className="text-muted-foreground">{formatDate(f.dataAbertura)}</span>,
+      },
+      { id: "vendidas", label: "Vendidas", accessor: (f) => f.vendidas, align: "center", render: (f) => <span className="font-semibold text-primary">{f.vendidas}</span> },
+      { id: "enviadas", label: "Enviadas", accessor: (f) => f.enviadas, align: "center" },
+      { id: "devolvidas", label: "Devolvidas", accessor: (f) => f.devolvidas, align: "center", render: (f) => <span className="text-muted-foreground">{f.devolvidas}</span> },
+      { id: "totalVendido", label: "Total vendido", accessor: (f) => f.totalVendido, align: "right", render: (f) => <span className="font-semibold">{formatBRL(f.totalVendido)}</span> },
+      {
+        id: "status", label: "Status", accessor: (f) => f.status,
+        render: (f) => (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+            <ClipboardList className="h-3.5 w-3.5" />{f.status}
+          </span>
+        ),
+      },
     ],
     [],
   );
@@ -621,6 +579,7 @@ function VisualizacaoFaturarFichas({
 
   return (
     <>
+      {/* Mobile */}
       <div className="grid gap-3 lg:hidden">
         {carregando ? (
           <CardsSkeleton />
@@ -645,77 +604,34 @@ function VisualizacaoFaturarFichas({
                 <div><div className="text-xs uppercase tracking-wide text-muted-foreground">Devolvidas</div><div>{ficha.devolvidas}</div></div>
                 <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">Total vendido</div><div className="font-semibold">{formatBRL(ficha.totalVendido)}</div></div>
               </div>
-              <BotaoAcaoFatura href={`/vendas/nova?from=ficha&id=${ficha.id}`} className="w-full" actionProps={actionProps}>
-                <><Receipt className="h-4 w-4" />Gerar venda</>
-              </BotaoAcaoFatura>
+              <Button asChild className="w-full" size="sm">
+                <Link {...actionProps} href={`/vendas/nova?from=ficha&id=${ficha.id}`}>
+                  <Receipt className="h-4 w-4" />Gerar venda
+                </Link>
+              </Button>
             </Card>
           ))
         )}
       </div>
       <PaginationFooter pagination={paginacao} className="mt-3 rounded-md border lg:hidden" />
 
-      <Card className="hidden overflow-hidden lg:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                {colunas.map((coluna) => (
-                  <DataGridColumnHeader key={coluna.id} grid={grid} columnId={coluna.id} label={coluna.label}
-                    align={["vendidas", "enviadas", "devolvidas"].includes(coluna.id) ? "center" : coluna.id === "totalVendido" ? "right" : "left"}
-                  />
-                ))}
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {carregando ? (
-                <TableSkeleton cols={9} />
-              ) : grid.rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma ficha com faturamento pendente</td></tr>
-              ) : grid.rows.map((ficha) => (
-                <tr key={ficha.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-mono text-xs">{ficha.id}</td>
-                  <td className="px-4 py-3 font-medium">{ficha.revendedoraNome}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(ficha.dataAbertura)}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-primary">{ficha.vendidas}</td>
-                  <td className="px-4 py-3 text-center">{ficha.enviadas}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">{ficha.devolvidas}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatBRL(ficha.totalVendido)}</td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                      <ClipboardList className="h-3.5 w-3.5" />{ficha.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <BotaoAcaoFatura href={`/vendas/nova?from=ficha&id=${ficha.id}`} size="sm" actionProps={actionProps}>
-                      <><Receipt className="h-4 w-4" />Gerar venda</>
-                    </BotaoAcaoFatura>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <PaginationFooter pagination={paginacao} />
-        </div>
-      </Card>
+      {/* Desktop */}
+      <div className="hidden lg:block">
+        <DataGrid
+          grid={grid}
+          columns={colunas}
+          isLoading={carregando}
+          emptyMessage="Nenhuma ficha com faturamento pendente"
+          renderActions={(f) => (
+            <Button asChild size="sm">
+              <Link {...actionProps} href={`/vendas/nova?from=ficha&id=${f.id}`}>
+                <Receipt className="h-4 w-4" />Gerar venda
+              </Link>
+            </Button>
+          )}
+          footer={<PaginationFooter pagination={paginacao} />}
+        />
+      </div>
     </>
   );
 }
-
-const BotaoAcaoFatura = ({
-  href,
-  className,
-  size,
-  children,
-  actionProps,
-}: {
-  href: string;
-  className?: string;
-  size?: "default" | "sm" | "lg" | "icon";
-  children: React.ReactNode;
-  actionProps: Record<string, unknown>;
-}) => (
-  <Button asChild className={className} size={size}>
-    <Link {...actionProps} href={href}>{children}</Link>
-  </Button>
-);

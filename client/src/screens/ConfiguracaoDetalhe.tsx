@@ -537,7 +537,7 @@ function FormasPagamentoTabela() {
               <DataGridColumnHeader grid={gridFP} columnId="exigeBandeira" label="Exige bandeira" align="center" />
               <DataGridColumnHeader grid={gridFP} columnId="ativo" label="Status" align="center" />
               <DataGridColumnHeader grid={gridFP} columnId="repassaTaxaAoCliente" label="Cobrar do cliente" align="center" />
-              <th className="px-4 py-3" />
+              <th className="sticky right-0 z-20 bg-muted/50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)]">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -559,14 +559,14 @@ function FormasPagamentoTabela() {
                         </td>
                       </tr>
                     ) : (
-                      <tr key={f.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3 font-medium">{f.nome}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{TIPOS_PAGAMENTO.find(t => t.value === f.tipo)?.label ?? f.tipo}</td>
-                        <td className="px-4 py-3 text-center text-xs">{f.permiteParcelamento ? "Sim" : "—"}</td>
-                        <td className="px-4 py-3 text-center text-xs">{f.exigeBandeira ? "Sim" : "—"}</td>
-                        <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={f.ativo} /></td>
-                        <td className="px-4 py-3 text-center text-xs">{f.repassaTaxaAoCliente ? "Sim" : "—"}</td>
-                        <td className="px-4 py-3">
+                      <tr key={f.id} className="group hover:bg-muted/30">
+                        <td className="px-4 py-3 font-medium border-r border-border/40">{f.nome}</td>
+                        <td className="px-4 py-3 text-muted-foreground border-r border-border/40">{TIPOS_PAGAMENTO.find(t => t.value === f.tipo)?.label ?? f.tipo}</td>
+                        <td className="px-4 py-3 text-center text-xs border-r border-border/40">{f.permiteParcelamento ? "Sim" : "—"}</td>
+                        <td className="px-4 py-3 text-center text-xs border-r border-border/40">{f.exigeBandeira ? "Sim" : "—"}</td>
+                        <td className="px-4 py-3 text-center border-r border-border/40"><BADGE_ATIVO ativo={f.ativo} /></td>
+                        <td className="px-4 py-3 text-center text-xs border-r border-border/40">{f.repassaTaxaAoCliente ? "Sim" : "—"}</td>
+                        <td className="sticky right-0 z-10 bg-card px-4 py-3 [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)] group-hover:bg-muted/30">
                           <div className="flex gap-1">
                             <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(f)}>Editar</Button>
                             <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={() => setConfirmandoExcluirId(f.id)}>Excluir</Button>
@@ -670,7 +670,7 @@ function BandeirasTabela() {
           <tr>
             <DataGridColumnHeader grid={gridBand} columnId="nome" label="Nome" />
             <DataGridColumnHeader grid={gridBand} columnId="ativo" label="Status" align="center" />
-            <th className="px-4 py-3" />
+            <th className="sticky right-0 z-20 bg-muted/50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)]">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -692,10 +692,10 @@ function BandeirasTabela() {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={b.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">{b.nome}</td>
-                      <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={b.ativo} /></td>
-                      <td className="px-4 py-3">
+                    <tr key={b.id} className="group hover:bg-muted/30">
+                      <td className="px-4 py-3 font-medium border-r border-border/40">{b.nome}</td>
+                      <td className="px-4 py-3 text-center border-r border-border/40"><BADGE_ATIVO ativo={b.ativo} /></td>
+                      <td className="sticky right-0 z-10 bg-card px-4 py-3 [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)] group-hover:bg-muted/30">
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" className="h-8 px-3" onClick={() => handleEditar(b)}>Editar</Button>
                           <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={() => setConfirmandoExcluirId(b.id)}>Excluir</Button>
@@ -899,7 +899,7 @@ function TaxasCartaoTabela() {
               <DataGridColumnHeader grid={gridTaxa} columnId="tipoCartao" label="Tipo" />
               <DataGridColumnHeader grid={gridTaxa} columnId="parcelas" label="Parcelas" align="center" />
               <DataGridColumnHeader grid={gridTaxa} columnId="ativo" label="Status" align="center" />
-              <th className="px-4 py-3" />
+              <th className="sticky right-0 z-20 bg-muted/50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)]">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -923,13 +923,13 @@ function TaxasCartaoTabela() {
                       </tr>
                     ) : (
                       <React.Fragment key={c.id}>
-                        <tr className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandidoId(expandidoId === c.id ? null : c.id)}>
-                          <td className="px-4 py-3 font-medium">{c.formaPagamentoNome}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{c.bandeiraNome}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{c.tipoCartao}</td>
-                          <td className="px-4 py-3 text-center text-muted-foreground">{c.parcelas.length}x</td>
-                          <td className="px-4 py-3 text-center"><BADGE_ATIVO ativo={c.ativo} /></td>
-                          <td className="px-4 py-3">
+                        <tr className="group cursor-pointer hover:bg-muted/30" onClick={() => setExpandidoId(expandidoId === c.id ? null : c.id)}>
+                          <td className="px-4 py-3 font-medium border-r border-border/40">{c.formaPagamentoNome}</td>
+                          <td className="px-4 py-3 text-muted-foreground border-r border-border/40">{c.bandeiraNome}</td>
+                          <td className="px-4 py-3 text-muted-foreground border-r border-border/40">{c.tipoCartao}</td>
+                          <td className="px-4 py-3 text-center text-muted-foreground border-r border-border/40">{c.parcelas.length}x</td>
+                          <td className="px-4 py-3 text-center border-r border-border/40"><BADGE_ATIVO ativo={c.ativo} /></td>
+                          <td className="sticky right-0 z-10 bg-card px-4 py-3 [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)] group-hover:bg-muted/30">
                             <div className="flex gap-1">
                               <Button size="sm" variant="ghost" className="h-8 px-3" onClick={e => { e.stopPropagation(); iniciarEdicao(c); }}>Editar</Button>
                               <Button size="sm" variant="ghost" className="h-8 px-3 text-destructive hover:bg-destructive/10" onClick={e => { e.stopPropagation(); setConfirmandoExcluirId(c.id); }}>Excluir</Button>
@@ -1000,8 +1000,8 @@ function ParamsTable() {
         <tbody className="divide-y">
           {pagination.items.map((item) => (
             <tr key={item.name} className="hover:bg-muted/30">
-              <td className="px-4 py-3 font-medium">{item.name}</td>
-              <td className="px-4 py-3"><Input defaultValue={item.value} className="h-9 max-w-[180px]" /></td>
+              <td className="px-4 py-3 font-medium border-r border-border/40">{item.name}</td>
+              <td className="px-4 py-3 border-r border-border/40"><Input defaultValue={item.value} className="h-9 max-w-[180px]" /></td>
               <td className="px-4 py-3 text-muted-foreground">{item.description}</td>
             </tr>
           ))}

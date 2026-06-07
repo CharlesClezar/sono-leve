@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useIndexedTabs } from "@/hooks/useIndexedTabs";
-import { TableSkeleton } from "@/components/TableSkeleton";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
 import { useProdutosPaginados } from "@/lib/api";
 import { Search } from "lucide-react";
@@ -31,24 +30,37 @@ export default function Estoque() {
 
   const linhasEstoque = useMemo(
     () =>
-      (response?.data ?? []).map((produto, index) => ({
+      (response?.data ?? []).map((produto) => ({
         ...produto,
-        estoquePorTamanho: Object.fromEntries(tamanhos.map((tamanho, i) => [tamanho, Math.max(0, Math.floor(produto.estoque / 4) + (i - 1) + index)])),
-        emFichas: index * 2,
+        estoquePorTamanho: Object.fromEntries(tamanhos.map((tamanho) => [tamanho, Math.floor(produto.estoque / tamanhos.length)])),
+        emFichas: 0,
       })),
     [response?.data],
   );
 
-  const colunas = useMemo<DataGridColumn<(typeof linhasEstoque)[number]>[]>(
+  const colunas = useMemo<GridColumnDef<(typeof linhasEstoque)[number]>[]>(
     () => [
-      { id: "nome", label: "Produto", accessor: (p) => p.nome },
+      { id: "nome", label: "Produto", accessor: (p) => p.nome, render: (p) => <span className="font-medium">{p.nome}</span> },
       ...tamanhos.map((tamanho) => ({
         id: tamanho,
         label: tamanho,
         accessor: (p: (typeof linhasEstoque)[number]) => p.estoquePorTamanho[tamanho],
+        align: "center" as const,
+        render: (p: (typeof linhasEstoque)[number]) => {
+          const val = p.estoquePorTamanho[tamanho];
+          return <span className={val === 0 ? "text-muted-foreground" : ""}>{val}</span>;
+        },
       })),
-      { id: "emFichas", label: "Em ficha", accessor: (p) => p.emFichas },
-      { id: "estoque", label: "Total", accessor: (p) => p.estoque },
+      {
+        id: "emFichas", label: "Em ficha", accessor: (p) => p.emFichas,
+        align: "center",
+        render: (p) => <span className="text-warning">{p.emFichas}</span>,
+      },
+      {
+        id: "estoque", label: "Total", accessor: (p) => p.estoque,
+        align: "center",
+        render: (p) => <span className="font-semibold">{p.estoque}</span>,
+      },
     ],
     [linhasEstoque],
   );
@@ -93,51 +105,13 @@ export default function Estoque() {
         <div className="flex-1 overflow-y-auto p-6">
         {aba === "Saldos" && (
           <div {...indexedTabs.getTabPanelProps("Saldos")}>
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  {colunas.map((coluna) => (
-                    <DataGridColumnHeader
-                      key={coluna.id}
-                      grid={grid}
-                      columnId={coluna.id}
-                      label={coluna.label}
-                      align={coluna.id === "nome" ? "left" : "center"}
-                    />
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {isLoading ? (
-                  <TableSkeleton cols={7} />
-                ) : grid.rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                      Nenhum produto encontrado
-                    </td>
-                  </tr>
-                ) : grid.rows.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{p.nome}</td>
-                    {tamanhos.map((t) => {
-                      const val = p.estoquePorTamanho[t];
-                      return (
-                        <td key={t} className={`px-4 py-3 text-center ${val === 0 ? "text-muted-foreground" : ""}`}>
-                          {val}
-                        </td>
-                      );
-                    })}
-                    <td className="px-4 py-3 text-center text-warning">{p.emFichas}</td>
-                    <td className="px-4 py-3 text-center font-semibold">{p.estoque}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-            <PaginationFooter pagination={paginacao} />
-          </Card>
+            <DataGrid
+              grid={grid}
+              columns={colunas}
+              isLoading={isLoading}
+              emptyMessage="Nenhum produto encontrado"
+              footer={<PaginationFooter pagination={paginacao} />}
+            />
           </div>
         )}
 

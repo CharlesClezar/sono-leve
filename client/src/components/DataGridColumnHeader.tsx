@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { ArrowDown, ArrowUp, MoreVertical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,10 @@ type DataGridColumnHeaderProps<T> = {
   label: string;
   className?: string;
   align?: "left" | "center" | "right";
+  /** Largura fixa em px (gerenciada pelo DataGrid) */
+  width?: number;
+  /** Callback de redimensionamento (quando fornecido, exibe o handle de drag) */
+  onResize?: (newWidth: number) => void;
 };
 
 function DataGridColumnHeaderBase<T>({
@@ -26,13 +30,40 @@ function DataGridColumnHeaderBase<T>({
   label,
   className,
   align = "left",
+  width,
+  onResize,
 }: DataGridColumnHeaderProps<T>) {
   const sort = grid.getSort(columnId);
   const sortIndex = grid.getSortIndex(columnId);
   const filter = grid.filters[columnId] ?? "";
+  const isMultiSort = grid.sorting.length > 1;
+
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const th = (e.currentTarget as HTMLElement).closest("th") as HTMLElement | null;
+      if (!th || !onResize) return;
+      const startX = e.clientX;
+      const startWidth = th.getBoundingClientRect().width;
+
+      const onMove = (ev: MouseEvent) => {
+        onResize(Math.max(60, startWidth + (ev.clientX - startX)));
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [onResize],
+  );
 
   return (
-    <th className={cn("px-4 py-3", className)}>
+    <th
+      className={cn("relative px-4 py-3 border-r border-border/40", className)}
+      style={width !== undefined ? { width, minWidth: width } : undefined}
+    >
       <div
         className={cn(
           "flex items-center gap-1.5",
@@ -52,7 +83,8 @@ function DataGridColumnHeaderBase<T>({
           <span className="truncate">{label}</span>
           {sort?.direction === "desc" && <ArrowDown className="h-3.5 w-3.5 shrink-0" />}
           {sort?.direction === "asc" && <ArrowUp className="h-3.5 w-3.5 shrink-0" />}
-          {sort && sortIndex > 0 && (
+          {/* Bolinha de prioridade aparece para todas colunas ordenadas quando há multi-sort */}
+          {sort && isMultiSort && (
             <span className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-semibold text-primary">
               {sortIndex + 1}
             </span>
@@ -101,6 +133,15 @@ function DataGridColumnHeaderBase<T>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Handle de redimensionamento — aparece só quando onResize é fornecido */}
+      {onResize && (
+        <div
+          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize select-none opacity-0 hover:opacity-100 hover:bg-primary/40 active:bg-primary/60 transition-opacity z-10"
+          onMouseDown={handleResizeMouseDown}
+          aria-hidden
+        />
+      )}
     </th>
   );
 }

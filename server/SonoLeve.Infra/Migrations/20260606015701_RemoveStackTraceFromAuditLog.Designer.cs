@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SonoLeve.Infra.Data;
@@ -11,9 +12,11 @@ using SonoLeve.Infra.Data;
 namespace SonoLeve.Infra.Migrations
 {
     [DbContext(typeof(SonoLeveDbContext))]
-    partial class SonoLeveDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260606015701_RemoveStackTraceFromAuditLog")]
+    partial class RemoveStackTraceFromAuditLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -560,9 +563,6 @@ namespace SonoLeve.Infra.Migrations
 
                     b.Property<Guid?>("MarcaId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("Modalidade")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Nome")
                         .IsRequired()

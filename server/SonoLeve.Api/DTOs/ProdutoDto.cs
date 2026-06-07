@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SonoLeve.Domain.Enums;
 
 namespace SonoLeve.Api.DTOs;
 
@@ -13,6 +14,7 @@ public record ProdutoRequest(
     [Range(0, 999999.99)] decimal PrecoVarejo,
     [Range(0, 999999.99)] decimal PrecoAtacado,
     bool Ativo,
+    ModalidadeProduto Modalidade,
     [Range(0, int.MaxValue)] int Estoque
 );
 
@@ -34,6 +36,7 @@ public record ProdutoResponse(
     decimal PrecoVarejo,
     decimal PrecoAtacado,
     bool Ativo,
+    ModalidadeProduto Modalidade,
     int Estoque,
     DateTime CriadoEm,
     string? ImagemUrl

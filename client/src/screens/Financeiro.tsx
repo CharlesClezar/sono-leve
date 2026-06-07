@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AppSelect } from "@/components/AppSelect";
 import { ClearFiltersShortcutDialog } from "@/components/ClearFiltersShortcutDialog";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { PaginationFooter } from "@/components/PaginationFooter";
 import { IndexedTabsNav } from "@/components/IndexedTabsNav";
 import { PageHeader } from "@/components/PageHeader";
@@ -19,10 +19,9 @@ import {
   api, useContasPaginadas, useBuscarClientes, useFormasPagamento,
   type ContaSalvar,
 } from "@/lib/api";
-import { TableSkeleton } from "@/components/TableSkeleton";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 import { useServerPagination } from "@/hooks/usePagination";
-import { Search, Plus, Pencil, Wrench } from "lucide-react";
+import { Search, Plus, Wrench } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -323,16 +322,49 @@ export default function Financeiro() {
     pageSize: 30,
   });
 
-  const colunas = useMemo<DataGridColumn<Account>[]>(
+  const colunas = useMemo<GridColumnDef<Account>[]>(
     () => [
-      { id: "cliente",   label: "Cliente",   accessor: (a) => a.clienteNome },
-      { id: "origem",    label: "Origem",     accessor: (a) => a.origem },
-      { id: "total",     label: "Total",      accessor: (a) => a.total },
-      { id: "taxa",      label: "Taxa",       accessor: (a) => a.valorTaxaCartao ?? 0 },
-      { id: "liquido",   label: "Líquido",    accessor: (a) => a.valorLiquido },
-      { id: "recebido",  label: "Recebido",   accessor: (a) => a.recebido },
-      { id: "vencimento",label: "Vencimento", accessor: (a) => a.vencimento, filterAccessor: (a) => formatDate(a.vencimento) },
-      { id: "status",    label: "Status",     accessor: (a) => a.status },
+      {
+        id: "cliente", label: "Cliente", accessor: (a) => a.clienteNome,
+        render: (a) => (
+          <div className="flex items-center gap-1.5 font-medium">
+            {a.ehManual && <span title="Criada manualmente"><Wrench className="h-3 w-3 text-muted-foreground" /></span>}
+            {a.clienteNome}
+          </div>
+        ),
+      },
+      {
+        id: "origem", label: "Origem", accessor: (a) => a.origem,
+        render: (a) => (
+          <div className="text-muted-foreground">
+            <div>{a.origem}</div>
+            {a.descricao && <div className="max-w-[160px] truncate text-[11px] text-muted-foreground/70">{a.descricao}</div>}
+          </div>
+        ),
+      },
+      { id: "total", label: "Total", accessor: (a) => a.total, align: "right", render: (a) => formatBRL(a.total) },
+      {
+        id: "taxa", label: "Taxa", accessor: (a) => a.valorTaxaCartao ?? 0,
+        align: "right",
+        render: (a) => a.valorTaxaCartao ? (
+          <div className="text-xs text-destructive/80">
+            <div>{formatBRL(a.valorTaxaCartao)}</div>
+            {a.numeroParcelas && <div className="text-muted-foreground">{a.numeroParcelas}x · {a.percentualTaxaCartao?.toFixed(2)}%</div>}
+          </div>
+        ) : <span className="text-muted-foreground/40">—</span>,
+      },
+      {
+        id: "liquido", label: "Líquido", accessor: (a) => a.valorLiquido,
+        align: "right",
+        render: (a) => <span className="font-semibold text-[hsl(var(--success))]">{formatBRL(a.valorLiquido)}</span>,
+      },
+      { id: "recebido", label: "Recebido", accessor: (a) => a.recebido, align: "right", render: (a) => <span className="text-muted-foreground">{formatBRL(a.recebido)}</span> },
+      {
+        id: "vencimento", label: "Vencimento", accessor: (a) => a.vencimento,
+        filterAccessor: (a) => formatDate(a.vencimento),
+        render: (a) => <span className="text-muted-foreground">{formatDate(a.vencimento)}</span>,
+      },
+      { id: "status", label: "Status", accessor: (a) => a.status, render: (a) => <StatusBadge status={a.status} /> },
     ],
     [],
   );
@@ -445,84 +477,14 @@ export default function Financeiro() {
         <div className="flex-1 overflow-y-auto p-6">
           {aba === "Contas a receber" && (
             <div {...indexedTabs.getTabPanelProps("Contas a receber")}>
-              <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-sm">
-                    <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                      <tr>
-                        {colunas.map((col) => (
-                          <DataGridColumnHeader
-                            key={col.id}
-                            grid={grid}
-                            columnId={col.id}
-                            label={col.label}
-                            align={["total", "taxa", "liquido", "recebido"].includes(col.id) ? "right" : "left"}
-                          />
-                        ))}
-                        <th className="px-4 py-3 w-[56px]" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {isLoading ? (
-                        <TableSkeleton cols={9} />
-                      ) : grid.rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                            Nenhuma conta encontrada
-                          </td>
-                        </tr>
-                      ) : (
-                        grid.rows.map((a) => (
-                          <tr key={a.id} className="hover:bg-muted/30">
-                            <td className="px-4 py-3 font-medium">
-                              <div className="flex items-center gap-1.5">
-                                {a.ehManual && (
-                                  <span title="Criada manualmente">
-                                    <Wrench className="h-3 w-3 text-muted-foreground" />
-                                  </span>
-                                )}
-                                {a.clienteNome}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                              <div>{a.origem}</div>
-                              {a.descricao && <div className="text-[11px] text-muted-foreground/70 truncate max-w-[160px]">{a.descricao}</div>}
-                            </td>
-                            <td className="px-4 py-3 text-right">{formatBRL(a.total)}</td>
-                            <td className="px-4 py-3 text-right text-destructive/80 text-xs">
-                              {a.valorTaxaCartao
-                                ? <>
-                                    <div>{formatBRL(a.valorTaxaCartao)}</div>
-                                    {a.numeroParcelas && <div className="text-muted-foreground">{a.numeroParcelas}x · {a.percentualTaxaCartao?.toFixed(2)}%</div>}
-                                  </>
-                                : <span className="text-muted-foreground/40">—</span>
-                              }
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-[hsl(var(--success))]">
-                              {formatBRL(a.valorLiquido)}
-                            </td>
-                            <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(a.recebido)}</td>
-                            <td className="px-4 py-3 text-muted-foreground">{formatDate(a.vencimento)}</td>
-                            <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
-                            <td className="px-4 py-3">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0"
-                                title="Editar conta"
-                                onClick={() => abrirEdicao(a)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <PaginationFooter pagination={paginacao} />
-              </Card>
+              <DataGrid
+                grid={grid}
+                columns={colunas}
+                isLoading={isLoading}
+                emptyMessage="Nenhuma conta encontrada"
+                onEdit={(a) => abrirEdicao(a)}
+                footer={<PaginationFooter pagination={paginacao} />}
+              />
             </div>
           )}
 

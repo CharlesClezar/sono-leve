@@ -308,7 +308,7 @@ export default function Encomendas() {
           <table className="w-full min-w-[1040px] text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Ação</th>
+                <th className="border-r border-border/40 px-4 py-3">Ação</th>
                 {colunas.map((coluna) => (
                   <DataGridColumnHeader
                     key={coluna.id}
@@ -318,7 +318,7 @@ export default function Encomendas() {
                     align={coluna.id === "pecas" ? "center" : ["total", "balance"].includes(coluna.id) ? "right" : "left"}
                   />
                 ))}
-                <th className="px-4 py-3 text-right">Ações</th>
+                <th className="sticky right-0 z-20 bg-muted/50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)]">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -387,29 +387,29 @@ function LinhaEncomenda({
   const atrasada = estaAtrasada(encomenda.previsao, status);
 
   return (
-    <tr className="hover:bg-muted/30">
-      <td className="px-4 py-3">
+    <tr className="group hover:bg-muted/30">
+      <td className="border-r border-border/40 px-4 py-3">
         <BotaoAcaoEncomenda id={encomenda.id} status={status} aoMover={aoMover} propsAcao={propsAcao} />
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{encomenda.id}</td>
-      <td className="px-4 py-3 font-medium">{encomenda.clienteNome}</td>
-      <td className="px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
-      <td className="px-4 py-3">
+      <td className="border-r border-border/40 px-4 py-3 font-mono text-xs text-muted-foreground">{encomenda.id}</td>
+      <td className="border-r border-border/40 px-4 py-3 font-medium">{encomenda.clienteNome}</td>
+      <td className="border-r border-border/40 px-4 py-3 text-muted-foreground">{formatDate(encomenda.criadoEm)}</td>
+      <td className="border-r border-border/40 px-4 py-3">
         <div className="text-muted-foreground">{formatDate(encomenda.previsao)}</div>
         {atrasada && <div className="text-xs font-semibold text-destructive">Atrasada</div>}
       </td>
-      <td className="px-4 py-3 text-center font-medium">
+      <td className="border-r border-border/40 px-4 py-3 text-center font-medium">
         <DetalhesPecasEncomenda encomenda={encomenda} triggerClassName="rounded-md bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary transition hover:bg-primary hover:text-primary-foreground" />
       </td>
-      <td className="px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
-      <td className="px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
-      <td className="px-4 py-3">
+      <td className="border-r border-border/40 px-4 py-3 text-right font-semibold">{formatBRL(encomenda.total)}</td>
+      <td className="border-r border-border/40 px-4 py-3 text-right text-muted-foreground">{formatBRL(encomenda.total - encomenda.entrada)}</td>
+      <td className="border-r border-border/40 px-4 py-3">
         <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${classeStatus[status]}`}>
           {rotuloStatus(status)}
         </span>
       </td>
-      <td className="px-4 py-3 text-right">
-        <Button variant="ghost" size="icon" asChild aria-label={`Editar ${encomenda.id}`}>
+      <td className="sticky right-0 z-10 bg-card px-4 py-3 text-right [box-shadow:-2px_0_5px_rgba(0,0,0,0.06)] group-hover:bg-muted/30">
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" asChild aria-label={`Editar ${encomenda.id}`}>
           <Link {...propsAcao} href={`/encomendas/${encomenda.id}/editar`}><Pencil className="h-4 w-4" /></Link>
         </Button>
       </td>

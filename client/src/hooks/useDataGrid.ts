@@ -87,13 +87,22 @@ export function useDataGrid<T>(rows: T[], columns: DataGridColumn<T>[]) {
   const toggleSort = (id: string, multiSort: boolean) => {
     setSorting((current) => {
       const existing = current.find((item) => item.id === id);
-      const nextDirection: GridSortDirection = existing?.direction === "desc" ? "asc" : "desc";
-      const nextSort = { id, direction: nextDirection };
 
-      if (!multiSort) return [nextSort];
-      if (!existing) return [...current, nextSort];
+      // 3-click cycle: none → asc → desc → none
+      if (!existing) {
+        const nextSort: GridSort = { id, direction: "asc" };
+        return multiSort ? [...current, nextSort] : [nextSort];
+      }
 
-      return current.map((item) => (item.id === id ? nextSort : item));
+      if (existing.direction === "asc") {
+        const nextSort: GridSort = { id, direction: "desc" };
+        return multiSort
+          ? current.map((item) => (item.id === id ? nextSort : item))
+          : [nextSort];
+      }
+
+      // Era desc → remover da ordenação
+      return multiSort ? current.filter((item) => item.id !== id) : [];
     });
   };
 

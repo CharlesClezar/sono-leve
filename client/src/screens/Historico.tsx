@@ -4,19 +4,16 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Eye,
   Search,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { PaginationFooter } from "@/components/PaginationFooter";
-import { DataGridColumnHeader } from "@/components/DataGridColumnHeader";
-import { TableSkeleton } from "@/components/TableSkeleton";
+import { DataGrid, type GridColumnDef } from "@/components/DataGrid";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { api, useAuditLogsPaginados, useEntidadesSistema, type AuditLog, type AuditLogsFiltros } from "@/lib/api";
 import { useServerPagination } from "@/hooks/usePagination";
-import { useDataGrid, type DataGridColumn } from "@/hooks/useDataGrid";
+import { useDataGrid } from "@/hooks/useDataGrid";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -350,14 +347,31 @@ export default function Historico() {
   const { data: response, isLoading } = useAuditLogsPaginados(filtros, buscarKey);
   const paginacao = useServerPagination(response, setPage);
 
-  const colunas = useMemo<DataGridColumn<AuditLog>[]>(
+  const colunas = useMemo<GridColumnDef<AuditLog>[]>(
     () => [
-      { id: "id", label: "Ordem", accessor: (l) => l.id },
-      { id: "entidade", label: "Entidade", accessor: (l) => l.entidade },
-      { id: "entidadeId", label: "ID", accessor: (l) => l.entidadeId },
-      { id: "endpoint", label: "Endpoint", accessor: (l) => l.endpoint ?? "" },
-      { id: "acao", label: "Ação", accessor: (l) => l.acao },
-      { id: "ocorridoEm", label: "Data", accessor: (l) => l.ocorridoEm },
+      { id: "id", label: "Ordem", accessor: (l) => l.id, render: (l) => <span className="tabular-nums text-xs text-muted-foreground">{l.id}</span> },
+      { id: "entidade", label: "Entidade", accessor: (l) => l.entidade, render: (l) => <span className="font-medium">{l.entidade}</span> },
+      {
+        id: "entidadeId", label: "ID", accessor: (l) => l.entidadeId,
+        render: (l) => (
+          <span className="block max-w-[200px] truncate font-mono text-xs text-muted-foreground" title={l.entidadeId}>
+            {l.entidadeId}
+          </span>
+        ),
+      },
+      {
+        id: "endpoint", label: "Endpoint", accessor: (l) => l.endpoint ?? "",
+        render: (l) => (
+          <span className="block max-w-[220px] truncate font-mono text-xs text-muted-foreground" title={l.endpoint ?? undefined}>
+            {l.endpoint ?? <span className="italic opacity-40">—</span>}
+          </span>
+        ),
+      },
+      { id: "acao", label: "Ação", accessor: (l) => l.acao, render: (l) => <AcaoBadge acao={l.acao} /> },
+      {
+        id: "ocorridoEm", label: "Data / Hora", accessor: (l) => l.ocorridoEm,
+        render: (l) => <span className="tabular-nums text-xs text-muted-foreground">{formatarData(l.ocorridoEm)}</span>,
+      },
     ],
     [],
   );
@@ -509,73 +523,14 @@ export default function Historico() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <DataGridColumnHeader grid={grid} columnId="id" label="Ordem" />
-                  <DataGridColumnHeader grid={grid} columnId="entidade" label="Entidade" />
-                  <DataGridColumnHeader grid={grid} columnId="entidadeId" label="ID" />
-                  <DataGridColumnHeader grid={grid} columnId="endpoint" label="Endpoint" />
-                  <DataGridColumnHeader grid={grid} columnId="acao" label="Ação" />
-                  <DataGridColumnHeader grid={grid} columnId="ocorridoEm" label="Data / Hora" />
-                  <th className="w-24 px-4 py-3 text-right">Detalhes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {isLoading ? (
-                  <TableSkeleton cols={7} />
-                ) : grid.rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                      Nenhum registro encontrado.
-                    </td>
-                  </tr>
-                ) : (
-                  grid.rows.map((log) => (
-                    <tr key={log.id} className="hover:bg-muted/30">
-                      <td className="px-4 py-3 tabular-nums text-xs text-muted-foreground">{log.id}</td>
-                      <td className="px-4 py-3 font-medium">{log.entidade}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="font-mono text-xs text-muted-foreground truncate max-w-[200px] block"
-                          title={log.entidadeId}
-                        >
-                          {log.entidadeId}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="font-mono text-xs text-muted-foreground truncate max-w-[220px] block"
-                          title={log.endpoint ?? undefined}
-                        >
-                          {log.endpoint ?? <span className="italic opacity-40">—</span>}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <AcaoBadge acao={log.acao} />
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs tabular-nums">
-                        {formatarData(log.ocorridoEm)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => abrirDetalhe(log)}
-                          aria-label="Ver detalhes"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-            <PaginationFooter pagination={paginacao} />
-          </Card>
+          <DataGrid
+            grid={grid}
+            columns={colunas}
+            isLoading={isLoading}
+            emptyMessage="Nenhum registro encontrado."
+            onView={(log) => abrirDetalhe(log)}
+            footer={<PaginationFooter pagination={paginacao} />}
+          />
         </div>
       </div>
 

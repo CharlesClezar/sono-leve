@@ -1,3 +1,5 @@
+export type ModalidadeProduto = 0 | 1; // 0 = Aberto, 1 = Fechado
+
 export type SaleStatus = "Gerada" | "Cancelada";
 export type OrderStatus = "Aberta" | "Em produção" | "Fabricado parcialmente" | "Pronta" | "Entregue" | "Cancelada";
 export type FichaStatus = "Aberta" | "Parcial" | "Finalizada" | "Cancelada";
@@ -32,6 +34,7 @@ export interface Product {
   precoVarejo: number;
   precoAtacado: number;
   ativo: boolean;
+  modalidade: ModalidadeProduto;
   estoque: number;
   imagemUrl?: string;
 }
