@@ -100,12 +100,16 @@ export default function NovaFicha() {
       />
 
       <div className="flex-1 min-h-0 overflow-hidden">
-      <div className="flex h-full flex-col gap-6 overflow-hidden p-6 lg:flex-row">
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
-          <Card className="p-5">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Revendedora</h3>
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium">Revendedora <span className="text-destructive">*</span></span>
+        <div className="flex h-full gap-6 overflow-hidden p-6 lg:flex-row">
+
+          {/* ── Coluna esquerda: Revendedora + Produtos ── */}
+          <Card className="flex min-h-0 flex-col overflow-hidden p-5 lg:flex-1">
+
+            {/* Cabeçalho: Revendedora */}
+            <div className="shrink-0 mb-4">
+              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Revendedora <span className="text-destructive">*</span>
+              </h3>
               <AppSelect
                 value={clienteId}
                 onValueChange={setClienteId}
@@ -115,24 +119,26 @@ export default function NovaFicha() {
                   .map((c) => ({ value: c.id, label: c.nome }))}
                 className={tentouSalvar && !clienteId ? "border-destructive" : ""}
               />
-            </label>
-          </Card>
+            </div>
 
-          <Card className="p-5">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Produtos enviados</h3>
-            <div className="space-y-4">
+            <div className="shrink-0 border-b mb-4" />
+
+            {/* Produtos enviados */}
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Produtos enviados
+              </h3>
+
               <div className="space-y-1.5">
-                <span className="text-sm font-medium">Produto</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Produto</span>
                 {produtoSelecionado ? (
-                  <div className="flex items-center justify-between rounded-md border bg-primary-soft/40 p-3">
-                    <div className="flex items-center gap-3">
-                      <ProdutoImagem imagemUrl={produtoSelecionado.imagemUrl} className="h-10 w-10 shrink-0 rounded object-cover" />
-                      <div>
-                        <div className="font-medium">{produtoSelecionado.nome}</div>
-                        <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
-                      </div>
+                  <div className="flex h-14 items-center gap-3 rounded-md border bg-muted/30 px-3">
+                    <ProdutoImagem imagemUrl={produtoSelecionado.imagemUrl} className="h-9 w-9 shrink-0 rounded object-cover" />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-sm font-medium">{produtoSelecionado.nome}</div>
+                      <div className="text-xs text-muted-foreground">{produtoSelecionado.ref} · {formatBRL(produtoSelecionado.precoVarejo)}</div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setProdutoSelecionado(null)}>Trocar</Button>
+                    <Button variant="ghost" size="sm" className="h-6 shrink-0 px-2 text-xs" onClick={() => setProdutoSelecionado(null)}>Trocar</Button>
                   </div>
                 ) : (
                   <div className="relative">
@@ -164,7 +170,7 @@ export default function NovaFicha() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1.5">
-                  <span className="text-sm font-medium">Tamanho</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tamanho</span>
                   <AppSelect
                     defaultValue="P"
                     value={tamanho}
@@ -173,21 +179,22 @@ export default function NovaFicha() {
                   />
                 </label>
                 <label className="space-y-1.5">
-                  <span className="text-sm font-medium">Quantidade</span>
-                  <Input type="number" min={1} value={quantidade} onChange={(event) => setQuantidade(Math.max(1, Number(event.target.value || 1)))} />
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quantidade</span>
+                  <Input type="number" min={1} value={quantidade} onChange={(e) => setQuantidade(Math.max(1, Number(e.target.value || 1)))} />
                 </label>
               </div>
             </div>
           </Card>
-        </div>
 
-        <div className="overflow-y-auto pb-2 lg:w-[320px] lg:shrink-0">
-        <Card className="p-5">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Observações</h3>
-          <p className="mt-3 text-xs text-muted-foreground">A ficha inicia aberta para registrar devoluções, vendas e acertos.</p>
-        </Card>
+          {/* ── Coluna direita: Observações ── */}
+          <div className="flex flex-col gap-3 overflow-y-auto pb-2 lg:w-[300px] lg:shrink-0">
+            <Card className="shrink-0 p-4">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</h3>
+              <p className="text-xs text-muted-foreground">A ficha inicia aberta para registrar devoluções, vendas e acertos.</p>
+            </Card>
+          </div>
+
         </div>
-      </div>
       </div>
     </AppShell>
   );

@@ -473,15 +473,15 @@ export default function NovaVenda() {
 
       {/* Conteúdo: ocupa o restante da tela sem scroll externo */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="flex h-full flex-col gap-4 overflow-hidden p-6">
+        <div className="flex h-full gap-6 overflow-hidden p-6 lg:flex-row">
 
-          {/* ── Linha de topo: Cliente + Data ── */}
-          <Card className="shrink-0 p-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          {/* ── Coluna esquerda: Cliente/Data + Produtos ── */}
+          <Card className="flex min-h-0 flex-col overflow-hidden p-5 lg:flex-1">
 
-              {/* Cliente */}
+            {/* Cabeçalho: Cliente + Data */}
+            <div className="shrink-0 mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-6">
               <div className="flex-1 min-w-0">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Cliente <span className="text-destructive">*</span>
                 </h3>
                 {cliente ? (
@@ -540,10 +540,8 @@ export default function NovaVenda() {
                     )}
                   </div>
                 )}
-
-                {/* Origem da venda */}
                 {encomendaOrigem && (
-                  <div className="mt-2.5 rounded-md border border-primary/15 bg-primary/5 px-3 py-2 text-xs">
+                  <div className="mt-2 rounded-md border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs">
                     <span className="font-medium text-primary">Encomenda</span>
                     <span className="mx-1 text-muted-foreground">·</span>
                     <span className="text-muted-foreground">{encomendaOrigem.status}</span>
@@ -553,22 +551,15 @@ export default function NovaVenda() {
                   </div>
                 )}
               </div>
-
-              {/* Data */}
               <div className="shrink-0">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Data</h3>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Data</h3>
                 <Input type="date" value={dataVenda} onChange={(e) => setDataVenda(e.target.value)} className="h-9 w-36 text-sm" />
               </div>
-
             </div>
-          </Card>
 
-          {/* ── Linha inferior: Produtos (esq) + Resumo/Pagamento (dir) ── */}
-          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden lg:flex-row">
+            <div className="shrink-0 border-b mb-4" />
 
-          {/* ── Coluna esquerda: produtos com scroll interno ── */}
-          <Card className="flex min-h-0 flex-col overflow-hidden p-5 lg:flex-1">
-            <h3 className="mb-3 shrink-0 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="mb-3 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Produtos <span className="text-destructive">*</span>
             </h3>
 
@@ -828,7 +819,6 @@ export default function NovaVenda() {
               </div>
             </Card>
           </div>
-          </div>{/* fim linha inferior */}
         </div>
       </div>
 
