@@ -29,7 +29,9 @@ services:
     env_file: .env
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Default: "Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      # Host do banco vem do .env: 'postgres' (container próprio) por padrão, ou
+      # 'host.docker.internal' quando gerenciado pelo Central (Postgres compartilhado).
+      ConnectionStrings__Default: "Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       Jwt__Segredo: ${JWT_SEGREDO}
       Jwt__ExpiracaoMinutos: ${JWT_EXPIRACAO_MINUTOS:-15}
       Jwt__ExpiracaoRefreshDias: ${JWT_EXPIRACAO_REFRESH_DIAS:-7}
