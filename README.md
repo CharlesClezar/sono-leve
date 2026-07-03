@@ -104,6 +104,22 @@ TRUNCATE TABLE "Vendas", "Encomendas", "Fichas", "Contas" RESTART IDENTITY CASCA
 
 ## Produção
 
+Em produção o Sono Leve é gerenciado pelo **Central** — o orquestrador dos
+sistemas auto-hospedados. É ele quem sobe e administra o **Postgres
+compartilhado**, cria o banco, configura o `.env` (as variáveis `POSTGRES_*` são
+preenchidas automaticamente), sobe os containers de aplicação e agenda os
+backups. Basta adicionar a URL deste repositório no painel do Central e clicar
+em *Instalar*.
+
+> O `compose` de produção obtém o host do banco do `.env`
+> (`Host=${POSTGRES_HOST:-postgres}`): fica `postgres` (container próprio) no uso
+> standalone e `host.docker.internal` quando gerenciado pelo Central. O serviço
+> `postgres` do compose é ignorado pelo Central, que sobe só `api` e `frontend`.
+> O `DataSeeder` popula o catálogo automaticamente na primeira subida com o banco
+> vazio.
+
+Uso **standalone** (sem o Central), subindo o próprio Postgres em container:
+
 ```bash
 cp .env.example .env
 docker compose -f docker-compose.prod.yml up -d --build
