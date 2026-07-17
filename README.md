@@ -32,8 +32,7 @@ sono-leve/
 │   ├── SonoLeve.Application/← Services, Interfaces
 │   ├── SonoLeve.Domain/     ← Entities, Enums
 │   └── SonoLeve.Infra/      ← DbContext, Repositories, Migrations, DataSeeder
-├── docker-compose.dev.yml   ← Só o banco (dev local)
-├── docker-compose.prod.yml  ← Banco + API (produção)
+├── docker-compose.prod.yml  ← App (API + frontend); o banco é do Central
 ├── .env.example             ← Template de variáveis de ambiente
 └── sono-leve.sln
 ```
@@ -60,12 +59,20 @@ cp client/.env.local.example client/.env.local
 cd client && npm install
 ```
 
+> **O banco de dev é o Postgres compartilhado do Central** — este projeto não
+> sobe mais um Postgres próprio. Com o Central em **modo desenvolvimento**, clique
+> em **Provisionar banco de dev** na página do projeto (aba *Desenvolvimento*), ou
+> rode na pasta do Central:
+> ```bash
+> python3 central.py provision-dev sono-leve
+> ```
+> Isso sobe o Postgres compartilhado local, cria o role+banco `sono_leve`
+> (idempotente) e **escreve a conexão** no `appsettings.Development.json`. As
+> migrations e o `DataSeeder` criam o schema e populam o catálogo no startup da API.
+
 ### Subir com F5 (VSCode)
 
-1. Suba o banco de dados:
-   ```bash
-   docker compose -f docker-compose.dev.yml up -d
-   ```
+1. Garanta que o Postgres compartilhado do Central está no ar (ver acima).
 2. No VSCode, abra o painel **Run & Debug** (`Ctrl+Shift+D`)
 3. Selecione **Sono Leve: Full Stack** e pressione **F5**
 
@@ -74,9 +81,6 @@ O F5 compila o backend, inicia a API com debugger e sobe o frontend automaticame
 ### Subir manualmente
 
 ```bash
-# Banco
-docker compose -f docker-compose.dev.yml up -d
-
 # Backend (porta 5010)
 cd server/SonoLeve.Api && dotnet run
 

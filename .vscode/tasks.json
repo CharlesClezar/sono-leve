@@ -14,23 +14,9 @@
       "group": "build",
       "presentation": { "reveal": "silent" },
       "problemMatcher": "$msCompile"
-    },
-    {
-      "label": "DB: subir postgres (dev)",
-      "type": "shell",
-      "command": "docker compose -f docker-compose.dev.yml up -d",
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": "build",
-      "presentation": { "reveal": "silent", "panel": "shared" },
-      "problemMatcher": []
-    },
-    {
-      "label": "DB: derrubar postgres (dev)",
-      "type": "shell",
-      "command": "docker compose -f docker-compose.dev.yml down",
-      "options": { "cwd": "${workspaceFolder}" },
-      "presentation": { "reveal": "silent", "panel": "shared" },
-      "problemMatcher": []
     }
+    // O banco de dev é o Postgres compartilhado do Central (não há mais um
+    // container de banco por projeto). Suba-o na pasta do Central antes do F5:
+    //   python3 central.py postgres up
   ]
 }
